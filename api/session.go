@@ -64,13 +64,13 @@ func loadSession(dir string) {
 	sessMu.Lock()
 	defer sessMu.Unlock()
 	sessionDir = dir
-	var m mixer.State
+	var m mixer.Board
 	if found, err := persist.Load(mixerPath(), &m); err != nil {
 		logger.Warnf("mixer settings were not loaded: %v", err)
 	} else if found {
 		mixState = mixer.Normalize(m)
 	}
-	var met metronome.State
+	var met metronome.Setup
 	if found, err := persist.Load(metronomePath(), &met); err != nil {
 		logger.Warnf("metronome settings were not loaded: %v", err)
 	} else if found {
@@ -78,12 +78,12 @@ func loadSession(dir string) {
 	}
 }
 
-func copyMixer(m mixer.State) mixer.State {
+func copyMixer(m mixer.Board) mixer.Board {
 	m.Strips = slices.Clone(m.Strips)
 	return m
 }
 
-func copyMetronome(m metronome.State) metronome.State {
+func copyMetronome(m metronome.Setup) metronome.Setup {
 	m.Accents = slices.Clone(m.Accents)
 	custom := make(map[string]string, len(m.CustomSounds))
 	for k, v := range m.CustomSounds {
@@ -136,7 +136,7 @@ func mixCtx() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), 3*time.Second)
 }
 
-func GetMixer() mixer.State {
+func GetMixer() mixer.Board {
 	boot()
 	sessMu.Lock()
 	defer sessMu.Unlock()
@@ -182,7 +182,7 @@ func SetMixerMaster(m mixer.Master) (mixer.Master, error) {
 	return clean, nil
 }
 
-func ResetMixer() (mixer.State, error) {
+func ResetMixer() (mixer.Board, error) {
 	boot()
 	sessMu.Lock()
 	mixState = mixer.Default()
@@ -211,14 +211,14 @@ func ResetMeters() error {
 	return sup.MetersReset(ctx)
 }
 
-func GetMetronome() metronome.State {
+func GetMetronome() metronome.Setup {
 	boot()
 	sessMu.Lock()
 	defer sessMu.Unlock()
 	return copyMetronome(metroState)
 }
 
-func metronomeParams(st metronome.State, includeSound bool, running *bool) engine.MetronomeParams {
+func metronomeParams(st metronome.Setup, includeSound bool, running *bool) engine.MetronomeParams {
 	p := engine.MetronomeParams{
 		Bpm:         &st.Bpm,
 		Volume:      &st.Volume,
@@ -271,7 +271,7 @@ func pushSession(ctx context.Context, keepRunning bool) (engine.MetronomeState, 
 	return state, firstErr
 }
 
-func SetMetronomeState(in metronome.State) (metronome.State, error) {
+func SetMetronomeState(in metronome.Setup) (metronome.Setup, error) {
 	boot()
 	clean := metronome.Normalize(in)
 	sessMu.Lock()
@@ -314,27 +314,27 @@ func SetMetronomeState(in metronome.State) (metronome.State, error) {
 	return clean, nil
 }
 
-func LoadMetronomeSound(role, path string) (metronome.State, error) {
+func LoadMetronomeSound(role, path string) (metronome.Setup, error) {
 	boot()
 	roles := []string{role}
 	if role == "all" {
 		roles = metronome.Roles
 	} else if !slices.Contains(metronome.Roles, role) {
-		return metronome.State{}, fmt.Errorf("unknown click sound slot %q", role)
+		return metronome.Setup{}, fmt.Errorf("unknown click sound slot %q", role)
 	}
 	if !filepath.IsAbs(path) {
-		return metronome.State{}, errors.New("choose a sound file with a full path")
+		return metronome.Setup{}, errors.New("choose a sound file with a full path")
 	}
 	if info, err := os.Stat(path); err != nil || info.IsDir() {
-		return metronome.State{}, errors.New("that sound file cannot be read")
+		return metronome.Setup{}, errors.New("that sound file cannot be read")
 	}
 	if !audioRunning() {
-		return metronome.State{}, errors.New("start the audio engine before choosing a custom sound")
+		return metronome.Setup{}, errors.New("start the audio engine before choosing a custom sound")
 	}
 	ctx, cancel := mixCtx()
 	defer cancel()
 	if err := sup.MetronomeSound(ctx, role, path); err != nil {
-		return metronome.State{}, err
+		return metronome.Setup{}, err
 	}
 	sessMu.Lock()
 	for _, r := range roles {
@@ -347,14 +347,14 @@ func LoadMetronomeSound(role, path string) (metronome.State, error) {
 	return out, nil
 }
 
-func ClearMetronomeSound(role string) (metronome.State, error) {
+func ClearMetronomeSound(role string) (metronome.Setup, error) {
 	boot()
 	st := GetMetronome()
 	if role == "all" {
 		st.CustomSounds = map[string]string{}
 	} else {
 		if !slices.Contains(metronome.Roles, role) {
-			return metronome.State{}, fmt.Errorf("unknown click sound slot %q", role)
+			return metronome.Setup{}, fmt.Errorf("unknown click sound slot %q", role)
 		}
 		delete(st.CustomSounds, role)
 	}

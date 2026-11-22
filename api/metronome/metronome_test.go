@@ -17,13 +17,13 @@ func TestDefaultIsAlreadyNormal(t *testing.T) {
 }
 
 func TestNormalizeOfAZeroStateGivesTheDefault(t *testing.T) {
-	if !Same(Normalize(State{}), Default()) {
-		t.Fatalf("zero state became %+v", Normalize(State{}))
+	if !Same(Normalize(Setup{}), Default()) {
+		t.Fatalf("zero state became %+v", Normalize(Setup{}))
 	}
 }
 
 func TestNormalizeClampsEveryRange(t *testing.T) {
-	got := Normalize(State{
+	got := Normalize(Setup{
 		Bpm: 900, Volume: 3, BeatsPerBar: 99, Subdivision: 40, SubLevel: 9, PolyBeats: 99,
 		PolyLevel: -1, PlayBars: 500, SilentBars: 500, Sound: "kazoo",
 	})
@@ -36,29 +36,29 @@ func TestNormalizeClampsEveryRange(t *testing.T) {
 	if got.Sound != "click" {
 		t.Fatalf("sound %q", got.Sound)
 	}
-	low := Normalize(State{Bpm: 3})
+	low := Normalize(Setup{Bpm: 3})
 	if low.Bpm != MinBpm {
 		t.Fatalf("bpm %v", low.Bpm)
 	}
 }
 
 func TestNotANumberIsNeverKept(t *testing.T) {
-	got := Normalize(State{Bpm: math.NaN(), Volume: math.NaN()})
+	got := Normalize(Setup{Bpm: math.NaN(), Volume: math.NaN()})
 	if math.IsNaN(got.Bpm) || math.IsNaN(got.Volume) {
 		t.Fatalf("got %+v", got)
 	}
 }
 
 func TestAccentsFollowTheBarLength(t *testing.T) {
-	grown := Normalize(State{BeatsPerBar: 6, Accents: []int{3, 1}})
+	grown := Normalize(Setup{BeatsPerBar: 6, Accents: []int{3, 1}})
 	if !slices.Equal(grown.Accents, []int{3, 1, 2, 2, 2, 2}) {
 		t.Fatalf("grown %v", grown.Accents)
 	}
-	shrunk := Normalize(State{BeatsPerBar: 2, Accents: []int{3, 0, 1, 1, 1}})
+	shrunk := Normalize(Setup{BeatsPerBar: 2, Accents: []int{3, 0, 1, 1, 1}})
 	if !slices.Equal(shrunk.Accents, []int{3, 0}) {
 		t.Fatalf("shrunk %v", shrunk.Accents)
 	}
-	wild := Normalize(State{BeatsPerBar: 3, Accents: []int{9, -4, 2}})
+	wild := Normalize(Setup{BeatsPerBar: 3, Accents: []int{9, -4, 2}})
 	if !slices.Equal(wild.Accents, []int{3, 0, 2}) {
 		t.Fatalf("wild %v", wild.Accents)
 	}
@@ -71,7 +71,7 @@ func TestASingleBeatBarHasNoAccent(t *testing.T) {
 }
 
 func TestCustomSoundsKeepOnlyKnownRolesWithPaths(t *testing.T) {
-	got := Normalize(State{Bpm: 100, CustomSounds: map[string]string{
+	got := Normalize(Setup{Bpm: 100, CustomSounds: map[string]string{
 		"accent": " C:/sounds/knock.wav ", "beat": "", "tuba": "C:/x.wav", "poly": "C:/p.wav",
 	}})
 	if len(got.CustomSounds) != 2 || got.CustomSounds["accent"] != "C:/sounds/knock.wav" || got.CustomSounds["poly"] != "C:/p.wav" {

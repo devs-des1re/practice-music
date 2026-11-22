@@ -52,7 +52,7 @@ func TestSavedSessionStateIsLoadedAgain(t *testing.T) {
 	}
 }
 
-func GetMixerForTest() mixer.State {
+func GetMixerForTest() mixer.Board {
 	sessMu.Lock()
 	defer sessMu.Unlock()
 	return copyMixer(mixState)
@@ -65,7 +65,7 @@ func TestLoadingClampsWhatTheFileSays(t *testing.T) {
 	if err := persist.Save(filepath.Join(dir, "mixer.json"), bad); err != nil {
 		t.Fatal(err)
 	}
-	if err := persist.Save(filepath.Join(dir, "metronome.json"), metronome.State{Bpm: 9000, BeatsPerBar: 3, Volume: 0.5}); err != nil {
+	if err := persist.Save(filepath.Join(dir, "metronome.json"), metronome.Setup{Bpm: 9000, BeatsPerBar: 3, Volume: 0.5}); err != nil {
 		t.Fatal(err)
 	}
 	loadSession(dir)

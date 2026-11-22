@@ -24,7 +24,7 @@ var Presets = []string{"click", "wood", "beep", "hat", "cowbell"}
 
 var Roles = []string{"accent", "beat", "sub", "poly"}
 
-type State struct {
+type Setup struct {
 	Bpm          float64           `json:"bpm"`
 	Volume       float64           `json:"volume"`
 	BeatsPerBar  int               `json:"beatsPerBar"`
@@ -50,8 +50,8 @@ func DefaultAccents(beats int) []int {
 	return out
 }
 
-func Default() State {
-	return State{
+func Default() Setup {
+	return Setup{
 		Bpm:          120,
 		Volume:       0.5,
 		BeatsPerBar:  4,
@@ -78,7 +78,7 @@ func clampInt(v, lo, hi int) int {
 	return min(max(v, lo), hi)
 }
 
-func Normalize(in State) State {
+func Normalize(in Setup) Setup {
 	def := Default()
 	if in.Bpm == 0 && in.Volume == 0 && in.BeatsPerBar == 0 && in.SubLevel == 0 && in.PolyLevel == 0 {
 		return def
@@ -129,7 +129,7 @@ func Normalize(in State) State {
 	return out
 }
 
-func Same(a, b State) bool {
+func Same(a, b Setup) bool {
 	if a.Bpm != b.Bpm || a.Volume != b.Volume || a.BeatsPerBar != b.BeatsPerBar ||
 		a.Subdivision != b.Subdivision || a.SubLevel != b.SubLevel || a.PolyBeats != b.PolyBeats ||
 		a.PolyLevel != b.PolyLevel || a.PlayBars != b.PlayBars || a.SilentBars != b.SilentBars ||

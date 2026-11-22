@@ -1,7 +1,8 @@
 import { createSignal, createEffect, createMemo, onMount } from "@krate/runtime";
-import { openFolder } from "@krate/app/dialog";
+import { openFile, openFolder, saveFile } from "@krate/app/dialog";
 import { LowLatencyDevices } from "../../api/audio.go";
 import { Engine, GetSettings, SaveSettings } from "../../api/host.go";
+import { ExportSettings, ImportSettings } from "../../api/transfer.go";
 import { Panel, PanelHead, PanelBody } from "../components/ui/panel";
 import { Field } from "../components/ui/field";
 import { Select } from "../components/ui/select";
@@ -67,6 +68,8 @@ export default function SettingsPage() {
   const [path, setPath] = createSignal("");
   const [busy, setBusy] = createSignal(false);
   const [done, setDone] = createSignal(false);
+  const [transferInfo, setTransferInfo] = createSignal("");
+  const [transferNotes, setTransferNotes] = createSignal("");
 
   onMount(async () => {
     try {
@@ -90,10 +93,10 @@ export default function SettingsPage() {
 
   const dirty = createMemo(() => !!draft() && JSON.stringify(draft()) !== JSON.stringify(saved()));
 
-  function pick(direction: string, selected: string) {
+  function pick(direction: string, selected: string, emptyLabel = "System default") {
     const host = draft()?.audio.host || "";
     const all = deviceList().devices.filter((d) => d.direction === direction && (host === "" || d.host === host));
-    const options = [{ value: "", label: "System default" }].concat(
+    const options = [{ value: "", label: emptyLabel }].concat(
       all.map((d) => ({ value: d.id, label: d.name + (d.isDefault ? " (default)" : "") })),
     );
     if (selected && !all.some((d) => d.id === selected)) {
@@ -114,8 +117,8 @@ export default function SettingsPage() {
     ),
   );
   const outputOptions = createMemo(() => pick("output", draft()?.audio.outputDevice || ""));
-  const monitorOptions = createMemo(() => pick("output", draft()?.audio.monitorDevice || ""));
-  const inputOptions = createMemo(() => pick("input", draft()?.audio.inputDevice || ""));
+  const monitorOptions = createMemo(() => pick("output", draft()?.audio.monitorDevice || "", "Same as amp output"));
+  const inputOptions = createMemo(() => pick("input", draft()?.audio.inputDevice || "", "None, no input channels"));
 
   const activeOutput = createMemo(() => {
     const id = draft()?.audio.outputDevice || "";
@@ -198,6 +201,49 @@ export default function SettingsPage() {
     }
   }
 
+  async function exportAll() {
+    setError("");
+    setTransferInfo("");
+    setTransferNotes("");
+    try {
+      const target = await saveFile({
+        title: "Export settings",
+        name: "practicemusic-settings.json",
+        filters: [{ name: "PracticeMusic settings", patterns: ["*.json"] }],
+      });
+      if (!target) return;
+      const res = await ExportSettings(target);
+      setTransferInfo("Exported settings, mixer, metronome and " + res.scenes + " scene" + (res.scenes === 1 ? "" : "s") + " to " + res.path + ".");
+    } catch (e) {
+      logger.error("export failed", e);
+      setError(describe(e));
+    }
+  }
+
+  async function importAll() {
+    setError("");
+    setTransferInfo("");
+    setTransferNotes("");
+    try {
+      const files = await openFile({
+        title: "Import settings",
+        filters: [{ name: "PracticeMusic settings", patterns: ["*.json"] }],
+      });
+      if (files.length === 0) return;
+      const res = await ImportSettings(files[0]);
+      const doc = await GetSettings();
+      setSaved(doc.settings);
+      setDraft(clone(doc.settings));
+      setPath(doc.path);
+      applyScale(doc.settings.appearance.uiScale);
+      setTransferInfo("Imported settings, mixer, metronome and " + res.scenes + " scene" + (res.scenes === 1 ? "" : "s") + ".");
+      setTransferNotes(res.notes.join(" "));
+    } catch (e) {
+      logger.error("import failed", e);
+      setError(describe(e));
+    }
+  }
+
   function discard() {
     setDraft(clone(saved()));
     setError("");
@@ -277,7 +323,7 @@ export default function SettingsPage() {
           <Field
             label="Monitor output"
             htmlFor="audio-monitor"
-            hint="Headphones or a second output for the click and your own mix."
+            hint="Headphones or a second output for the monitor mix. Leave on default to play the monitor mix on the amp output."
             warning={missing("output", draft()?.audio.monitorDevice || "")}
           >
             <Select
@@ -290,7 +336,7 @@ export default function SettingsPage() {
           <Field
             label="Input"
             htmlFor="audio-input"
-            hint="Your kit or audio interface."
+            hint="Your kit or audio interface. Its channels feed the mixer input strips. Nothing is opened until you choose one."
             warning={missing("input", draft()?.audio.inputDevice || "")}
           >
             <Select
@@ -379,6 +425,31 @@ export default function SettingsPage() {
                 onChange={(v) => edit((s) => (s.appearance.uiScale = Number(v)))}
               />
             </Field>
+            </PanelBody>
+          </Panel>
+
+          <Panel>
+            <PanelHead title="Backup" />
+            <PanelBody>
+              <p class="field-hint">
+                Export your settings, mixer, metronome and scenes to a file, or bring them in on another computer. Audio devices that are not connected here are cleared on import.
+              </p>
+              <div class="detail-actions">
+                <button class="krate-button krate-button-secondary" type="button" onClick={exportAll}>
+                  <Icon name="lucide:download" />
+                  Export settings
+                </button>
+                <button class="krate-button krate-button-secondary" type="button" onClick={importAll}>
+                  <Icon name="lucide:upload" />
+                  Import settings
+                </button>
+              </div>
+              <div showIf={!!transferInfo()}>
+                <Notice tone="ok" title="Backup" text={transferInfo()} />
+              </div>
+              <div showIf={!!transferNotes()}>
+                <Notice tone="warn" title="Check these" text={transferNotes()} />
+              </div>
             </PanelBody>
           </Panel>
         </div>

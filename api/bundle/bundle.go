@@ -32,18 +32,18 @@ type Bundle struct {
 	ExportedAt string            `json:"exportedAt"`
 	App        string            `json:"app"`
 	Settings   settings.Settings `json:"settings"`
-	Mixer      mixer.State       `json:"mixer"`
-	Metronome  metronome.State   `json:"metronome"`
+	Mixer      mixer.Board       `json:"mixer"`
+	Metronome  metronome.Setup   `json:"metronome"`
 	Scenes     []SceneEntry      `json:"scenes"`
 }
 
 type ScenePayload struct {
 	Version   int             `json:"version"`
-	Mixer     mixer.State     `json:"mixer"`
-	Metronome metronome.State `json:"metronome"`
+	Mixer     mixer.Board     `json:"mixer"`
+	Metronome metronome.Setup `json:"metronome"`
 }
 
-func Build(app string, s settings.Settings, m mixer.State, met metronome.State, scenes []SceneEntry, now time.Time) Bundle {
+func Build(app string, s settings.Settings, m mixer.Board, met metronome.Setup, scenes []SceneEntry, now time.Time) Bundle {
 	if scenes == nil {
 		scenes = []SceneEntry{}
 	}

@@ -59,7 +59,7 @@ type Master struct {
 	MonitorChannel int     `json:"monitorChannel"`
 }
 
-type State struct {
+type Board struct {
 	Strips []Strip `json:"strips"`
 	Master Master  `json:"master"`
 }
@@ -68,7 +68,7 @@ func defaultComp() Comp {
 	return Comp{Threshold: -18, Ratio: 3, Attack: 10, Release: 120}
 }
 
-func Default() State {
+func Default() Board {
 	strips := make([]Strip, StripCount)
 	strips[StripSong] = Strip{Index: StripSong, ID: "song", Name: "Song", Kind: "song", Main: 0, Monitor: OffDB, Comp: defaultComp()}
 	strips[StripClick] = Strip{Index: StripClick, ID: "click", Name: "Click", Kind: "click", Main: 0, Monitor: OffDB, Comp: defaultComp()}
@@ -79,7 +79,7 @@ func Default() State {
 			Main: OffDB, Monitor: OffDB, Source: i, Comp: defaultComp(),
 		}
 	}
-	return State{Strips: strips, Master: Master{Limiter: true, Ceiling: -0.3}}
+	return Board{Strips: strips, Master: Master{Limiter: true, Ceiling: -0.3}}
 }
 
 func clamp(v, lo, hi float64) float64 {
@@ -162,9 +162,9 @@ func NormalizeMaster(m Master) Master {
 	}
 }
 
-func Normalize(in State) State {
+func Normalize(in Board) Board {
 	def := Default()
-	out := State{Strips: make([]Strip, StripCount), Master: NormalizeMaster(in.Master)}
+	out := Board{Strips: make([]Strip, StripCount), Master: NormalizeMaster(in.Master)}
 	if len(in.Strips) == 0 {
 		out.Master = def.Master
 	}
@@ -178,7 +178,7 @@ func Normalize(in State) State {
 	return out
 }
 
-func Same(a, b State) bool {
+func Same(a, b Board) bool {
 	if a.Master != b.Master || len(a.Strips) != len(b.Strips) {
 		return false
 	}

@@ -38,7 +38,9 @@ const emptyAudio: AudioState = {
   streamLatencyMs: 0,
   format: "",
   notice: "",
-  metronome: { running: false, bpm: 120, volume: 0.5, beatsPerBar: 4 },
+  metronome: { running: false, bpm: 120, volume: 0.5, beatsPerBar: 4, subdivision: 1, subLevel: 0.55, accents: [3, 2, 2, 2], polyBeats: 0, polyLevel: 0.8, playBars: 1, silentBars: 0 },
+  capture: null,
+  monitor: null,
 };
 
 const emptyStats = { count: 0, minMs: 0, medianMs: 0, p95Ms: 0, maxMs: 0 };

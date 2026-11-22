@@ -76,11 +76,11 @@ func TestNormalizeRejectsNotANumber(t *testing.T) {
 }
 
 func TestNormalizeRepairsAShortOrEmptyList(t *testing.T) {
-	short := Normalize(State{Strips: []Strip{{Gain: -3}}, Master: Master{Limiter: true, Ceiling: -1}})
+	short := Normalize(Board{Strips: []Strip{{Gain: -3}}, Master: Master{Limiter: true, Ceiling: -1}})
 	if len(short.Strips) != StripCount || short.Strips[0].Gain != -3 || short.Strips[5].ID != "in4" {
 		t.Fatalf("short list not repaired: %+v", short.Strips)
 	}
-	empty := Normalize(State{})
+	empty := Normalize(Board{})
 	if !Same(empty, Default()) {
 		t.Fatal("an empty state must become the default")
 	}
@@ -144,7 +144,7 @@ func TestJSONRoundTripKeepsTheEngineFieldNames(t *testing.T) {
 			t.Fatalf("missing master %q", key)
 		}
 	}
-	var back State
+	var back Board
 	if err := json.Unmarshal(data, &back); err != nil {
 		t.Fatal(err)
 	}
