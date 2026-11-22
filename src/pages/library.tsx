@@ -118,7 +118,7 @@ export default function LibraryPage() {
     load();
   });
 
-  function current(): Song | undefined {
+  function selectedSong(): Song | undefined {
     return songs().find((s) => s.id === selected());
   }
 
@@ -151,13 +151,13 @@ export default function LibraryPage() {
   }
 
   async function saveMeta() {
-    const song = current();
+    const song = selectedSong();
     if (!song) return;
     await guard(() => SetSongMeta(song.id, title(), artist(), album()));
   }
 
   async function addTag() {
-    const song = current();
+    const song = selectedSong();
     const name = newTag().trim();
     if (!song || !name) return;
     await guard(async () => {
@@ -167,7 +167,7 @@ export default function LibraryPage() {
   }
 
   async function removeSong() {
-    const song = current();
+    const song = selectedSong();
     if (!song) return;
     const sure = await confirm("Delete song", "Delete \"" + song.title + "\" and its file from disk? This cannot be undone.");
     if (!sure) return;
@@ -178,7 +178,7 @@ export default function LibraryPage() {
   }
 
   async function forget() {
-    const song = current();
+    const song = selectedSong();
     if (!song) return;
     await guard(async () => {
       await DeleteSong(song.id, false);
@@ -217,20 +217,20 @@ export default function LibraryPage() {
   }
 
   async function addToList(value: string) {
-    const song = current();
+    const song = selectedSong();
     const id = Number(value);
     if (!song || !id) return;
     await guard(() => AddToPlaylist(id, [song.id]));
   }
 
   async function removeFromList() {
-    const song = current();
+    const song = selectedSong();
     if (!song || !playlistId()) return;
     await guard(() => RemoveFromPlaylist(playlistId(), song.id));
   }
 
   async function move(delta: number) {
-    const song = current();
+    const song = selectedSong();
     if (!song || !playlistId()) return;
     const index = songs().findIndex((s) => s.id === song.id);
     await guard(() => MoveInPlaylist(playlistId(), song.id, index + delta));
@@ -368,7 +368,7 @@ export default function LibraryPage() {
                 </div>
                 <Field label="Tags" htmlFor="song-new-tag" hint="Press Enter to add a tag, click a tag to remove it.">
                   <div class="tag-row">
-                    {(current()?.tags || []).map((t) => (
+                    {(selectedSong()?.tags || []).map((t) => (
                       <button class="tag-button" type="button" key={t} aria-label={"Remove tag " + t} onClick={() => guard(() => RemoveSongTag(selected(), t))}>
                         {t}
                         <Icon name="lucide:x" />
@@ -408,7 +408,7 @@ export default function LibraryPage() {
                     Remove from playlist
                   </button>
                 </div>
-                <p class="field-hint mono">{current()?.path || ""}</p>
+                <p class="field-hint mono">{selectedSong()?.path || ""}</p>
                 <div class="detail-actions">
                   <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={forget}>
                     Remove from library
