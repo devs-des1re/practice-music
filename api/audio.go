@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"runtime"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/kratejs/krate/packages/native/krate"
@@ -123,6 +124,10 @@ func handleEvent(ev engine.Event) {
 		}); done {
 			publishLatency()
 		}
+	case "player":
+		if pev, err := engine.DecodePlayerEvent(ev.Data); err == nil {
+			handlePlayerEvent(pev)
+		}
 	case "audio_error":
 		var data struct {
 			Message string `json:"message"`
@@ -201,6 +206,9 @@ func startAudioNow() (AudioState, error) {
 	})
 	tracker.Reset()
 	publishLatency()
+	if !suppressReload.Load() {
+		go reloadPlayer()
+	}
 	logger.Infof("audio started on %s at %d Hz (%s)", info.Device, info.SampleRate, info.Mode)
 	return AudioStream.Get(), nil
 }
@@ -337,3 +345,5 @@ func LowLatencyDevices() ([]engine.WasapiDevice, error) {
 	defer cancel()
 	return sup.WasapiProbe(ctx)
 }
+
+var suppressReload atomic.Bool
