@@ -210,7 +210,7 @@ export default function MetronomePage() {
         title: role === "all" ? "Choose a click sound" : "Choose a sound for " + role,
         filters: [{ name: "Audio", patterns: AUDIO_PATTERNS }],
       });
-      if (files.length === 0) return;
+      if (!files || files.length === 0) return;
       await ensureAudio();
       const next = await LoadMetronomeSound(role, files[0]);
       setCfg(next);

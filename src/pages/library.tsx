@@ -139,7 +139,7 @@ export default function LibraryPage() {
         multiple: true,
         filters: [{ name: "Audio and video", patterns: ["*.mp3", "*.m4a", "*.aac", "*.flac", "*.wav", "*.ogg", "*.opus", "*.mp4", "*.mkv", "*.webm", "*.mov"] }],
       });
-      if (files.length > 0) await ImportFiles(files);
+      if (files && files.length > 0) await ImportFiles(files);
     });
   }
 

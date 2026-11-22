@@ -175,7 +175,7 @@ export default function SettingsPage() {
   async function addFolder() {
     try {
       const chosen = await openFolder({ title: "Choose a library folder" });
-      if (chosen.length > 0) edit((s) => s.library.folders.push(chosen[0]));
+      if (chosen && chosen.length > 0) edit((s) => s.library.folders.push(chosen[0]));
     } catch (e) {
       logger.error("folder dialog failed", e);
       setError(describe(e));
@@ -229,7 +229,7 @@ export default function SettingsPage() {
         title: "Import settings",
         filters: [{ name: "PracticeMusic settings", patterns: ["*.json"] }],
       });
-      if (files.length === 0) return;
+      if (!files || files.length === 0) return;
       const res = await ImportSettings(files[0]);
       const doc = await GetSettings();
       setSaved(doc.settings);
