@@ -64,9 +64,7 @@ export default function Overview() {
         </div>
         <Readout label="Binary" value={binary()} />
         <div showIf={!!lastError()}>
-          <Notice tone={errorTone()} title="Last engine error">
-            {lastError()}
-          </Notice>
+          <Notice tone={errorTone()} title="Last engine error" text={lastError()} />
         </div>
         </PanelBody>
       </Panel>
@@ -79,9 +77,7 @@ export default function Overview() {
           </button>
         </PanelHead>
         <div class="panel-body" showIf={!!error()}>
-          <Notice tone="bad" title="Could not list devices">
-            {error()}
-          </Notice>
+          <Notice tone="bad" title="Could not list devices" text={error()} />
         </div>
         <p class="empty" showIf={!error() && engine().state !== "running"}>
           The audio engine is not running, so no devices can be listed.

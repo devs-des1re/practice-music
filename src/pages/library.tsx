@@ -108,6 +108,7 @@ export default function LibraryPage() {
   createEffect(() => {
     const id = selected();
     const song = songs().find((s) => s.id === id);
+    if (id && !song) setSelected(0);
     setTitle(song ? song.title : "");
     setArtist(song ? song.artist : "");
     setAlbum(song ? song.album : "");
@@ -255,24 +256,16 @@ export default function LibraryPage() {
       </div>
 
       <div showIf={!!error()}>
-        <Notice tone="bad" title="Something went wrong">
-          {error()}
-        </Notice>
+        <Notice tone="bad" title="Something went wrong" text={error()} />
       </div>
       <div showIf={!!info()}>
-        <Notice tone="ok" title="Library">
-          {info()}
-        </Notice>
+        <Notice tone="ok" title="Library" text={info()} />
       </div>
       <div showIf={importing().running}>
-        <Notice tone="info" title="Importing">
-          {importing().done + " of " + importing().total + ": " + importing().current}
-        </Notice>
+        <Notice tone="info" title="Importing" text={importing().done + " of " + importing().total + ": " + importing().current} />
       </div>
       <div showIf={!importing().running && importing().errors.length > 0}>
-        <Notice tone="warn" title="Some files were not imported">
-          {importing().errors.join("; ")}
-        </Notice>
+        <Notice tone="warn" title="Some files were not imported" text={importing().errors.join("; ")} />
       </div>
 
       <div class="toolbar">

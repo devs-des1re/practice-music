@@ -129,14 +129,10 @@ export default function DownloadsPage() {
       </div>
 
       <div showIf={!!error()}>
-        <Notice tone="bad" title="Something went wrong">
-          {error()}
-        </Notice>
+        <Notice tone="bad" title="Something went wrong" text={error()} />
       </div>
       <div showIf={!!info() && !error()}>
-        <Notice tone="ok" title="Downloads">
-          {info()}
-        </Notice>
+        <Notice tone="ok" title="Downloads" text={info()} />
       </div>
       <div showIf={tools().ytDlp.source === "missing"}>
         <Notice tone="warn" title="yt-dlp is not installed">
@@ -195,9 +191,7 @@ export default function DownloadsPage() {
               <Readout label="ffmpeg" value={ffmpegText()} />
               <Readout label="Saves to" value={libDir()} />
               <div showIf={!!ytError()}>
-                <Notice tone="bad" title="yt-dlp">
-                  {ytError()}
-                </Notice>
+                <Notice tone="bad" title="yt-dlp" text={ytError()} />
               </div>
               <div class="actions">
                 <button
@@ -252,15 +246,21 @@ export default function DownloadsPage() {
                   </span>
                 </div>
                 <div class="detail-actions">
-                  <button class="krate-button krate-button-secondary krate-button-sm" type="button" showIf={j.state === "queued" || j.state === "running"} onClick={() => guard(() => CancelDownload(j.id))}>
-                    Cancel
-                  </button>
-                  <button class="krate-button krate-button-secondary krate-button-sm" type="button" showIf={j.state === "failed" || j.state === "cancelled"} onClick={() => guard(() => RetryDownload(j.id))}>
-                    Retry
-                  </button>
-                  <button class="krate-button krate-button-ghost krate-button-sm" type="button" showIf={j.state === "done" || j.state === "failed" || j.state === "cancelled"} aria-label="Remove from the list" onClick={() => guard(() => RemoveDownload(j.id))}>
-                    <Icon name="lucide:x" />
-                  </button>
+                  {(j.state === "queued" || j.state === "running") && (
+                    <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={() => guard(() => CancelDownload(j.id))}>
+                      Cancel
+                    </button>
+                  )}
+                  {(j.state === "failed" || j.state === "cancelled") && (
+                    <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={() => guard(() => RetryDownload(j.id))}>
+                      Retry
+                    </button>
+                  )}
+                  {(j.state === "done" || j.state === "failed" || j.state === "cancelled") && (
+                    <button class="krate-button krate-button-ghost krate-button-sm" type="button" aria-label="Remove from the list" onClick={() => guard(() => RemoveDownload(j.id))}>
+                      <Icon name="lucide:x" />
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

@@ -214,19 +214,13 @@ export default function SettingsPage() {
       </div>
 
       <div showIf={!!notice()}>
-        <Notice tone="warn" title="Settings were reset">
-          {notice()}
-        </Notice>
+        <Notice tone="warn" title="Settings were reset" text={notice()} />
       </div>
       <div showIf={!!error()}>
-        <Notice tone="bad" title="Something went wrong">
-          {error()}
-        </Notice>
+        <Notice tone="bad" title="Something went wrong" text={error()} />
       </div>
       <div showIf={!!devicesError()}>
-        <Notice tone="warn" title="Device list unavailable">
-          {devicesError()}
-        </Notice>
+        <Notice tone="warn" title="Device list unavailable" text={devicesError()} />
       </div>
       <div showIf={engine().state !== "running"}>
         <Notice tone="warn" title="Audio engine is not running">

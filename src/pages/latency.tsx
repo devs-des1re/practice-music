@@ -256,20 +256,14 @@ export default function LatencyPage() {
       </div>
 
       <div showIf={!!error()}>
-        <Notice tone="bad" title="Something went wrong">
-          {error()}
-        </Notice>
+        <Notice tone="bad" title="Something went wrong" text={error()} />
       </div>
       <div showIf={!!audioError()}>
-        <Notice tone="bad" title="Audio output problem">
-          {audioError()}
-        </Notice>
+        <Notice tone="bad" title="Audio output problem" text={audioError()} />
       </div>
 
       <div showIf={!!notice()}>
-        <Notice tone="warn" title="Output mode changed">
-          {notice()}
-        </Notice>
+        <Notice tone="warn" title="Output mode changed" text={notice()} />
       </div>
 
       <div class="grid-2">
