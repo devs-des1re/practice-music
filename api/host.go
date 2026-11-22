@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/kratejs/krate/packages/native/krate"
-	sdkos "github.com/kratejs/krate/packages/native/sdk/os"
 
 	"practice-music/api/engine"
 	"practice-music/api/logger"
@@ -40,9 +39,6 @@ type SettingsDocument struct {
 }
 
 func configDir() string {
-	if dir, err := sdkos.ConfigDir(); err == nil && dir != "" {
-		return dir
-	}
 	if dir, err := os.UserConfigDir(); err == nil {
 		return filepath.Join(dir, "PracticeMusic")
 	}
