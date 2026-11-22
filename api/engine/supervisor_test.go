@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"practice-music/api/clock"
 	"practice-music/api/logger"
 	"practice-music/api/protocol"
 )
@@ -80,6 +81,9 @@ func runFake() {
 				"protocol": protocol.Version, "engine": "fake", "version": "0.0.1",
 				"os": "test", "arch": "test", "pid": os.Getpid(), "features": []string{"fake"},
 			})
+			send(resp)
+		case "ping":
+			resp, _ := protocol.EncodeResponse(m.ID, map[string]any{"pong": true, "nowUs": time.Now().UnixMicro()})
 			send(resp)
 		case "echo":
 			var v any
@@ -453,5 +457,47 @@ func TestStatusSubscribersSeeTheWholeLifecycle(t *testing.T) {
 		if !seen[s] {
 			t.Fatalf("never saw state %s, saw %v", s, seen)
 		}
+	}
+}
+
+func TestClockSyncMapsEngineTimeOntoTheHostClock(t *testing.T) {
+	h := newHarness(t, "ok", nil)
+	h.sup.Start()
+	h.waitState(t, StateRunning)
+	est, err := h.sup.SyncClock(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	engineNow := time.Now().UnixMicro()
+	mapped := est.ToLocal(engineNow)
+	diff := mapped - clock.MonoUs()
+	if diff < -20_000 || diff > 20_000 {
+		t.Fatalf("mapped engine time is %d us away from the host clock (rtt %d)", diff, est.RTTUs)
+	}
+	if est.Samples != syncRounds {
+		t.Fatalf("expected %d samples, got %d", syncRounds, est.Samples)
+	}
+}
+
+func TestClockEstimateAppearsAfterStartAndIsClearedOnRestart(t *testing.T) {
+	h := newHarness(t, "ok", nil)
+	if _, ok := h.sup.ClockEstimate(); ok {
+		t.Fatal("no estimate before start")
+	}
+	h.sup.Start()
+	waitFor(t, "automatic clock sync", 5*time.Second, func() bool {
+		_, ok := h.sup.ClockEstimate()
+		return ok
+	})
+}
+
+func TestPerCallTimeoutOverridesTheDefault(t *testing.T) {
+	h := newHarness(t, "ok", func(c *Config) { c.CallTimeout = 5 * time.Second })
+	h.sup.Start()
+	h.waitState(t, StateRunning)
+	start := time.Now()
+	err := h.sup.CallTimeout(context.Background(), 80*time.Millisecond, "hang", nil, nil)
+	if !errors.Is(err, ErrTimeout) || time.Since(start) > 2*time.Second {
+		t.Fatalf("want a quick ErrTimeout, got %v after %s", err, time.Since(start))
 	}
 }

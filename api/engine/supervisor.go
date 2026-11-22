@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"practice-music/api/clock"
 	"practice-music/api/logger"
 	"practice-music/api/protocol"
 )
@@ -119,6 +120,7 @@ type Supervisor struct {
 	nextSub    int
 	statusSubs []func(Status)
 
+	clockEst   atomic.Pointer[clock.Estimate]
 	nextID     atomic.Uint64
 	restartReq atomic.Bool
 	kick       chan struct{}
@@ -213,6 +215,10 @@ func (s *Supervisor) Subscribe(buffer int) (<-chan Event, func()) {
 }
 
 func (s *Supervisor) Call(ctx context.Context, method string, params any, out any) error {
+	return s.CallTimeout(ctx, s.cfg.CallTimeout, method, params, out)
+}
+
+func (s *Supervisor) CallTimeout(ctx context.Context, timeout time.Duration, method string, params any, out any) error {
 	p := s.current()
 	if p == nil {
 		return ErrNotRunning
@@ -220,7 +226,7 @@ func (s *Supervisor) Call(ctx context.Context, method string, params any, out an
 	if s.Status().State != StateRunning {
 		return ErrNotRunning
 	}
-	return s.callOn(ctx, p, method, params, out)
+	return s.callOnTimeout(ctx, p, timeout, method, params, out)
 }
 
 func (s *Supervisor) current() *process {
@@ -346,6 +352,7 @@ func (s *Supervisor) runOnce(ctx context.Context) outcome {
 	if err != nil {
 		return outcome{err: err, fatal: true}
 	}
+	s.clockEst.Store(nil)
 	s.mu.Lock()
 	s.proc = p
 	s.mu.Unlock()
@@ -375,6 +382,7 @@ func (s *Supervisor) runOnce(ctx context.Context) outcome {
 		st.RetryInMs = 0
 	})
 	logger.Infof("engine %s running (pid %d, protocol %d)", hello.Version, p.cmd.Process.Pid, hello.Protocol)
+	go s.autoSync(p)
 
 	select {
 	case <-p.exited:
@@ -495,6 +503,10 @@ func (s *Supervisor) readLoop(p *process, stdout io.Reader) {
 }
 
 func (s *Supervisor) callOn(ctx context.Context, p *process, method string, params any, out any) error {
+	return s.callOnTimeout(ctx, p, s.cfg.CallTimeout, method, params, out)
+}
+
+func (s *Supervisor) callOnTimeout(ctx context.Context, p *process, timeout time.Duration, method string, params any, out any) error {
 	id := s.nextID.Add(1)
 	ch := make(chan protocol.Message, 1)
 	p.pmu.Lock()
@@ -521,7 +533,7 @@ func (s *Supervisor) callOn(ctx context.Context, p *process, method string, para
 		forget()
 		return fmt.Errorf("%w: %v", ErrEngineDown, err)
 	}
-	timer := time.NewTimer(s.cfg.CallTimeout)
+	timer := time.NewTimer(timeout)
 	defer timer.Stop()
 	select {
 	case m := <-ch:

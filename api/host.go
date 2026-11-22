@@ -51,6 +51,7 @@ func boot() {
 		store = settings.NewStore(configDir(), home)
 		sup = engine.New(engine.Config{Path: engine.ResolveDefault})
 		sup.OnStatus(func(st engine.Status) { Engine.Set(st) })
+		startEvents()
 		sup.Start()
 		logger.Infof("host booted, settings at %s", store.Path())
 	})
@@ -94,5 +95,6 @@ func SaveSettings(in settings.Settings) (SettingsDocument, error) {
 		return SettingsDocument{}, err
 	}
 	logger.Infof("settings saved")
+	applyAudioSettings(saved)
 	return SettingsDocument{Settings: saved, Path: store.Path()}, nil
 }
