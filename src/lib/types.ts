@@ -9,3 +9,5 @@ export type { AudioState, LatencyState, LoopbackResult } from "../../api/audio.g
 export type { Song, Playlist, TagCount, ScanResult, ImportProgress } from "../../api/library.go";
 export type { Job, ToolsState } from "../../api/downloads.go";
 export type { BrowserInfo } from "../../api/browser.go";
+export type { PlayerState, PlayerOpened } from "../../api/player.go";
+export type { Section, Grid } from "../../api/player.go";

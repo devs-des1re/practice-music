@@ -44,6 +44,10 @@ export function Sidebar(props: SidebarProps) {
           <Icon name="lucide:library" />
           <span class="nav-text">Library</span>
         </Link>
+        <Link class="nav-link" href="/player" onClick={props.onNavigate}>
+          <Icon name="lucide:audio-waveform" />
+          <span class="nav-text">Player</span>
+        </Link>
         <Link class="nav-link" href="/downloads" onClick={props.onNavigate}>
           <Icon name="lucide:download" />
           <span class="nav-text">Downloads</span>

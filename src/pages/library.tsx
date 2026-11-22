@@ -1,4 +1,4 @@
-import { createSignal, createEffect, onMount } from "@krate/runtime";
+import { createSignal, createEffect, onMount, navigate } from "@krate/runtime";
 import { openFile, confirm } from "@krate/app/dialog";
 import {
   Songs,
@@ -358,6 +358,10 @@ export default function LibraryPage() {
                   </Field>
                 </div>
                 <div class="detail-actions">
+                  <button class="krate-button krate-button-primary" type="button" onClick={() => navigate("/player?song=" + selected())}>
+                    <Icon name="lucide:play" />
+                    Open in player
+                  </button>
                   <button class="krate-button krate-button-secondary" type="button" onClick={saveMeta}>
                     Save details
                   </button>
