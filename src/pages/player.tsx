@@ -15,10 +15,6 @@ import {
   PlayerSections,
   PlayerSaveSection,
   PlayerDeleteSection,
-  TrainerStart,
-  TrainerStop,
-  TrainerClean,
-  TrainerMiss,
   PlayerStream,
 } from "../../api/player.go";
 import { Waveform } from "../components/blocks/waveform";
@@ -47,7 +43,6 @@ const emptyState: PlayerState = {
   loop: { startMs: 0, endMs: 0, enabled: false },
   countIn: 0,
   grid: { bpm: 0, offsetMs: 0, beatsPerBar: 4, downbeat: 0, confidence: 0, userEdited: false, found: false },
-  trainer: { active: false, done: false, currentBpm: 0, targetBpm: 0, clean: 0, needed: 0, steps: 0, passes: 0, autoClean: false, lastEvent: "" },
   error: "",
 };
 
@@ -85,11 +80,6 @@ export default function PlayerPage() {
   const [offsetEdit, setOffsetEdit] = createSignal(0);
   const [beatsEdit, setBeatsEdit] = createSignal(4);
   const [downbeatEdit, setDownbeatEdit] = createSignal(0);
-  const [startBpm, setStartBpm] = createSignal(80);
-  const [targetBpm, setTargetBpm] = createSignal(120);
-  const [stepBpm, setStepBpm] = createSignal(5);
-  const [reps, setReps] = createSignal(3);
-  const [auto, setAuto] = createSignal(false);
   const [opening, setOpening] = createSignal(true);
 
   createEffect(() => {
@@ -126,10 +116,6 @@ export default function PlayerPage() {
     setOffsetEdit(Math.round(g.offsetMs));
     setBeatsEdit(g.beatsPerBar || 4);
     setDownbeatEdit(g.downbeat || 0);
-    if (g.bpm > 0) {
-      setStartBpm(Math.round(g.bpm * 0.7));
-      setTargetBpm(Math.round(g.bpm));
-    }
   }
 
   onMount(async () => {
@@ -238,12 +224,6 @@ export default function PlayerPage() {
     setInfo("The first beat now sits at the playhead. Press Apply grid to keep it.");
   }
 
-  function startTrainer() {
-    guard(async () => {
-      await TrainerStart({ startBpm: startBpm(), targetBpm: targetBpm(), stepBpm: stepBpm(), repsPerStep: reps(), autoClean: auto() });
-    });
-  }
-
   return (
     <main class="page">
       <div class="page-head">
@@ -341,7 +321,7 @@ export default function PlayerPage() {
                   min="25"
                   max="200"
                   step="1"
-                  disabled={st().trainer.active}
+                 
                   value={String(speedShown())}
                   onInput={(e: Event) => setSpeedShown(Number((e.target as HTMLInputElement).value))}
                   onChange={(e: Event) => guard(() => PlayerSetSpeed(Number((e.target as HTMLInputElement).value) / 100))}
@@ -349,7 +329,7 @@ export default function PlayerPage() {
               </Field>
               <div class="detail-actions">
                 {PRESETS.map((p) => (
-                  <button class="krate-button krate-button-secondary krate-button-sm" type="button" key={p} disabled={st().trainer.active} onClick={() => guard(() => PlayerSetSpeed(p / 100))}>
+                  <button class="krate-button krate-button-secondary krate-button-sm" type="button" key={p} onClick={() => guard(() => PlayerSetSpeed(p / 100))}>
                     {p + "%"}
                   </button>
                 ))}
@@ -424,62 +404,6 @@ export default function PlayerPage() {
         </div>
 
         <div class="stack">
-          <Panel>
-            <PanelHead title="Speed trainer" />
-            <PanelBody>
-              <div showIf={st().trainer.active}>
-                <div class="trainer-state">
-                  <Readout label="Now" size="display" value={st().trainer.currentBpm.toFixed(0)} />
-                  <Readout label="Target" size="display" value={st().trainer.targetBpm.toFixed(0)} />
-                  <Readout label="Clean" size="display" value={st().trainer.clean + " / " + st().trainer.needed} />
-                </div>
-                <div class="bar">
-                  <div class="bar-fill" style={"width:" + Math.round((st().trainer.clean / Math.max(1, st().trainer.needed)) * 100) + "%"} />
-                </div>
-                <p class="field-hint">{st().trainer.done ? "Target tempo reached. Keep playing it." : st().trainer.lastEvent + ". Passes " + st().trainer.passes + ", steps " + st().trainer.steps + "."}</p>
-                <div class="detail-actions">
-                  <button class="krate-button krate-button-primary" type="button" disabled={st().trainer.autoClean || st().trainer.done} onClick={() => guard(() => TrainerClean())}>
-                    Clean repetition
-                  </button>
-                  <button class="krate-button krate-button-secondary" type="button" disabled={st().trainer.autoClean || st().trainer.done} onClick={() => guard(() => TrainerMiss())}>
-                    Missed
-                  </button>
-                  <button class="krate-button krate-button-destructive" type="button" onClick={() => guard(() => TrainerStop())}>
-                    Stop trainer
-                  </button>
-                </div>
-              </div>
-              <div class="stack" showIf={!st().trainer.active}>
-                <div class="field-row">
-                  <Field label="Start (BPM)" htmlFor="tr-start">
-                    <input id="tr-start" class="krate-input" type="number" min="20" max="400" step="1" value={String(startBpm())} onInput={(e: Event) => setStartBpm(Number((e.target as HTMLInputElement).value))} />
-                  </Field>
-                  <Field label="Target (BPM)" htmlFor="tr-target">
-                    <input id="tr-target" class="krate-input" type="number" min="20" max="400" step="1" value={String(targetBpm())} onInput={(e: Event) => setTargetBpm(Number((e.target as HTMLInputElement).value))} />
-                  </Field>
-                </div>
-                <div class="field-row">
-                  <Field label="Step (BPM)" htmlFor="tr-step">
-                    <input id="tr-step" class="krate-input" type="number" min="0.5" max="60" step="0.5" value={String(stepBpm())} onInput={(e: Event) => setStepBpm(Number((e.target as HTMLInputElement).value))} />
-                  </Field>
-                  <Field label="Clean repetitions per step" htmlFor="tr-reps">
-                    <input id="tr-reps" class="krate-input" type="number" min="1" max="50" step="1" value={String(reps())} onInput={(e: Event) => setReps(Number((e.target as HTMLInputElement).value))} />
-                  </Field>
-                </div>
-                <label class="check-row">
-                  <input type="checkbox" checked={auto()} onChange={(e: Event) => setAuto((e.target as HTMLInputElement).checked)} />
-                  <span>Count every loop pass as clean</span>
-                </label>
-                <div class="detail-actions">
-                  <button class="krate-button krate-button-primary" type="button" disabled={!st().loaded} onClick={startTrainer}>
-                    Start trainer
-                  </button>
-                </div>
-                <p class="field-hint">Choose a loop first. The loop plays at the start tempo, and after the set number of clean repetitions the tempo steps up until it reaches the target.</p>
-              </div>
-            </PanelBody>
-          </Panel>
-
           <Panel>
             <PanelHead title="Sections" />
             <PanelBody>

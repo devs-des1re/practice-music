@@ -1211,17 +1211,6 @@ input[type="number"].krate-input {
   min-width: 9rem;
 }
 
-.trainer-state {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-4);
-  margin-bottom: var(--space-3);
-}
-
-.trainer-state .readout-value[data-size="display"] {
-  font-size: var(--text-2xl);
-}
-
 .check-row {
   display: flex;
   align-items: center;

@@ -11,7 +11,6 @@ import (
 	"practice-music/api/engine"
 	"practice-music/api/library"
 	"practice-music/api/logger"
-	"practice-music/api/trainer"
 )
 
 type LoopRegion struct {
@@ -36,7 +35,6 @@ type PlayerState struct {
 	Loop       LoopRegion    `json:"loop"`
 	CountIn    int           `json:"countIn"`
 	Grid       library.Grid  `json:"grid"`
-	Trainer    trainer.State `json:"trainer"`
 	Error      string        `json:"error"`
 }
 
@@ -55,7 +53,6 @@ var PlayerStream = krate.NewSignal(defaultPlayerState())
 var (
 	playerMu sync.Mutex
 	ps       = defaultPlayerState()
-	coach    = trainer.New()
 )
 
 func playerUpdate(change func(*PlayerState)) PlayerState {
@@ -141,7 +138,6 @@ func openSong(songID int64) (PlayerOpened, error) {
 		playerUpdate(func(p *PlayerState) { p.Error = err.Error() })
 		return PlayerOpened{}, err
 	}
-	coach.Stop()
 	grid, gerr := lib.GetGrid(songID)
 	if gerr != nil {
 		grid = analyseSong(songID)
@@ -159,7 +155,6 @@ func openSong(songID int64) (PlayerOpened, error) {
 		p.Path = song.Path
 		p.DurationMs = loaded.DurationMs
 		p.Grid = grid
-		p.Trainer = coach.State()
 	})
 	return PlayerOpened{DurationMs: loaded.DurationMs, Peaks: loaded.Peaks, Grid: grid}, nil
 }
@@ -174,7 +169,6 @@ func PlayerClose() error {
 	if !playerSnapshot().Loaded {
 		return nil
 	}
-	coach.Stop()
 	_ = playerControl(engine.PlayerControl{Action: "pause"})
 	playerUpdate(func(p *PlayerState) { *p = defaultPlayerState() })
 	return nil
@@ -209,9 +203,6 @@ func applySpeed(v float64) error {
 
 func PlayerSetSpeed(v float64) error {
 	boot()
-	if coach.State().Active {
-		return errors.New("the speed trainer is controlling the tempo")
-	}
 	return applySpeed(v)
 }
 
@@ -317,82 +308,12 @@ func PlayerDeleteSection(id int64) error {
 	return lib.DeleteSection(id)
 }
 
-func TrainerStart(cfg trainer.Config) (trainer.State, error) {
-	boot()
-	st := playerSnapshot()
-	if !st.Loaded {
-		return trainer.State{}, errors.New("open a song first")
-	}
-	if !st.Grid.Found || st.Grid.Bpm <= 0 {
-		return trainer.State{}, errors.New("set the song tempo first")
-	}
-	if !st.Loop.Enabled {
-		return trainer.State{}, errors.New("choose a loop to practise first")
-	}
-	state, err := coach.Start(cfg)
-	if err != nil {
-		return trainer.State{}, err
-	}
-	speed := coach.Speed(st.Grid.Bpm)
-	if speed < 0.25 || speed > 2 {
-		coach.Stop()
-		return trainer.State{}, errors.New("that tempo is outside 25% to 200% of the song tempo")
-	}
-	if err := applySpeed(speed); err != nil {
-		coach.Stop()
-		return trainer.State{}, err
-	}
-	if err := playerControl(engine.PlayerControl{SeekMs: f(st.Loop.StartMs), Action: "play"}); err != nil {
-		return trainer.State{}, err
-	}
-	playerUpdate(func(p *PlayerState) { p.Trainer = state })
-	return state, nil
-}
-
-func TrainerStop() (trainer.State, error) {
-	boot()
-	state := coach.Stop()
-	playerUpdate(func(p *PlayerState) { p.Trainer = state })
-	return state, nil
-}
-
-func trainerStep(state trainer.State, stepped bool) {
-	playerUpdate(func(p *PlayerState) { p.Trainer = state })
-	if !stepped {
-		return
-	}
-	st := playerSnapshot()
-	if err := applySpeed(coach.Speed(st.Grid.Bpm)); err != nil {
-		logger.Warnf("trainer could not change the tempo: %v", err)
-	}
-}
-
-func TrainerClean() (trainer.State, error) {
-	boot()
-	state, stepped := coach.Clean()
-	trainerStep(state, stepped)
-	return state, nil
-}
-
-func TrainerMiss() (trainer.State, error) {
-	boot()
-	state := coach.Miss()
-	playerUpdate(func(p *PlayerState) { p.Trainer = state })
-	return state, nil
-}
-
 func handlePlayerEvent(ev engine.PlayerEvent) {
-	var wrapped bool
-	st := playerUpdate(func(p *PlayerState) {
-		wrapped = ev.Loops > p.Loops && p.Loaded
+	playerUpdate(func(p *PlayerState) {
 		p.PositionMs = ev.PositionMs
 		p.Playing = ev.Playing
 		p.Loops = ev.Loops
 	})
-	if wrapped && st.Trainer.Active {
-		state, stepped := coach.OnLoop()
-		trainerStep(state, stepped)
-	}
 }
 
 func reloadPlayer() {

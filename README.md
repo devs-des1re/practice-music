@@ -13,7 +13,6 @@ The interface is built with Krate Native, the host layer is Go, and the audio ru
 - Browser pane with a yt-dlp powered downloader
 - Library with tags, playlists and loudness normalisation
 - Waveform player with beat-snapped loops, tempo and pitch control
-- Speed trainer that raises the tempo after clean repetitions
 - Drum removal and drums-only through stem separation
 - Metronome with polyrhythms, silent bars and a separate output
 - Mixer with per-channel EQ, compression, meters and a master limiter
@@ -29,7 +28,7 @@ In place so far:
 - Library with search, tags, playlists, thumbnails and optional loudness normalisation
 - Downloader built on yt-dlp with a queue, progress, retry and cancel
 - Browser pane that sends the current page to the downloader
-- Waveform player with beat-snapped loops, tempo and pitch control, saved sections and a speed trainer
+- Waveform player with beat-snapped loops, tempo and pitch control, and saved sections
 - Mixer with song, click and input channels, EQ, compressor, meters, a master limiter, and separate main and monitor mixes
 - Metronome with accents, subdivisions, polyrhythms, silent bars, custom sounds and a large beat display
 - Scenes that restore routing, levels and metronome settings, and settings export and import
