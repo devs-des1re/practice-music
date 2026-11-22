@@ -1,0 +1,52 @@
+name: Bug report
+description: Something in PracticeMusic does not work as expected.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for reporting a bug. The more detail you give, the faster it can be fixed.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: Describe the problem and what you expected to happen instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List the steps that lead to the problem.
+      placeholder: |
+        1. Open Settings
+        2. Select an output device
+        3. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - Linux
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: PracticeMusic version
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: audio
+    attributes:
+      label: Audio driver and device
+      description: For audio problems, say which driver (WASAPI, ASIO, JACK, PipeWire) and device you use.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or screenshots
+      description: Paste relevant log output or attach a screenshot.
