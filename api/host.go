@@ -39,6 +39,9 @@ type SettingsDocument struct {
 }
 
 func configDir() string {
+	if dir := os.Getenv("PM_CONFIG_DIR"); dir != "" {
+		return dir
+	}
 	if dir, err := os.UserConfigDir(); err == nil {
 		return filepath.Join(dir, "PracticeMusic")
 	}

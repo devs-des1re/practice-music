@@ -22,12 +22,19 @@ The interface is built with Krate Native, the host layer is Go, and the audio ru
 
 ## Current state
 
-Milestone 1 is in place: the app shell, settings with audio device pickers, and a supervised audio engine process that lists the devices on the machine.
+In place so far:
+
+- App shell, settings and audio device pickers, with a supervised audio engine process
+- Low-latency audio output on Windows (about 6 ms from button to output) and a metronome with sample-accurate clicks
+- Library with search, tags, playlists, thumbnails and optional loudness normalisation
+- Downloader built on yt-dlp with a queue, progress, retry and cancel
+- Browser pane that sends the current page to the downloader
 
 ## Requirements
 
 - Node.js LTS and npm
-- Go 1.26 or newer
+- Go (the build uses the Go 1.26.1 toolchain and downloads it automatically when needed)
+- ffmpeg and ffprobe on your PATH
 - Rust stable
 - Windows with the WebView2 runtime, or Linux with WebKitGTK 4.1 and the ALSA development headers
 

@@ -5,7 +5,8 @@ Thanks for taking the time to help. This guide covers how to set up the project 
 ## Requirements
 
 - Node.js LTS and npm
-- Go 1.26 or newer
+- Go (the build uses the Go 1.26.1 toolchain and downloads it automatically when needed)
+- ffmpeg and ffprobe on your PATH for the media tests
 - Rust stable
 - Krate CLI (installed through the project dependencies)
 - Windows: the WebView2 runtime. Linux: WebKitGTK 4.1 and the ALSA development headers.
