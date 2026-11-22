@@ -38,6 +38,10 @@ var MeterStream = krate.NewSignal(engine.MeterFrame{Strips: []engine.MeterLevel{
 
 var BeatStream = krate.NewSignal(engine.BeatFrame{})
 
+var MetronomeRevision = krate.NewSignal(0)
+
+var metronomeRev int
+
 var ActiveScene = krate.NewSignal(SceneStatus{})
 
 var (
@@ -280,7 +284,10 @@ func SetMetronomeState(in metronome.Setup) (metronome.Setup, error) {
 		clean.CustomSounds = map[string]string{}
 	}
 	metroState = copyMetronome(clean)
+	metronomeRev++
+	rev := metronomeRev
 	sessMu.Unlock()
+	MetronomeRevision.Set(rev)
 	markModified()
 	scheduleSave()
 	if !audioRunning() {

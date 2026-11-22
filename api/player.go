@@ -51,8 +51,9 @@ func defaultPlayerState() PlayerState {
 var PlayerStream = krate.NewSignal(defaultPlayerState())
 
 var (
-	playerMu sync.Mutex
-	ps       = defaultPlayerState()
+	playerMu    sync.Mutex
+	ps          = defaultPlayerState()
+	playerPeaks []float32
 )
 
 func playerUpdate(change func(*PlayerState)) PlayerState {
@@ -146,6 +147,9 @@ func openSong(songID int64) (PlayerOpened, error) {
 	if err := playerControl(engine.PlayerControl{Speed: f(1), Pitch: &zero, Volume: f(0.9), Loop: &engine.LoopParams{}, CountIn: &engine.CountInParams{}}); err != nil {
 		logger.Warnf("player defaults were not applied: %v", err)
 	}
+	playerMu.Lock()
+	playerPeaks = loaded.Peaks
+	playerMu.Unlock()
 	playerUpdate(func(p *PlayerState) {
 		*p = defaultPlayerState()
 		p.Loaded = true
@@ -164,12 +168,25 @@ func PlayerOpen(songID int64) (PlayerOpened, error) {
 	return openSong(songID)
 }
 
+func PlayerCurrent() (PlayerOpened, error) {
+	boot()
+	playerMu.Lock()
+	defer playerMu.Unlock()
+	if !ps.Loaded {
+		return PlayerOpened{Peaks: []float32{}}, nil
+	}
+	return PlayerOpened{DurationMs: ps.DurationMs, Peaks: playerPeaks, Grid: ps.Grid}, nil
+}
+
 func PlayerClose() error {
 	boot()
 	if !playerSnapshot().Loaded {
 		return nil
 	}
 	_ = playerControl(engine.PlayerControl{Action: "pause"})
+	playerMu.Lock()
+	playerPeaks = nil
+	playerMu.Unlock()
 	playerUpdate(func(p *PlayerState) { *p = defaultPlayerState() })
 	return nil
 }
