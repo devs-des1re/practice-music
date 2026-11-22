@@ -1,12 +1,13 @@
-import { createSignal, onMount, onCleanup } from "@krate/runtime";
-import { addView, navigate, onRemoteEvent } from "@krate/app/remote";
+import { createSignal, createEffect, onMount, onCleanup } from "@krate/runtime";
 import { EnqueueDownload } from "../../api/downloads.go";
+import { OpenBrowser, BrowserGo, CloseBrowser, BrowserState } from "../../api/browser.go";
 import { Panel, PanelHead, PanelBody } from "../components/ui/panel";
 import { Field } from "../components/ui/field";
 import { Select } from "../components/ui/select";
 import { Notice } from "../components/ui/notice";
 import { normaliseAddress } from "../lib/format";
 import { logger } from "../lib/logger";
+import type { BrowserInfo } from "../lib/types";
 
 const HOME = "https://duckduckgo.com/";
 
@@ -17,38 +18,31 @@ function describe(e: unknown): string {
 export default function BrowserPage() {
   const [address, setAddress] = createSignal(HOME);
   const [current, setCurrent] = createSignal(HOME);
-  const [ready, setReady] = createSignal(false);
+  const [pane, setPane] = createSignal<BrowserInfo>({ open: false, view: "", url: "", error: "" });
   const [format, setFormat] = createSignal("mp3");
   const [quality, setQuality] = createSignal("best");
   const [error, setError] = createSignal("");
   const [info, setInfo] = createSignal("");
-  const state = { view: "", remove: null as null | (() => Promise<void>), stop: null as null | (() => void) };
-
   onCleanup(() => {
-    if (state.stop) state.stop();
-    if (state.remove) state.remove().catch(() => undefined);
+    CloseBrowser().catch(() => undefined);
+  });
+
+  createEffect(() => {
+    const next = BrowserState();
+    if (next) setPane(next);
+  });
+
+  createEffect(() => {
+    const url = pane().url;
+    if (url) {
+      setCurrent(url);
+      setAddress(url);
+    }
   });
 
   onMount(async () => {
     try {
-      const view = await addView({
-        id: "browser",
-        url: HOME,
-        side: "right",
-        size: 0.62,
-        minWidth: 360,
-        partition: "persist:browser",
-        allowAnyHttps: true,
-        blocked: "external",
-      });
-      state.view = view.id;
-      state.remove = () => view.remove();
-      state.stop = onRemoteEvent((e) => {
-        if (e.view !== state.view || e.kind !== "loaded") return;
-        setCurrent(e.url);
-        setAddress(e.url);
-      });
-      setReady(true);
+      await OpenBrowser(HOME);
     } catch (e) {
       logger.error("browser pane failed", e);
       setError(describe(e));
@@ -56,12 +50,11 @@ export default function BrowserPage() {
   });
 
   async function go(target: string) {
-    if (!state.view) return;
     const next = normaliseAddress(target);
     if (!next) return;
     setError("");
     try {
-      await navigate(state.view, next);
+      await BrowserGo(next);
       setAddress(next);
     } catch (e) {
       setError(describe(e));
@@ -89,16 +82,12 @@ export default function BrowserPage() {
       </div>
 
       <div showIf={!!error()}>
-        <Notice tone="bad" title="Browser">
-          {error()}
-        </Notice>
+        <Notice tone="bad" title="Browser" text={error()} />
       </div>
       <div showIf={!!info()}>
-        <Notice tone="ok" title="Downloads">
-          {info()}
-        </Notice>
+        <Notice tone="ok" title="Downloads" text={info()} />
       </div>
-      <div showIf={!ready() && !error()}>
+      <div showIf={!pane().open && !error()}>
         <Notice tone="info" title="Opening the browser pane">
           The pane appears on the right of the window.
         </Notice>
@@ -108,10 +97,10 @@ export default function BrowserPage() {
         <PanelHead title="Address" />
         <PanelBody>
           <div class="address-bar">
-            <button class="krate-button krate-button-ghost krate-button-icon" type="button" aria-label="Home" disabled={!ready()} onClick={() => go(HOME)}>
+            <button class="krate-button krate-button-ghost krate-button-icon" type="button" aria-label="Home" disabled={!pane().open} onClick={() => go(HOME)}>
               <Icon name="lucide:house" />
             </button>
-            <button class="krate-button krate-button-ghost krate-button-icon" type="button" aria-label="Reload" disabled={!ready()} onClick={() => go(current())}>
+            <button class="krate-button krate-button-ghost krate-button-icon" type="button" aria-label="Reload" disabled={!pane().open} onClick={() => go(current())}>
               <Icon name="lucide:rotate-cw" />
             </button>
             <input
@@ -125,7 +114,7 @@ export default function BrowserPage() {
                 if (e.key === "Enter") go(address());
               }}
             />
-            <button class="krate-button krate-button-secondary" type="button" disabled={!ready()} onClick={() => go(address())}>
+            <button class="krate-button krate-button-secondary" type="button" disabled={!pane().open} onClick={() => go(address())}>
               Go
             </button>
           </div>
@@ -175,7 +164,7 @@ export default function BrowserPage() {
           </div>
           <p class="field-hint mono">{current()}</p>
           <div class="actions">
-            <button class="krate-button krate-button-primary" type="button" disabled={!ready()} onClick={download}>
+            <button class="krate-button krate-button-primary" type="button" disabled={!pane().open} onClick={download}>
               <Icon name="lucide:download" />
               Download
             </button>

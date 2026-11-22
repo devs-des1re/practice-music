@@ -9,6 +9,6 @@ export default defineConfig({
     productName: 'PracticeMusic',
     version: '0.1.0',
     window: { width: 1280, height: 800 },
-    permissions: ['dialog', 'remote', 'window'],
+    permissions: ['dialog'],
   },
 });

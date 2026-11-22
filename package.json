@@ -10,7 +10,8 @@
     "build:engine": "cargo build --release --manifest-path engine/Cargo.toml",
     "typecheck": "node scripts/krate.mjs native check && tsc --noEmit",
     "lint": "eslint src scripts && go vet ./api/... && cargo clippy --manifest-path engine/Cargo.toml --all-targets -- -D warnings",
-    "test": "go test ./api/... && cargo test --manifest-path engine/Cargo.toml"
+    "test": "go test ./api/... && cargo test --manifest-path engine/Cargo.toml",
+    "test:native": "node scripts/krate.mjs native test"
   },
   "dependencies": {
     "@krate/app": "0.5.0-rc.13",
