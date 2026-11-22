@@ -54,3 +54,8 @@ export function bufferLatencyMs(frames: number, rate: number): string {
   if (!frames || !rate) return "-";
   return `${((frames / rate) * 1000).toFixed(1)} ms`;
 }
+
+export function formatMs(value: number | undefined, available: boolean): string {
+  if (!available || value === undefined || Number.isNaN(value)) return "-";
+  return value.toFixed(1) + " ms";
+}

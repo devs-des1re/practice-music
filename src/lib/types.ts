@@ -5,3 +5,4 @@ export type {
   DeviceList,
   SettingsDocument,
 } from "../../api/host.go";
+export type { AudioState, LatencyState, LoopbackResult } from "../../api/audio.go";

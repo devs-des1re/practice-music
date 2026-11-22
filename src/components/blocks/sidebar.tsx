@@ -40,6 +40,10 @@ export function Sidebar(props: SidebarProps) {
           <Icon name="lucide:activity" />
           <span class="nav-text">Overview</span>
         </Link>
+        <Link class="nav-link" href="/latency" onClick={props.onNavigate}>
+          <Icon name="lucide:timer" />
+          <span class="nav-text">Latency</span>
+        </Link>
       </nav>
       <div class="sidebar-foot">
         <StatusDot tone={stateTone(engine().state)} label={stateLabel(engine().state)} />
