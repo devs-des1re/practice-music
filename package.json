@@ -1,0 +1,25 @@
+{
+  "name": "practice-music",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/krate.mjs native dev",
+    "dev:browser": "node scripts/krate.mjs native dev --browser",
+    "build": "npm run build:engine && node scripts/krate.mjs native build",
+    "build:engine": "cargo build --release --manifest-path engine/Cargo.toml",
+    "typecheck": "node scripts/krate.mjs native check && tsc --noEmit",
+    "lint": "eslint src scripts && go vet ./api/... && cargo clippy --manifest-path engine/Cargo.toml --all-targets -- -D warnings",
+    "test": "go test ./api/... && cargo test --manifest-path engine/Cargo.toml"
+  },
+  "dependencies": {
+    "@krate/app": "0.5.0-rc.13",
+    "@krate/components": "0.5.0-rc.13",
+    "@krate/core": "0.5.0-rc.13",
+    "@krate/runtime": "0.5.0-rc.13"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0"
+  }
+}

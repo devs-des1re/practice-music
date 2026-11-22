@@ -1,0 +1,6 @@
+github.com/ebitengine/purego v0.11.3 h1:OB+JLpdm7ioymhyA+6s5kbb/uOuYycAgL8NNTFc5MLg=
+github.com/ebitengine/purego v0.11.3/go.mod h1:DCHPP08djqhNSoTfImcnHYQRZmd0qhakvrozqaEYhGQ=
+github.com/kratejs/krate/packages/native v0.0.0-20261121231507-021a5ce8d914 h1:+Bj44z4ZOQ9XuHSIebXLlFRu20aSQ582yXmu92kwBbQ=
+github.com/kratejs/krate/packages/native v0.0.0-20261121231507-021a5ce8d914/go.mod h1:yQslCzU7mO3cxRfDeMcsNy6WwbaYPuc+v0Pcqy8j7o8=
+golang.org/x/sys v0.48.0 h1:bbX/i/6MgT9BVLM9RT1thmxL04yeTAhbEz4SyadbXoo=
+golang.org/x/sys v0.48.0/go.mod h1:hNLxWAXmnKAxqDtdwIYC4bM9oQPEecfsnNMuSxOs3og=
