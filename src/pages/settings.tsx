@@ -1,5 +1,6 @@
 import { createSignal, createEffect, createMemo, onMount } from "@krate/runtime";
 import { openFolder } from "@krate/app/dialog";
+import { LowLatencyDevices } from "../../api/audio.go";
 import { Engine, GetSettings, SaveSettings } from "../../api/host.go";
 import { Panel, PanelHead, PanelBody } from "../components/ui/panel";
 import { Field } from "../components/ui/field";
@@ -12,6 +13,19 @@ import { emptyEngine } from "../lib/engine";
 import type { AppSettings, DeviceList, EngineStatus } from "../lib/types";
 import { bufferLatencyMs, formatRate } from "../lib/format";
 import { logger } from "../lib/logger";
+
+interface LowDevice {
+  id: string;
+  name: string;
+  shared: { minFrames: number; minMs: number } | null;
+  exclusive: { supported: boolean; format: string | null; minMs: number | null };
+}
+
+const MODE_HINTS: Record<string, string> = {
+  shared: "Standard system mixer. Works everywhere but adds about 30 ms on Windows.",
+  lowlatency: "Windows shared mode with the smallest buffer the driver allows. Other applications keep playing.",
+  exclusive: "Windows exclusive mode. Lowest delay, but other applications are silent while PracticeMusic runs.",
+};
 
 const BUFFER_CHOICES = [32, 64, 128, 256, 512, 1024, 2048];
 const SCALE_CHOICES = [90, 100, 110, 125, 150];
@@ -38,8 +52,14 @@ export default function SettingsPage() {
   const rescan = () =>
     loadDevices({ setList: setDeviceList, setLoaded: setDevicesLoaded, setError: setDevicesError, setLoading: setDevicesLoading });
   createEffect(() => {
-    if (engine().state === "running") rescan();
+    if (engine().state === "running") {
+      rescan();
+      LowLatencyDevices()
+        .then((list) => setLowDevices(list as unknown as LowDevice[]))
+        .catch((e) => logger.error("low-latency probe failed", e));
+    }
   });
+  const [lowDevices, setLowDevices] = createSignal<LowDevice[]>([]);
   const [saved, setSaved] = createSignal<AppSettings | null>(null);
   const [draft, setDraft] = createSignal<AppSettings | null>(null);
   const [notice, setNotice] = createSignal("");
@@ -114,7 +134,7 @@ export default function SettingsPage() {
   });
 
   const bufferOptions = createMemo(() => {
-    const range = activeOutput()?.bufferFrames || null;
+    const range = draft()?.audio.mode === "shared" ? activeOutput()?.bufferFrames || null : null;
     let choices = BUFFER_CHOICES.slice();
     if (range) choices = choices.filter((f) => f >= range.min && f <= range.max);
     const current = draft()?.audio.bufferFrames || 0;
@@ -123,8 +143,23 @@ export default function SettingsPage() {
     return [{ value: "0", label: "Device default" }].concat(choices.map((f) => ({ value: String(f), label: f + " frames" })));
   });
 
+  const lowDevice = createMemo(() => {
+    const id = activeOutput()?.id || "";
+    return lowDevices().find((d) => d.id === id) || null;
+  });
+
+  const modeHint = createMemo(() => {
+    const mode = draft()?.audio.mode || "shared";
+    const dev = lowDevice();
+    let text = MODE_HINTS[mode] || "";
+    if (dev && mode === "lowlatency" && dev.shared) text += " This device allows down to " + dev.shared.minMs.toFixed(1) + " ms.";
+    if (dev && mode === "exclusive") text += dev.exclusive.supported ? " This device allows down to " + (dev.exclusive.minMs ?? 0).toFixed(1) + " ms (" + dev.exclusive.format + ")." : " This device does not accept exclusive mode.";
+    return text;
+  });
+
   const bufferHint = createMemo(() => {
     const dev = activeOutput();
+    if (draft()?.audio.mode !== "shared") return "Leave on device default for the smallest stable buffer. A larger value trades delay for safety.";
     if (!dev || !dev.bufferFrames) return "The driver does not report its buffer range.";
     const rate = draft()?.audio.sampleRate || dev.defaultSampleRate || 48000;
     const { min, max } = dev.bufferFrames;
@@ -218,6 +253,18 @@ export default function SettingsPage() {
               value={draft()?.audio.host || ""}
               options={hostOptions()}
               onChange={(v) => edit((s) => (s.audio.host = v))}
+            />
+          </Field>
+          <Field label="Output mode" htmlFor="audio-mode" hint={modeHint()}>
+            <Select
+              id="audio-mode"
+              value={draft()?.audio.mode || "shared"}
+              options={[
+                { value: "shared", label: "Shared, standard" },
+                { value: "lowlatency", label: "Low-latency shared (Windows)" },
+                { value: "exclusive", label: "Exclusive (Windows)" },
+              ]}
+              onChange={(v) => edit((s) => (s.audio.mode = v))}
             />
           </Field>
           <Field

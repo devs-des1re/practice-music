@@ -1,5 +1,5 @@
-import { createSignal, createEffect, createMemo, onMount } from "@krate/runtime";
-import { Devices } from "../../api/host.go";
+import { createSignal, createEffect, createMemo, onMount, onCleanup } from "@krate/runtime";
+import { Devices, GetSettings, SaveSettings } from "../../api/host.go";
 import {
   AudioStream,
   Latency,
@@ -10,6 +10,7 @@ import {
   ResetLatency,
   SetMetronome,
   MeasureLoopback,
+  GetAudioStats,
 } from "../../api/audio.go";
 import { Panel, PanelHead, PanelBody } from "../components/ui/panel";
 import { Field } from "../components/ui/field";
@@ -30,6 +31,13 @@ const emptyAudio: AudioState = {
   bufferFramesRequested: 0,
   bufferRange: null,
   error: "",
+  mode: "",
+  bufferFrames: 0,
+  periodFrames: 0,
+  periodMs: 0,
+  streamLatencyMs: 0,
+  format: "",
+  notice: "",
   metronome: { running: false, bpm: 120, volume: 0.5, beatsPerBar: 4 },
 };
 
@@ -72,6 +80,8 @@ export default function LatencyPage() {
   const [inputId, setInputId] = createSignal("");
   const [loopBusy, setLoopBusy] = createSignal(false);
   const [loop, setLoop] = createSignal<LoopbackResult | null>(null);
+  const [lateWakes, setLateWakes] = createSignal(0);
+  const [modeSetting, setModeSetting] = createSignal("");
 
   createEffect(() => {
     const next = AudioStream();
@@ -102,7 +112,32 @@ export default function LatencyPage() {
     setUiError(samples[0].rtt / 2 / 1000);
   }
 
+  createEffect(() => {
+    if (!audio().running) return;
+    const timer = setInterval(() => {
+      GetAudioStats()
+        .then((s) => setLateWakes(s.lateWakes))
+        .catch(() => undefined);
+    }, 1500);
+    onCleanup(() => clearInterval(timer));
+  });
+
+  async function switchMode(next: string) {
+    setError("");
+    try {
+      const doc = await GetSettings();
+      doc.settings.audio.mode = next;
+      await SaveSettings(doc.settings);
+      setModeSetting(next);
+    } catch (e) {
+      setError(describe(e));
+    }
+  }
+
   onMount(() => {
+    GetSettings()
+      .then((doc) => setModeSetting(doc.settings.audio.mode))
+      .catch((e) => logger.error("could not read settings", e));
     syncClock().catch((e) => logger.error("clock sync failed", e));
   });
 
@@ -193,6 +228,10 @@ export default function LatencyPage() {
       devices().devices.filter((d) => d.direction === "input").map((d) => ({ value: d.id, label: d.name })),
     ),
   );
+  const modeLabel = createMemo(() => ({ shared: "Shared", lowlatency: "Low-latency shared", exclusive: "Exclusive" })[audio().mode] || "-");
+  const periodText = createMemo(() => (audio().periodMs ? audio().periodMs.toFixed(2) + " ms (" + audio().periodFrames + " frames)" : "-"));
+  const lateText = createMemo(() => String(lateWakes()));
+  const notice = createMemo(() => audio().notice || "");
   const audioError = createMemo(() => audio().error || "");
   const loopSummary = createMemo(() => {
     const r = loop();
@@ -227,17 +266,40 @@ export default function LatencyPage() {
         </Notice>
       </div>
 
+      <div showIf={!!notice()}>
+        <Notice tone="warn" title="Output mode changed">
+          {notice()}
+        </Notice>
+      </div>
+
       <div class="grid-2">
         <div class="stack">
           <Panel>
             <PanelHead title="Audio output" />
             <PanelBody>
+              <Field label="Output mode" htmlFor="out-mode" hint="Switching restarts the stream and clears the measurements.">
+                <Select
+                  id="out-mode"
+                  value={modeSetting()}
+                  options={[
+                    { value: "shared", label: "Shared, standard" },
+                    { value: "lowlatency", label: "Low-latency shared (Windows)" },
+                    { value: "exclusive", label: "Exclusive (Windows)" },
+                  ]}
+                  onChange={(v) => switchMode(v)}
+                />
+              </Field>
+              <div class="readout-grid">
+                <Readout label="Active mode" value={modeLabel()} />
+                <Readout label="Late wakes" value={lateText()} />
+              </div>
+              <Readout label="Callback period" value={periodText()} />
               <div class="readout-grid">
                 <Readout label="Device" value={device()} />
                 <Readout label="Sample rate" value={rate()} />
               </div>
               <div class="readout-grid">
-                <Readout label="Callback period" value={period()} />
+                <Readout label="Measured period" value={period()} />
                 <Readout label="UI clock error" value={uiClock()} />
                 <Readout label="Engine clock error" value={engineClock()} />
               </div>
