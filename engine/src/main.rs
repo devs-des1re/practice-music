@@ -3,6 +3,8 @@ mod click;
 mod devices;
 mod loopback;
 mod protocol;
+#[cfg(windows)]
+mod wasapi_backend;
 
 use std::io::{self, BufRead, Write};
 use std::process::ExitCode;

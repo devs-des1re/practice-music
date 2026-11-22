@@ -11,6 +11,8 @@ use serde_json::{Value, json};
 
 use crate::click::{Controls, Renderer};
 use crate::protocol::{ProtoError, event_frame};
+#[cfg(windows)]
+use crate::wasapi_backend::{self, Mode, StartConfig, WasapiStream};
 
 const SLOTS: usize = 64;
 
@@ -26,6 +28,7 @@ pub struct Params {
     pub output_device: String,
     pub sample_rate: u32,
     pub buffer_frames: u32,
+    pub mode: String,
 }
 
 pub struct Shared {
@@ -37,6 +40,7 @@ pub struct Shared {
     recv_us: [AtomicU64; SLOTS],
     callbacks: AtomicU64,
     last_frames: AtomicU32,
+    late_wakes: AtomicU64,
 }
 
 impl Shared {
@@ -50,7 +54,27 @@ impl Shared {
             recv_us: std::array::from_fn(|_| AtomicU64::new(0)),
             callbacks: AtomicU64::new(0),
             last_frames: AtomicU32::new(0),
+            late_wakes: AtomicU64::new(0),
         }
+    }
+
+    #[cfg(windows)]
+    pub fn note_late_wake(&self) {
+        self.late_wakes.fetch_add(1, Ordering::Relaxed);
+    }
+
+    pub fn note_callback(&self, frames: u32) {
+        self.callbacks.fetch_add(1, Ordering::Relaxed);
+        self.last_frames.store(frames, Ordering::Relaxed);
+    }
+
+    pub fn report_click(&self, id: u64, callback_us: u64, playback_ns: u64, frames: u32) {
+        self.report_callback_us
+            .store(callback_us, Ordering::Relaxed);
+        self.report_playback_ns
+            .store(playback_ns, Ordering::Relaxed);
+        self.report_frames.store(frames, Ordering::Relaxed);
+        self.report_seq.store(id, Ordering::Release);
     }
 
     pub fn reported_callback_us(&self, id: u64) -> Option<u64> {
@@ -68,8 +92,15 @@ impl Shared {
     }
 }
 
+#[allow(dead_code)]
+enum Backend {
+    Cpal(cpal::Stream),
+    #[cfg(windows)]
+    Wasapi(WasapiStream),
+}
+
 pub struct AudioHandle {
-    _stream: cpal::Stream,
+    _stream: Backend,
     pub shared: Arc<Shared>,
     pub info: Value,
     stop: Arc<AtomicBool>,
@@ -82,6 +113,7 @@ impl AudioHandle {
             "running": true,
             "callbacks": self.shared.callbacks.load(Ordering::Relaxed),
             "lastBufferFrames": self.shared.last_frames.load(Ordering::Relaxed),
+            "lateWakes": self.shared.late_wakes.load(Ordering::Relaxed),
             "metronome": {
                 "running": self.shared.controls.running(),
                 "bpm": self.shared.controls.bpm(),
@@ -121,6 +153,65 @@ fn pick_host(wanted: &str, device_id: Option<&DeviceId>) -> Result<cpal::Host, P
 }
 
 pub fn start(params: &Params, events: Sender<String>) -> Result<AudioHandle, ProtoError> {
+    match params.mode.as_str() {
+        "" | "shared" => start_shared(params, events),
+        "lowlatency" => start_wasapi_mode(params, events, "lowlatency"),
+        "exclusive" => start_wasapi_mode(params, events, "exclusive"),
+        other => Err(audio_error(format!("unknown output mode {other}"))),
+    }
+}
+
+#[cfg(windows)]
+fn start_wasapi_mode(
+    params: &Params,
+    events: Sender<String>,
+    mode: &str,
+) -> Result<AudioHandle, ProtoError> {
+    if !params.host.is_empty() && params.host != "wasapi" {
+        return Err(audio_error("low-latency modes need the WASAPI driver"));
+    }
+    let mode = if mode == "exclusive" {
+        Mode::Exclusive
+    } else {
+        Mode::LowLatency
+    };
+    let shared = Arc::new(Shared::new());
+    let stream = wasapi_backend::start(
+        &StartConfig {
+            device_id: params.output_device.clone(),
+            mode,
+            sample_rate: params.sample_rate,
+            buffer_frames: params.buffer_frames,
+        },
+        Arc::clone(&shared),
+    )?;
+    let mut info = stream.info.clone();
+    info["deviceId"] = json!(params.output_device);
+    info["bufferFramesRequested"] = json!(params.buffer_frames);
+    let rate = info["sampleRate"].as_u64().unwrap_or(48000) as u32;
+    let stop = Arc::new(AtomicBool::new(false));
+    let reporter = spawn_reporter(Arc::clone(&shared), Arc::clone(&stop), events, rate);
+    Ok(AudioHandle {
+        _stream: Backend::Wasapi(stream),
+        shared,
+        info,
+        stop,
+        reporter: Some(reporter),
+    })
+}
+
+#[cfg(not(windows))]
+fn start_wasapi_mode(
+    _params: &Params,
+    _events: Sender<String>,
+    _mode: &str,
+) -> Result<AudioHandle, ProtoError> {
+    Err(audio_error(
+        "low-latency output modes are only available on Windows",
+    ))
+}
+
+fn start_shared(params: &Params, events: Sender<String>) -> Result<AudioHandle, ProtoError> {
     let device_id = if params.output_device.is_empty() {
         None
     } else {
@@ -186,20 +277,12 @@ pub fn start(params: &Params, events: Sender<String>) -> Result<AudioHandle, Pro
             move |data: &mut [f32], info: &OutputCallbackInfo| {
                 renderer.apply(&cb_shared.controls);
                 let started = renderer.render(data);
-                cb_shared.callbacks.fetch_add(1, Ordering::Relaxed);
                 let frames = (data.len() / usize::from(channels)) as u32;
-                cb_shared.last_frames.store(frames, Ordering::Relaxed);
+                cb_shared.note_callback(frames);
                 if let Some(id) = started {
                     let ts = info.timestamp();
                     let playback = ts.playback.saturating_duration_since(ts.callback);
-                    cb_shared
-                        .report_callback_us
-                        .store(now_us(), Ordering::Relaxed);
-                    cb_shared
-                        .report_playback_ns
-                        .store(playback.as_nanos() as u64, Ordering::Relaxed);
-                    cb_shared.report_frames.store(frames, Ordering::Relaxed);
-                    cb_shared.report_seq.store(id, Ordering::Release);
+                    cb_shared.report_click(id, now_us(), playback.as_nanos() as u64, frames);
                 }
             },
             move |error| {
@@ -228,12 +311,17 @@ pub fn start(params: &Params, events: Sender<String>) -> Result<AudioHandle, Pro
         "channels": channels,
         "bufferFramesRequested": params.buffer_frames,
         "bufferRange": buffer_range,
+        "mode": "shared",
+        "bufferFrames": params.buffer_frames,
+        "periodMs": Value::Null,
+        "streamLatencyMs": Value::Null,
+        "format": "Float32 (cpal shared)",
     });
 
     let stop = Arc::new(AtomicBool::new(false));
     let reporter = spawn_reporter(Arc::clone(&shared), Arc::clone(&stop), events, sample_rate);
     Ok(AudioHandle {
-        _stream: stream,
+        _stream: Backend::Cpal(stream),
         shared,
         info,
         stop,

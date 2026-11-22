@@ -182,6 +182,7 @@ fn dispatch(session: &mut Session, request: &Request, recv_us: u64) -> Result<Va
                 },
             )
         }),
+        "wasapi_probe" => require_greeted(session).map(|_| wasapi_probe(&request.params)),
         "metronome_set" => {
             require_greeted(session).and_then(|_| metronome_set(session, &request.params))
         }
@@ -191,6 +192,20 @@ fn dispatch(session: &mut Session, request: &Request, recv_us: u64) -> Result<Va
             format!("unknown method {other}"),
         )),
     }
+}
+
+#[cfg(windows)]
+fn wasapi_probe(params: &Value) -> Value {
+    let rate = params
+        .get("sampleRate")
+        .and_then(Value::as_u64)
+        .unwrap_or(0) as u32;
+    json!({ "devices": crate::wasapi_backend::probe(rate) })
+}
+
+#[cfg(not(windows))]
+fn wasapi_probe(_params: &Value) -> Value {
+    json!({ "devices": [] })
 }
 
 fn running_audio(session: &Session) -> Result<&AudioHandle, ProtoError> {
@@ -226,6 +241,7 @@ fn audio_start(session: &mut Session, params: &Value) -> Result<Value, ProtoErro
                 .get("bufferFrames")
                 .and_then(Value::as_u64)
                 .unwrap_or(0) as u32,
+            mode: text(params, "mode"),
         },
         events,
     )?;
