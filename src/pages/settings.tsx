@@ -67,6 +67,7 @@ export default function SettingsPage() {
   const [error, setError] = createSignal("");
   const [path, setPath] = createSignal("");
   const [busy, setBusy] = createSignal(false);
+  const [section, setSection] = createSignal("audio");
   const [done, setDone] = createSignal(false);
   const [transferInfo, setTransferInfo] = createSignal("");
   const [transferNotes, setTransferNotes] = createSignal("");
@@ -282,15 +283,43 @@ export default function SettingsPage() {
         Loading settings
       </p>
 
-      <div class="grid-2" showIf={!!draft()}>
-        <Panel>
-          <PanelHead title="Audio">
+      <div class="fill settings-ws" showIf={!!draft()}>
+        <aside class="rail" data-hue="mixer" aria-label="Settings sections">
+          <button class="rail-item" type="button" data-active={section() === "audio" ? "true" : "false"} onClick={() => setSection("audio")}>
+            <span class="rail-label">
+              <Icon name="lucide:monitor-speaker" />
+              Audio
+            </span>
+          </button>
+          <button class="rail-item" type="button" data-active={section() === "library" ? "true" : "false"} onClick={() => setSection("library")}>
+            <span class="rail-label">
+              <Icon name="lucide:folder" />
+              Library
+            </span>
+          </button>
+          <button class="rail-item" type="button" data-active={section() === "appearance" ? "true" : "false"} onClick={() => setSection("appearance")}>
+            <span class="rail-label">
+              <Icon name="lucide:sliders-horizontal" />
+              Appearance
+            </span>
+          </button>
+          <button class="rail-item" type="button" data-active={section() === "backup" ? "true" : "false"} onClick={() => setSection("backup")}>
+            <span class="rail-label">
+              <Icon name="lucide:save" />
+              Backup
+            </span>
+          </button>
+        </aside>
+        <div class="col">
+          <div class="pane" showIf={section() === "audio"}>
+            <Panel hue="mixer">
+              <PanelHead title="Audio">
             <button class="krate-button krate-button-secondary krate-button-sm" type="button" disabled={devicesLoading()} onClick={rescan}>
               <Icon name="lucide:refresh-cw" />
               Rescan
             </button>
           </PanelHead>
-          <PanelBody>
+            <div class="panel-body form-grid">
           <Field label="Driver" htmlFor="audio-host" hint="Choose ASIO, JACK or PipeWire for the lowest latency.">
             <Select
               id="audio-host"
@@ -349,7 +378,7 @@ export default function SettingsPage() {
               onChange={(v) => edit((s) => (s.audio.inputDevice = v))}
             />
           </Field>
-          <div class="field-row">
+          <div class="field-row span-2">
             <Field label="Sample rate" htmlFor="audio-rate">
               <Select
                 id="audio-rate"
@@ -367,13 +396,14 @@ export default function SettingsPage() {
               />
             </Field>
           </div>
-          <p class="field-hint">{bufferHint()}</p>
-          </PanelBody>
-        </Panel>
+          <p class="field-hint span-2">{bufferHint()}</p>
+          </div>
+            </Panel>
+          </div>
 
-        <div class="stack">
-          <Panel>
-            <PanelHead title="Library">
+          <div class="pane" showIf={section() === "library"}>
+            <Panel hue="library">
+              <PanelHead title="Library">
               <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={addFolder}>
                 <Icon name="lucide:folder-plus" />
                 Add folder
@@ -416,9 +446,11 @@ export default function SettingsPage() {
             />
             </PanelBody>
           </Panel>
+          </div>
 
-          <Panel>
-            <PanelHead title="Appearance" />
+          <div class="pane" showIf={section() === "appearance"}>
+            <Panel hue="player">
+              <PanelHead title="Appearance" />
             <PanelBody>
             <Field label="Interface size" htmlFor="ui-scale">
               <Select
@@ -430,9 +462,11 @@ export default function SettingsPage() {
             </Field>
             </PanelBody>
           </Panel>
+          </div>
 
-          <Panel>
-            <PanelHead title="Backup" />
+          <div class="pane" showIf={section() === "backup"}>
+            <Panel hue="browser">
+              <PanelHead title="Backup" />
             <PanelBody>
               <div class="detail-actions">
                 <button class="krate-button krate-button-secondary" type="button" onClick={exportAll}>
@@ -452,6 +486,7 @@ export default function SettingsPage() {
               </div>
             </PanelBody>
           </Panel>
+          </div>
         </div>
       </div>
 

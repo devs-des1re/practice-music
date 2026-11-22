@@ -91,7 +91,7 @@ export default function BrowserPage() {
         <Notice tone="info" text="Opening the browser pane on the right of the window." />
       </div>
 
-      <Panel>
+      <Panel hue="browser">
         <PanelBody>
           <div class="address-bar">
             <button class="krate-button krate-button-ghost krate-button-icon" type="button" aria-label="Home" disabled={!pane().open} onClick={() => go(HOME)}>
@@ -122,7 +122,7 @@ export default function BrowserPage() {
         </PanelBody>
       </Panel>
 
-      <Panel>
+      <Panel hue="browser">
         <PanelHead title="Download this page" />
         <PanelBody>
           <p class="field-hint mono">{current()}</p>

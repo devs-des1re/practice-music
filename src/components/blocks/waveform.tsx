@@ -17,7 +17,6 @@ export interface WaveformProps {
   onLoop: (start: number, end: number) => void;
 }
 
-const HEIGHT = 168;
 const GRAB = 9;
 const MIN_LOOP_MS = 80;
 
@@ -62,7 +61,8 @@ export function Waveform(props: WaveformProps) {
     if (!el || duration <= 0) return;
     const dpr = window.devicePixelRatio || 1;
     const width = el.clientWidth;
-    if (width === 0) return;
+    const HEIGHT = el.clientHeight;
+    if (width === 0 || HEIGHT === 0) return;
     el.width = Math.floor(width * dpr);
     el.height = Math.floor(HEIGHT * dpr);
     const ctx = el.getContext("2d");
@@ -100,7 +100,7 @@ export function Waveform(props: WaveformProps) {
       const bucket = Math.min(pairs - 1, Math.floor((x / width) * pairs));
       const lo = peaks[bucket * 2] * scale;
       const hi = peaks[bucket * 2 + 1] * scale;
-      ctx.fillStyle = x < playedX ? token("--color-accent") : token("--color-text-dim");
+      ctx.fillStyle = x < playedX ? token("--color-accent") : token("--color-wave-rest");
       const y0 = mid - Math.max(hi, 0.5);
       const y1 = mid - Math.min(lo, -0.5);
       ctx.fillRect(x, y0, 1, Math.max(1, y1 - y0));
@@ -207,24 +207,25 @@ export function Waveform(props: WaveformProps) {
     const el = canvas();
     if (!el) return;
     el.style.cursor = "crosshair";
-    const observer = new ResizeObserver(() => setSize(el.clientWidth));
+    const observer = new ResizeObserver(() => setSize(el.clientWidth * 10000 + el.clientHeight));
     observer.observe(el);
     onCleanup(() => observer.disconnect());
-    setSize(el.clientWidth);
+    setSize(el.clientWidth * 10000 + el.clientHeight);
   });
 
   return (
-    <canvas
-      id="waveform"
-      class="waveform"
-      tabindex={0}
-      role="img"
-      aria-label="Song waveform. Drag to choose a loop, click to move the playhead, arrow keys to step."
-      style={"height:" + HEIGHT + "px"}
-      onPointerDown={onDown}
-      onPointerMove={onMove}
-      onPointerUp={onUp}
-      onKeyDown={onKey}
-    />
+    <div class="wave-box">
+      <canvas
+        id="waveform"
+        class="waveform"
+        tabindex={0}
+        role="img"
+        aria-label="Song waveform. Drag to choose a loop, click to move the playhead, arrow keys to step."
+        onPointerDown={onDown}
+        onPointerMove={onMove}
+        onPointerUp={onUp}
+        onKeyDown={onKey}
+      />
+    </div>
   );
 }

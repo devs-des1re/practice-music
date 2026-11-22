@@ -32,31 +32,31 @@ export function Appbar(props: AppbarProps) {
       </Link>
 
       <nav class="tabs" aria-label="Primary">
-        <Link class="tab" href="/" onClick={props.onNavigate}>
+        <Link class="tab" data-hue="home" href="/" onClick={props.onNavigate}>
           <Icon name="lucide:house" />
           <span class="tab-text">Home</span>
         </Link>
-        <Link class="tab" href="/library" onClick={props.onNavigate}>
+        <Link class="tab" data-hue="library" href="/library" onClick={props.onNavigate}>
           <Icon name="lucide:library-big" />
           <span class="tab-text">Library</span>
         </Link>
-        <Link class="tab" href="/player" onClick={props.onNavigate}>
+        <Link class="tab" data-hue="player" href="/player" onClick={props.onNavigate}>
           <Icon name="lucide:audio-waveform" />
           <span class="tab-text">Player</span>
         </Link>
-        <Link class="tab" href="/mixer" onClick={props.onNavigate}>
+        <Link class="tab" data-hue="mixer" href="/mixer" onClick={props.onNavigate}>
           <Icon name="lucide:sliders-vertical" />
           <span class="tab-text">Mixer</span>
         </Link>
-        <Link class="tab" href="/metronome" onClick={props.onNavigate}>
+        <Link class="tab" data-hue="metronome" href="/metronome" onClick={props.onNavigate}>
           <Icon name="lucide:metronome" />
           <span class="tab-text">Metronome</span>
         </Link>
-        <Link class="tab" href="/browser" onClick={props.onNavigate}>
+        <Link class="tab" data-hue="browser" href="/browser" onClick={props.onNavigate}>
           <Icon name="lucide:globe" />
           <span class="tab-text">Browser</span>
         </Link>
-        <Link class="tab" href="/downloads" onClick={props.onNavigate}>
+        <Link class="tab" data-hue="downloads" href="/downloads" onClick={props.onNavigate}>
           <Icon name="lucide:download" />
           <span class="tab-text">Downloads</span>
         </Link>

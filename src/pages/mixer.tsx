@@ -13,7 +13,7 @@ import {
 } from "../../api/session.go";
 import { Scenes, SaveScene, RecallScene, DeleteScene, SceneRevision } from "../../api/scenes.go";
 import { Meter } from "../components/blocks/meter";
-import { Panel, PanelHead, PanelBody } from "../components/ui/panel";
+import { Panel } from "../components/ui/panel";
 import { Field } from "../components/ui/field";
 import { Select } from "../components/ui/select";
 import { Notice } from "../components/ui/notice";
@@ -52,6 +52,28 @@ function describe(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
+const noStrip = {
+  index: 0,
+  kind: "song",
+  name: "",
+  gain: 0,
+  pan: 0,
+  main: 0,
+  monitor: 0,
+  mute: false,
+  solo: false,
+  source: 0,
+  stereo: false,
+  eq: { low: 0, mid: 0, high: 0 },
+  comp: { on: false, threshold: 0, ratio: 1, attack: 10, release: 100, makeup: 0 },
+} as unknown as MixerStrip;
+
+function hueOf(kind: string): string {
+  if (kind === "song") return "player";
+  if (kind === "click") return "metronome";
+  return "mixer";
+}
+
 function panText(pan: number): string {
   if (Math.abs(pan) < 0.02) return "C";
   return (pan < 0 ? "L" : "R") + Math.round(Math.abs(pan) * 100);
@@ -76,6 +98,10 @@ export default function MixerPage() {
   const [latMonitor, setLatMonitor] = createSignal("on the main output");
   const [error, setError] = createSignal("");
   const [info, setInfo] = createSignal("");
+  const [selected, setSelected] = createSignal(0);
+  const [tab, setTab] = createSignal("channel");
+  const [inspectorTitle, setInspectorTitle] = createSignal("Channel");
+  const strip = () => board().strips[selected()] || noStrip;
   const cap = () => audio().capture ?? noLink;
   const mon = () => audio().monitor ?? noLink;
   const sending: Record<string, boolean> = {};
@@ -114,6 +140,10 @@ export default function MixerPage() {
     setLatMode(a.running ? a.mode + " at " + a.sampleRate + " Hz" : "-");
     setLatInputs(c.running ? c.device + ", " + c.channels + " channels" : c.error ? c.error : "no input device chosen");
     setLatMonitor(m.mode === "device" && m.running ? m.device : "on the main output");
+  });
+
+  createEffect(() => {
+    setInspectorTitle(strip().name || "Channel");
   });
 
   createEffect(() => {
@@ -239,7 +269,7 @@ export default function MixerPage() {
         <div class="actions">
           <button class="krate-button krate-button-secondary" type="button" onClick={() => guard(() => ResetMeters())}>
             <Icon name="lucide:eraser" />
-            Clear clip lights
+            Clear clips
           </button>
           <button class="krate-button krate-button-secondary" type="button" onClick={resetAll}>
             <Icon name="lucide:rotate-ccw" />
@@ -295,10 +325,19 @@ export default function MixerPage() {
         </div>
       </div>
 
-      <div class="mixer">
+      <div class="fill mixer-ws">
         <div class="strips">
           {board().strips.map((s) => (
-            <section class="strip" key={s.index} data-kind={s.kind} data-muted={s.mute ? "true" : "false"} aria-label={s.name + " channel"}>
+            <section
+              class="strip"
+              key={s.index}
+              data-kind={s.kind}
+              data-hue={hueOf(s.kind)}
+              data-selected={selected() === s.index ? "true" : "false"}
+              data-muted={s.mute ? "true" : "false"}
+              aria-label={s.name + " channel"}
+              onClick={() => setSelected(s.index)}
+            >
               <header class="strip-head">
                 {s.kind === "input" ? (
                   <input
@@ -315,7 +354,7 @@ export default function MixerPage() {
               </header>
 
               <div class="strip-body">
-                <Meter which={String(s.index)} label={s.name} height={176} />
+                <Meter which={String(s.index)} label={s.name} />
                 <input
                   class="fader"
                   type="range"
@@ -357,6 +396,7 @@ export default function MixerPage() {
 
               <label class="strip-row">
                 <span class="strip-row-label">Pan</span>
+                <span class="strip-row-value mono">{panText(s.pan)}</span>
                 <input
                   class="range"
                   type="range"
@@ -368,11 +408,11 @@ export default function MixerPage() {
                   onInput={(e: Event) => patchStrip(s.index, (x) => ({ ...x, pan: numberOf(e) }))}
                   onDoubleClick={() => patchStrip(s.index, (x) => ({ ...x, pan: 0 }))}
                 />
-                <span class="strip-row-value mono">{panText(s.pan)}</span>
               </label>
 
               <label class="strip-row">
                 <span class="strip-row-label">Main</span>
+                <span class="strip-row-value mono">{formatDb(s.main)}</span>
                 <input
                   class="range"
                   type="range"
@@ -383,11 +423,11 @@ export default function MixerPage() {
                   value={String(s.main)}
                   onInput={(e: Event) => patchStrip(s.index, (x) => ({ ...x, main: numberOf(e) }))}
                 />
-                <span class="strip-row-value mono">{formatDb(s.main)}</span>
               </label>
 
               <label class="strip-row">
-                <span class="strip-row-label">Mon</span>
+                <span class="strip-row-label">Monitor</span>
+                <span class="strip-row-value mono">{formatDb(s.monitor)}</span>
                 <input
                   class="range"
                   type="range"
@@ -398,82 +438,12 @@ export default function MixerPage() {
                   value={String(s.monitor)}
                   onInput={(e: Event) => patchStrip(s.index, (x) => ({ ...x, monitor: numberOf(e) }))}
                 />
-                <span class="strip-row-value mono">{formatDb(s.monitor)}</span>
               </label>
-
-              {s.kind === "input" ? (
-                <div class="strip-source">
-                  <select
-                    class="krate-native-select"
-                    id={"source-" + s.index}
-                    aria-label={s.name + " source"}
-                    onChange={(e: Event) => patchStrip(s.index, (x) => ({ ...x, source: Number((e.target as HTMLSelectElement).value) }))}
-                  >
-                    {sourceOptions(cap().channels, s.stereo).map((o) => (
-                      <option key={o.value} value={o.value} selected={o.value === String(s.source)}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
-                  <label class="check-row">
-                    <input type="checkbox" checked={s.stereo} onChange={(e: Event) => patchStrip(s.index, (x) => ({ ...x, stereo: (e.target as HTMLInputElement).checked }))} />
-                    Stereo pair
-                  </label>
-                </div>
-              ) : null}
-
-              <details class="strip-more">
-                <summary>EQ and dynamics</summary>
-                <label class="strip-row">
-                  <span class="strip-row-label">Low</span>
-                  <input class="range" type="range" min="-15" max="15" step="0.5" aria-label={s.name + " low shelf"} value={String(s.eq.low)} onInput={(e: Event) => patchStrip(s.index, (x) => ({ ...x, eq: { ...x.eq, low: numberOf(e) } }))} />
-                  <span class="strip-row-value mono">{s.eq.low.toFixed(1)}</span>
-                </label>
-                <label class="strip-row">
-                  <span class="strip-row-label">Mid</span>
-                  <input class="range" type="range" min="-15" max="15" step="0.5" aria-label={s.name + " mid band"} value={String(s.eq.mid)} onInput={(e: Event) => patchStrip(s.index, (x) => ({ ...x, eq: { ...x.eq, mid: numberOf(e) } }))} />
-                  <span class="strip-row-value mono">{s.eq.mid.toFixed(1)}</span>
-                </label>
-                <label class="strip-row">
-                  <span class="strip-row-label">High</span>
-                  <input class="range" type="range" min="-15" max="15" step="0.5" aria-label={s.name + " high shelf"} value={String(s.eq.high)} onInput={(e: Event) => patchStrip(s.index, (x) => ({ ...x, eq: { ...x.eq, high: numberOf(e) } }))} />
-                  <span class="strip-row-value mono">{s.eq.high.toFixed(1)}</span>
-                </label>
-                <label class="check-row">
-                  <input type="checkbox" checked={s.comp.on} onChange={(e: Event) => patchStrip(s.index, (x) => ({ ...x, comp: { ...x.comp, on: (e.target as HTMLInputElement).checked } }))} />
-                  Compressor
-                </label>
-                <label class="strip-row">
-                  <span class="strip-row-label">Thresh</span>
-                  <input class="range" type="range" min="-60" max="0" step="1" aria-label={s.name + " compressor threshold"} value={String(s.comp.threshold)} onInput={(e: Event) => patchStrip(s.index, (x) => ({ ...x, comp: { ...x.comp, threshold: numberOf(e) } }))} />
-                  <span class="strip-row-value mono">{s.comp.threshold.toFixed(0)}</span>
-                </label>
-                <label class="strip-row">
-                  <span class="strip-row-label">Ratio</span>
-                  <input class="range" type="range" min="1" max="20" step="0.5" aria-label={s.name + " compressor ratio"} value={String(s.comp.ratio)} onInput={(e: Event) => patchStrip(s.index, (x) => ({ ...x, comp: { ...x.comp, ratio: numberOf(e) } }))} />
-                  <span class="strip-row-value mono">{s.comp.ratio.toFixed(1)}</span>
-                </label>
-                <label class="strip-row">
-                  <span class="strip-row-label">Attack</span>
-                  <input class="range" type="range" min="1" max="100" step="1" aria-label={s.name + " compressor attack"} value={String(s.comp.attack)} onInput={(e: Event) => patchStrip(s.index, (x) => ({ ...x, comp: { ...x.comp, attack: numberOf(e) } }))} />
-                  <span class="strip-row-value mono">{s.comp.attack.toFixed(0)}</span>
-                </label>
-                <label class="strip-row">
-                  <span class="strip-row-label">Release</span>
-                  <input class="range" type="range" min="20" max="1000" step="10" aria-label={s.name + " compressor release"} value={String(s.comp.release)} onInput={(e: Event) => patchStrip(s.index, (x) => ({ ...x, comp: { ...x.comp, release: numberOf(e) } }))} />
-                  <span class="strip-row-value mono">{s.comp.release.toFixed(0)}</span>
-                </label>
-                <label class="strip-row">
-                  <span class="strip-row-label">Makeup</span>
-                  <input class="range" type="range" min="0" max="24" step="0.5" aria-label={s.name + " compressor makeup gain"} value={String(s.comp.makeup)} onInput={(e: Event) => patchStrip(s.index, (x) => ({ ...x, comp: { ...x.comp, makeup: numberOf(e) } }))} />
-                  <span class="strip-row-value mono">{s.comp.makeup.toFixed(1)}</span>
-                </label>
-              </details>
             </section>
           ))}
         </div>
 
-        <aside class="strip master" aria-label="Master section">
+        <aside class="strip master" data-hue="home" aria-label="Master section">
           <header class="strip-head">
             <span class="strip-title">Master</span>
           </header>
@@ -481,7 +451,7 @@ export default function MixerPage() {
             <div class="master-bus">
               <span class="strip-row-label">Main</span>
               <div class="strip-body">
-                <Meter which="main" label="Main mix" height={176} />
+                <Meter which="main" label="Main mix" />
                 <input
                   class="fader"
                   type="range"
@@ -499,7 +469,7 @@ export default function MixerPage() {
             <div class="master-bus">
               <span class="strip-row-label">Monitor</span>
               <div class="strip-body">
-                <Meter which="monitor" label="Monitor mix" height={176} />
+                <Meter which="monitor" label="Monitor mix" />
                 <input
                   class="fader"
                   type="range"
@@ -521,16 +491,93 @@ export default function MixerPage() {
           </label>
           <label class="strip-row">
             <span class="strip-row-label">Ceiling</span>
-            <input class="range" type="range" min="-12" max="0" step="0.1" aria-label="Limiter ceiling" value={String(board().master.ceiling)} onInput={(e: Event) => patchMaster((m) => ({ ...m, ceiling: numberOf(e) }))} />
             <span class="strip-row-value mono">{board().master.ceiling.toFixed(1)}</span>
+            <input class="range" type="range" min="-12" max="0" step="0.1" aria-label="Limiter ceiling" value={String(board().master.ceiling)} onInput={(e: Event) => patchMaster((m) => ({ ...m, ceiling: numberOf(e) }))} />
           </label>
         </aside>
-      </div>
 
-      <div class="grid-2">
-        <Panel>
-          <PanelHead title="Outputs" />
-          <PanelBody>
+        <Panel hue="mixer">
+          <header class="panel-head">
+            <LiveText class="panel-title" text={inspectorTitle()} />
+            <div class="segmented">
+              <button class="segment" type="button" data-active={tab() === "channel" ? "true" : "false"} onClick={() => setTab("channel")}>
+                Channel
+              </button>
+              <button class="segment" type="button" data-active={tab() === "routing" ? "true" : "false"} onClick={() => setTab("routing")}>
+                Routing
+              </button>
+            </div>
+          </header>
+
+          <div class="panel-body" showIf={tab() === "channel"}>
+            <div class="stack compact" showIf={strip().kind === "input"}>
+              <span class="group-title">Input</span>
+              <Select
+                id="strip-source"
+                label="Input source"
+                value={String(strip().source)}
+                options={sourceOptions(cap().channels, strip().stereo)}
+                onChange={(v) => patchStrip(selected(), (x) => ({ ...x, source: Number(v) }))}
+              />
+              <label class="check-row">
+                <input type="checkbox" checked={strip().stereo} onChange={(e: Event) => patchStrip(selected(), (x) => ({ ...x, stereo: (e.target as HTMLInputElement).checked }))} />
+                Stereo pair
+              </label>
+            </div>
+
+            <div class="inspector-rows">
+              <span class="group-title">Equaliser</span>
+              <label class="strip-row">
+                <span class="strip-row-label">Low</span>
+                <input class="range" type="range" min="-15" max="15" step="0.5" aria-label="Low shelf" value={String(strip().eq.low)} onInput={(e: Event) => patchStrip(selected(), (x) => ({ ...x, eq: { ...x.eq, low: numberOf(e) } }))} />
+                <span class="strip-row-value mono">{strip().eq.low.toFixed(1)}</span>
+              </label>
+              <label class="strip-row">
+                <span class="strip-row-label">Mid</span>
+                <input class="range" type="range" min="-15" max="15" step="0.5" aria-label="Mid band" value={String(strip().eq.mid)} onInput={(e: Event) => patchStrip(selected(), (x) => ({ ...x, eq: { ...x.eq, mid: numberOf(e) } }))} />
+                <span class="strip-row-value mono">{strip().eq.mid.toFixed(1)}</span>
+              </label>
+              <label class="strip-row">
+                <span class="strip-row-label">High</span>
+                <input class="range" type="range" min="-15" max="15" step="0.5" aria-label="High shelf" value={String(strip().eq.high)} onInput={(e: Event) => patchStrip(selected(), (x) => ({ ...x, eq: { ...x.eq, high: numberOf(e) } }))} />
+                <span class="strip-row-value mono">{strip().eq.high.toFixed(1)}</span>
+              </label>
+            </div>
+
+            <div class="inspector-rows">
+              <label class="check-row group-title">
+                <input type="checkbox" checked={strip().comp.on} onChange={(e: Event) => patchStrip(selected(), (x) => ({ ...x, comp: { ...x.comp, on: (e.target as HTMLInputElement).checked } }))} />
+                Compressor
+              </label>
+              <label class="strip-row">
+                <span class="strip-row-label">Threshold</span>
+                <input class="range" type="range" min="-60" max="0" step="1" aria-label="Compressor threshold" value={String(strip().comp.threshold)} onInput={(e: Event) => patchStrip(selected(), (x) => ({ ...x, comp: { ...x.comp, threshold: numberOf(e) } }))} />
+                <span class="strip-row-value mono">{strip().comp.threshold.toFixed(0)}</span>
+              </label>
+              <label class="strip-row">
+                <span class="strip-row-label">Ratio</span>
+                <input class="range" type="range" min="1" max="20" step="0.5" aria-label="Compressor ratio" value={String(strip().comp.ratio)} onInput={(e: Event) => patchStrip(selected(), (x) => ({ ...x, comp: { ...x.comp, ratio: numberOf(e) } }))} />
+                <span class="strip-row-value mono">{strip().comp.ratio.toFixed(1)}</span>
+              </label>
+              <label class="strip-row">
+                <span class="strip-row-label">Attack</span>
+                <input class="range" type="range" min="1" max="100" step="1" aria-label="Compressor attack" value={String(strip().comp.attack)} onInput={(e: Event) => patchStrip(selected(), (x) => ({ ...x, comp: { ...x.comp, attack: numberOf(e) } }))} />
+                <span class="strip-row-value mono">{strip().comp.attack.toFixed(0)}</span>
+              </label>
+              <label class="strip-row">
+                <span class="strip-row-label">Release</span>
+                <input class="range" type="range" min="20" max="1000" step="10" aria-label="Compressor release" value={String(strip().comp.release)} onInput={(e: Event) => patchStrip(selected(), (x) => ({ ...x, comp: { ...x.comp, release: numberOf(e) } }))} />
+                <span class="strip-row-value mono">{strip().comp.release.toFixed(0)}</span>
+              </label>
+              <label class="strip-row">
+                <span class="strip-row-label">Makeup</span>
+                <input class="range" type="range" min="0" max="24" step="0.5" aria-label="Compressor makeup gain" value={String(strip().comp.makeup)} onInput={(e: Event) => patchStrip(selected(), (x) => ({ ...x, comp: { ...x.comp, makeup: numberOf(e) } }))} />
+                <span class="strip-row-value mono">{strip().comp.makeup.toFixed(1)}</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="panel-body" showIf={tab() === "routing"}>
             <Field label="Main mix" htmlFor="main-pair" hint={audio().running ? "On " + (audio().device || "the output device") : "Waiting for the audio engine."}>
               <Select
                 id="main-pair"
@@ -559,17 +606,6 @@ export default function MixerPage() {
             <p class="field-warn" showIf={!!mon() && mon().rateMismatch}>
               The monitor device runs at a different sample rate. Set both devices to the same rate for the best quality.
             </p>
-          </PanelBody>
-        </Panel>
-
-        <Panel>
-          <PanelHead title="Latency">
-            <Link class="krate-button krate-button-secondary krate-button-sm" href="/latency">
-              <Icon name="lucide:timer" />
-              Tools
-            </Link>
-          </PanelHead>
-          <PanelBody>
             <div class="latency-lines">
               <div class="latency-line">
                 <span class="strip-row-label">Main output</span>
@@ -588,7 +624,11 @@ export default function MixerPage() {
                 <LiveText class="mono" text={latMonitor()} />
               </div>
             </div>
-          </PanelBody>
+            <Link class="krate-button krate-button-secondary" href="/latency">
+              <Icon name="lucide:timer" />
+              Latency tools
+            </Link>
+          </div>
         </Panel>
       </div>
     </main>

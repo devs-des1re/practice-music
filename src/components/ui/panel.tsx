@@ -1,5 +1,15 @@
-export function Panel(props: { children?: any }) {
-  return <section class="panel">{props.children}</section>;
+export interface PanelProps {
+  hue?: string;
+  grow?: boolean;
+  children?: any;
+}
+
+export function Panel(props: PanelProps) {
+  return (
+    <section class={props.grow ? "panel grow-panel" : "panel"} data-hue={props.hue}>
+      {props.children}
+    </section>
+  );
 }
 
 export function PanelHead(props: { title: string; children?: any }) {

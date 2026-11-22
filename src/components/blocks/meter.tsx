@@ -6,7 +6,6 @@ import { meterFraction } from "../../lib/mixer";
 export interface MeterProps {
   which: string;
   label: string;
-  height?: number;
 }
 
 interface Level {
@@ -126,14 +125,15 @@ export function Meter(props: MeterProps) {
   });
 
   return (
-    <canvas
-      id={canvasId}
-      class="meter"
-      role="img"
-      aria-label={props.label + " level. Click to clear the clip light."}
-      title="Click to clear the clip light"
-      style={"width:" + WIDTH + "px;height:" + (props.height || 160) + "px"}
-      onClick={() => ResetMeters().catch(() => undefined)}
-    />
+    <div class="meter-box">
+      <canvas
+        id={canvasId}
+        class="meter"
+        role="img"
+        aria-label={props.label + " level. Click to clear the clip light."}
+        title="Click to clear the clip light"
+        onClick={() => ResetMeters().catch(() => undefined)}
+      />
+    </div>
   );
 }

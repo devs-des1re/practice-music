@@ -141,7 +141,7 @@ export default function DownloadsPage() {
         <Notice tone="warn" title="ffmpeg was not found" text="MP3 conversion and video merging need ffmpeg on your PATH." />
       </div>
 
-      <Panel>
+      <Panel hue="downloads">
         <PanelHead title="New download" />
         <PanelBody>
           <div class="field-row dl-form">
@@ -172,8 +172,8 @@ export default function DownloadsPage() {
         </PanelBody>
       </Panel>
 
-      <div class="grid-2 downloads">
-        <Panel>
+      <div class="fill downloads-ws">
+        <Panel hue="downloads">
           <PanelHead title="Queue">
             <button class="krate-button krate-button-ghost krate-button-sm" type="button" onClick={() => guard(() => ClearDownloads())}>
               <Icon name="lucide:eraser" />
@@ -186,7 +186,7 @@ export default function DownloadsPage() {
             </span>
             <span>No downloads yet</span>
           </div>
-          <div>
+          <div class="scroll">
             {jobs().map((j) => (
               <div class="job-row" key={j.id}>
                 <div class="job-main">
@@ -231,7 +231,7 @@ export default function DownloadsPage() {
           </div>
         </Panel>
 
-        <Panel>
+        <Panel hue="downloads">
           <PanelHead title="Tools" />
           <PanelBody>
             <div class="readout-grid">

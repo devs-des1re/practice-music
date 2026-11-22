@@ -69,31 +69,31 @@ export default function Home() {
       </header>
 
       <div class="tiles">
-        <Link class="tile" href="/library">
+        <Link class="tile" data-hue="library" href="/library">
           <span class="tile-icon">
             <Icon name="lucide:library-big" />
           </span>
           Library
         </Link>
-        <Link class="tile" href="/player">
+        <Link class="tile" data-hue="player" href="/player">
           <span class="tile-icon">
             <Icon name="lucide:audio-waveform" />
           </span>
           Player
         </Link>
-        <Link class="tile" href="/metronome">
+        <Link class="tile" data-hue="metronome" href="/metronome">
           <span class="tile-icon">
             <Icon name="lucide:metronome" />
           </span>
           Metronome
         </Link>
-        <Link class="tile" href="/mixer">
+        <Link class="tile" data-hue="mixer" href="/mixer">
           <span class="tile-icon">
             <Icon name="lucide:sliders-vertical" />
           </span>
           Mixer
         </Link>
-        <Link class="tile" href="/browser">
+        <Link class="tile" data-hue="browser" href="/browser">
           <span class="tile-icon">
             <Icon name="lucide:globe" />
           </span>
@@ -101,9 +101,9 @@ export default function Home() {
         </Link>
       </div>
 
-      <div class="grid-2">
-        <div class="stack">
-          <div class="now-card">
+      <div class="fill home-ws">
+        <div class="col">
+          <div class="now-card" data-hue="player">
             <span class="dock-art">
               <Icon name="lucide:music" />
             </span>
@@ -117,7 +117,7 @@ export default function Home() {
             </Link>
           </div>
 
-          <Panel>
+          <Panel hue="library" grow>
             <PanelHead title="Recently added">
               <Link class="krate-button krate-button-ghost krate-button-sm" href="/library">
                 View all
@@ -150,78 +150,82 @@ export default function Home() {
           </Panel>
         </div>
 
-        <Panel>
-          <PanelHead title="Audio engine">
-            <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={() => RestartEngine()}>
-              <Icon name="lucide:rotate-cw" />
-              Restart
-            </button>
-          </PanelHead>
-          <PanelBody>
-            <div class="status-line">
-              <StatusDot tone={stateTone(engine().state)} label={stateText()} />
-              <LiveText class="state-text" text={stateText()} />
-            </div>
-            <div class="readout-grid">
-              <Readout label="Version" value={version()} />
-              <Readout label="Protocol" value={protocol()} />
-              <Readout label="Process" value={pid()} />
-              <Readout label="Restarts" value={restarts()} />
-            </div>
-            <div showIf={!!lastError()}>
-              <Notice tone={errorTone()} title="Last engine error" text={lastError()} />
-            </div>
-          </PanelBody>
-        </Panel>
-      </div>
+        <div class="col">
+          <Panel hue="mixer">
+            <PanelHead title="Audio engine">
+              <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={() => RestartEngine()}>
+                <Icon name="lucide:rotate-cw" />
+                Restart
+              </button>
+            </PanelHead>
+            <PanelBody>
+              <div class="status-line">
+                <StatusDot tone={stateTone(engine().state)} label={stateText()} />
+                <LiveText class="state-text" text={stateText()} />
+              </div>
+              <div class="readout-grid">
+                <Readout label="Version" value={version()} />
+                <Readout label="Protocol" value={protocol()} />
+                <Readout label="Process" value={pid()} />
+                <Readout label="Restarts" value={restarts()} />
+              </div>
+              <div showIf={!!lastError()}>
+                <Notice tone={errorTone()} title="Last engine error" text={lastError()} />
+              </div>
+            </PanelBody>
+          </Panel>
 
-      <Panel>
-        <PanelHead title="Audio devices">
-          <button class="krate-button krate-button-secondary krate-button-sm" type="button" disabled={loading()} onClick={refresh}>
-            <Icon name="lucide:refresh-cw" />
-            Refresh
-          </button>
-        </PanelHead>
-        <div class="panel-body" showIf={!!error()}>
-          <Notice tone="bad" title="Could not list devices" text={error()} />
+          <Panel hue="browser" grow>
+            <PanelHead title="Audio devices">
+              <button class="krate-button krate-button-secondary krate-button-sm" type="button" disabled={loading()} onClick={refresh}>
+                <Icon name="lucide:refresh-cw" />
+                Refresh
+              </button>
+            </PanelHead>
+            <div class="panel-body fixed" showIf={!!error()}>
+              <Notice tone="bad" title="Could not list devices" text={error()} />
+            </div>
+            <p class="empty" showIf={!error() && engine().state !== "running"}>
+              The audio engine is not running.
+            </p>
+            <p class="empty" showIf={!error() && engine().state === "running" && loaded() && list().devices.length === 0}>
+              No audio devices found.
+            </p>
+            <div class="scroll" showIf={loaded() && list().devices.length > 0}>
+              <table class="device-table">
+                <thead>
+                  <tr>
+                    <th>Device</th>
+                    <th>Driver</th>
+                    <th>Direction</th>
+                    <th>Channels</th>
+                    <th>Sample rates</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {list().devices.map((d) => (
+                    <tr key={d.id + d.direction}>
+                      <td>
+                        <div class="device-name">
+                          <span>{d.name}</span>
+                          <span class="device-id">{d.id}</span>
+                        </div>
+                      </td>
+                      <td class="num">{d.host}</td>
+                      <td>
+                        <span class="tag">{d.direction}</span>
+                        {d.isDefault && <span class="tag" data-tone="accent">default</span>}
+                      </td>
+                      <td class="num">{d.maxChannels}</td>
+                      <td class="num rates">{formatRates(d.sampleRates)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Panel>
         </div>
-        <p class="empty" showIf={!error() && engine().state !== "running"}>
-          The audio engine is not running.
-        </p>
-        <p class="empty" showIf={!error() && engine().state === "running" && loaded() && list().devices.length === 0}>
-          No audio devices found.
-        </p>
-        <table class="device-table" showIf={loaded() && list().devices.length > 0}>
-          <thead>
-            <tr>
-              <th>Device</th>
-              <th>Driver</th>
-              <th>Direction</th>
-              <th>Channels</th>
-              <th>Sample rates</th>
-            </tr>
-          </thead>
-          <tbody>
-            {list().devices.map((d) => (
-              <tr key={d.id + d.direction}>
-                <td>
-                  <div class="device-name">
-                    <span>{d.name}</span>
-                    <span class="device-id">{d.id}</span>
-                  </div>
-                </td>
-                <td class="num">{d.host}</td>
-                <td>
-                  <span class="tag">{d.direction}</span>
-                  {d.isDefault && <span class="tag" data-tone="accent">default</span>}
-                </td>
-                <td class="num">{d.maxChannels}</td>
-                <td class="num rates">{formatRates(d.sampleRates)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Panel>
+      </div>
     </main>
   );
 }

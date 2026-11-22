@@ -268,8 +268,8 @@ export default function LibraryPage() {
         <Notice tone="warn" title="Some files were not imported" text={importing().errors.join("; ")} />
       </div>
 
-      <div class="library">
-        <aside class="rail" aria-label="Playlists and tags">
+      <div class="fill lib-ws">
+        <aside class="rail" data-hue="library" aria-label="Playlists and tags">
           <div class="rail-group">
             <div class="rail-title">Playlists</div>
             <button class="rail-item" type="button" data-active={playlistId() === 0 ? "true" : "false"} onClick={() => setPlaylistId(0)}>
@@ -338,11 +338,11 @@ export default function LibraryPage() {
           </div>
         </aside>
 
-        <Panel>
+        <Panel hue="library">
           <PanelHead title={playlistId() ? "Playlist" : "Songs"}>
             <span class="muted mono">{songs().length}</span>
           </PanelHead>
-          <div class="panel-body">
+          <div class="panel-body fixed">
             <div class="toolbar">
               <div class="search-box">
                 <Icon name="lucide:search" />
@@ -382,7 +382,7 @@ export default function LibraryPage() {
           </div>
         </Panel>
 
-        <Panel>
+        <Panel hue="library">
           <PanelHead title="Details" />
           <div class="empty-state" showIf={!selected()}>
             <span class="empty-icon">
@@ -399,12 +399,14 @@ export default function LibraryPage() {
               <Field label="Title" htmlFor="song-title">
                 <input id="song-title" class="krate-input" type="text" value={title()} onInput={(e: Event) => setTitle((e.target as HTMLInputElement).value)} />
               </Field>
-              <Field label="Artist" htmlFor="song-artist">
+              <div class="field-row compact">
+                <Field label="Artist" htmlFor="song-artist">
                 <input id="song-artist" class="krate-input" type="text" value={artist()} onInput={(e: Event) => setArtist((e.target as HTMLInputElement).value)} />
               </Field>
-              <Field label="Album" htmlFor="song-album">
+                <Field label="Album" htmlFor="song-album">
                 <input id="song-album" class="krate-input" type="text" value={album()} onInput={(e: Event) => setAlbum((e.target as HTMLInputElement).value)} />
               </Field>
+              </div>
               <button class="krate-button krate-button-secondary" type="button" onClick={saveMeta}>
                 <Icon name="lucide:save" />
                 Save details

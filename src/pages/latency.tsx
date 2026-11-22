@@ -269,9 +269,9 @@ export default function LatencyPage() {
         <Notice tone="warn" title="Output mode changed" text={notice()} />
       </div>
 
-      <div class="grid-2">
-        <div class="stack">
-          <Panel>
+      <div class="fill latency-ws">
+        <div class="col scroll-col">
+          <Panel hue="mixer">
             <PanelHead title="Audio output" />
             <PanelBody>
               <Field label="Output mode" htmlFor="out-mode" hint="Switching restarts the stream.">
@@ -304,7 +304,7 @@ export default function LatencyPage() {
             </PanelBody>
           </Panel>
 
-          <Panel>
+          <Panel hue="mixer">
             <PanelHead title="Metronome" />
             <PanelBody>
               <div class="field-row">
@@ -368,8 +368,8 @@ export default function LatencyPage() {
           </Panel>
         </div>
 
-        <div class="stack">
-          <Panel>
+        <div class="col scroll-col">
+          <Panel hue="mixer">
             <PanelHead title="Button to sound" />
             <PanelBody>
               <div class="readout-grid">
@@ -441,7 +441,7 @@ export default function LatencyPage() {
             </PanelBody>
           </Panel>
 
-          <Panel>
+          <Panel hue="mixer">
             <PanelHead title="Loopback measurement" />
             <PanelBody>
               <Field label="Input" htmlFor="loop-input" hint="Use a cable from an output, or a microphone next to the speaker.">
