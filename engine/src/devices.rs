@@ -70,9 +70,14 @@ pub fn list() -> Result<Value, ProtoError> {
                     Direction::Input => default_input.as_ref() == Some(&id),
                     Direction::Output => default_output.as_ref() == Some(&id),
                 };
-                if let Some(entry) =
-                    describe(&device, direction, &host_key, &id.to_string(), &name, is_default)
-                {
+                if let Some(entry) = describe(
+                    &device,
+                    direction,
+                    &host_key,
+                    &id.to_string(),
+                    &name,
+                    is_default,
+                ) {
                     devices.push(entry);
                 }
             }
@@ -110,15 +115,15 @@ fn describe<D: DeviceTrait>(
                 .any(|c| c.min_sample_rate() <= *rate && *rate <= c.max_sample_rate())
         })
         .collect();
-    if let Some(default) = &default {
-        if !rates.contains(&default.sample_rate()) {
-            rates.push(default.sample_rate());
-            rates.sort_unstable();
-        }
+    if let Some(default) = &default
+        && !rates.contains(&default.sample_rate())
+    {
+        rates.push(default.sample_rate());
+        rates.sort_unstable();
     }
     let buffer = default
         .as_ref()
-        .map(|d| d.buffer_size().clone())
+        .map(|d| *d.buffer_size())
         .or_else(|| configs.first().map(|c| *c.buffer_size()));
     let buffer = match buffer {
         Some(SupportedBufferSize::Range { min, max }) => json!({ "min": min, "max": max }),

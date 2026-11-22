@@ -106,13 +106,13 @@ pub fn handle_line(session: &mut Session, line: &str) -> Option<Outcome> {
 fn dispatch(session: &mut Session, request: &Request) -> Result<Value, ProtoError> {
     match request.method.as_str() {
         "hello" => {
-            if let Some(wanted) = request.params.get("protocol").and_then(Value::as_u64) {
-                if wanted != u64::from(PROTOCOL_VERSION) {
-                    return Err(ProtoError::new(
-                        "unsupported_version",
-                        format!("host wants protocol {wanted}, engine speaks {PROTOCOL_VERSION}"),
-                    ));
-                }
+            if let Some(wanted) = request.params.get("protocol").and_then(Value::as_u64)
+                && wanted != u64::from(PROTOCOL_VERSION)
+            {
+                return Err(ProtoError::new(
+                    "unsupported_version",
+                    format!("host wants protocol {wanted}, engine speaks {PROTOCOL_VERSION}"),
+                ));
             }
             session.greeted = true;
             Ok(json!({
