@@ -1,7 +1,7 @@
 import { createSignal, createEffect, onMount, onCleanup } from "@krate/runtime";
 import {
   PlayerOpen,
-  PlayerClose,
+  PlayerCurrent,
   PlayerPlay,
   PlayerPause,
   PlayerSeek,
@@ -24,27 +24,10 @@ import { Select } from "../components/ui/select";
 import { Notice } from "../components/ui/notice";
 import { Readout } from "../components/ui/readout";
 import { barAndBeat, formatClock, type SnapMode } from "../lib/waveform";
+import { emptyPlayer } from "../lib/player";
+import { PlayGlyph } from "../components/ui/glyphs";
 import { logger } from "../lib/logger";
 import type { PlayerState, Section } from "../lib/types";
-
-const emptyState: PlayerState = {
-  loaded: false,
-  songId: 0,
-  title: "",
-  artist: "",
-  path: "",
-  durationMs: 0,
-  positionMs: 0,
-  playing: false,
-  loops: 0,
-  speed: 1,
-  pitch: 0,
-  volume: 0.9,
-  loop: { startMs: 0, endMs: 0, enabled: false },
-  countIn: 0,
-  grid: { bpm: 0, offsetMs: 0, beatsPerBar: 4, downbeat: 0, confidence: 0, userEdited: false, found: false },
-  error: "",
-};
 
 const SNAPS = [
   { value: "beat", label: "Snap to beats" },
@@ -67,7 +50,7 @@ function describe(e: unknown): string {
 }
 
 export default function PlayerPage() {
-  const [st, setSt] = createSignal<PlayerState>(emptyState);
+  const [st, setSt] = createSignal<PlayerState>(emptyPlayer);
   const [peaks, setPeaks] = createSignal<number[]>([]);
   const [error, setError] = createSignal("");
   const [info, setInfo] = createSignal("");
@@ -120,26 +103,25 @@ export default function PlayerPage() {
 
   onMount(async () => {
     const id = Number(new URLSearchParams(location.search).get("song") || 0);
-    if (!id) {
-      setOpening(false);
-      setError("Choose a song in the Library and press Open in player.");
-      return;
-    }
     try {
-      const opened = await PlayerOpen(id);
-      setPeaks(opened.peaks);
-      syncGridFields(opened.grid);
-      await loadSections();
+      const restored = await PlayerCurrent();
+      const live = PlayerStream() || st();
+      if (live.loaded && (!id || live.songId === id)) {
+        setPeaks(restored.peaks);
+        syncGridFields(restored.grid);
+        await loadSections();
+      } else if (id) {
+        const opened = await PlayerOpen(id);
+        setPeaks(opened.peaks);
+        syncGridFields(opened.grid);
+        await loadSections();
+      }
     } catch (e) {
       logger.error("could not open the song", e);
       setError(describe(e));
     } finally {
       setOpening(false);
     }
-  });
-
-  onCleanup(() => {
-    PlayerClose().catch(() => undefined);
   });
 
   function onKey(e: KeyboardEvent) {
@@ -226,94 +208,118 @@ export default function PlayerPage() {
 
   return (
     <main class="page">
-      <div class="page-head">
+      <header class="page-head">
         <div>
-          <h1 class="page-title">{st().title || "Player"}</h1>
-          <p class="page-sub">{st().artist || "Loop a section, slow it down and practise it."}</p>
+          <h1 class="page-title">
+            <Icon name="lucide:audio-waveform" />
+            <span class="page-title-text">{st().loaded ? st().title : "Player"}</span>
+          </h1>
+          <p class="page-sub" showIf={st().loaded && !!st().artist}>
+            {st().artist}
+          </p>
         </div>
         <div class="actions">
           <Link class="krate-button krate-button-secondary" href="/library">
-            <Icon name="lucide:library" />
+            <Icon name="lucide:library-big" />
             Library
           </Link>
         </div>
-      </div>
+      </header>
 
       <div showIf={!!error()}>
-        <Notice tone="bad" title="Player" text={error()} />
+        <Notice tone="bad" text={error()} />
       </div>
       <div showIf={!!info() && !error()}>
-        <Notice tone="ok" title="Player" text={info()} />
+        <Notice tone="ok" text={info()} />
       </div>
       <div showIf={opening()}>
-        <Notice tone="info" title="Opening the song" text="Decoding and analysing the audio." />
+        <Notice tone="info" text="Decoding and analysing the audio." />
       </div>
 
-      <div class="player-readouts">
-        <Readout label="Tempo" size="display" value={st().grid.bpm > 0 ? (st().grid.bpm * st().speed).toFixed(1) : "-"} />
-        <Readout label="Position" size="display" value={formatClock(st().positionMs)} />
-        <Readout label="Bar . beat" size="display" value={st().grid.bpm > 0 ? barAndBeat(st().positionMs, st().grid).bar + " . " + barAndBeat(st().positionMs, st().grid).beat : "-"} />
-        <Readout label="Speed" size="display" value={Math.round(st().speed * 100) + "%"} />
-        <Readout label="Loop" size="display" value={st().loop.enabled ? "On " + st().loops : "Off"} />
+      <div showIf={!st().loaded && !opening()}>
+        <Panel>
+        <div class="empty-state">
+          <span class="empty-icon">
+            <Icon name="lucide:audio-waveform" />
+          </span>
+          <span class="empty-title">No song loaded</span>
+          <Link class="krate-button krate-button-primary" href="/library">
+            <Icon name="lucide:library-big" />
+            Choose from the library
+          </Link>
+        </div>
+        </Panel>
       </div>
 
-      <Panel>
-        <PanelHead title="Waveform">
-          <div class="actions">
-            <Select id="snap" label="Snapping" value={snap()} options={SNAPS} onChange={(v) => setSnap(v as SnapMode)} />
-          </div>
-        </PanelHead>
-        <PanelBody>
-          <Waveform
-            peaks={peaks()}
-            durationMs={st().durationMs}
-            positionMs={st().positionMs}
-            loopStart={st().loop.startMs}
-            loopEnd={st().loop.endMs}
-            loopOn={st().loop.enabled}
-            gridBpm={st().grid.bpm}
-            gridOffset={st().grid.offsetMs}
-            gridBeats={st().grid.beatsPerBar}
-            gridDownbeat={st().grid.downbeat}
-            snap={snap()}
-            onSeek={(ms) => guard(() => PlayerSeek(ms))}
-            onLoop={(s, e) => setLoop(s, e)}
-          />
-          <div class="transport">
-            <button class="krate-button krate-button-primary press-target" type="button" disabled={!st().loaded} onClick={togglePlay}>
-              {st().playing ? "Pause" : "Play"}
-            </button>
-            <button class="krate-button krate-button-secondary" type="button" disabled={!st().loaded} onClick={() => guard(() => PlayerSeek(st().loop.enabled ? st().loop.startMs : 0))}>
-              <Icon name="lucide:skip-back" />
-              {st().loop.enabled ? "Loop start" : "Start"}
-            </button>
-            <button class="krate-button krate-button-secondary" type="button" disabled={!st().loaded} onClick={toggleLoop}>
-              <Icon name="lucide:repeat" />
-              {st().loop.enabled ? "Loop on" : "Loop off"}
-            </button>
-            <button class="krate-button krate-button-ghost" type="button" disabled={!st().loaded} onClick={clearLoop}>
-              Clear loop
-            </button>
-            <Select
-              id="count-in"
-              label="Count-in"
-              value={String(st().countIn)}
-              options={COUNT_INS}
-              onChange={(v) => guard(() => PlayerSetCountIn(Number(v)))}
-            />
-          </div>
-          <p class="field-hint">
-            Drag on the waveform to choose a loop, drag its edges to adjust, click to move the playhead. Hold Alt to ignore snapping. Space plays and pauses.
-          </p>
-        </PanelBody>
-      </Panel>
+      <div class="stat-strip" showIf={st().loaded}>
+        <div class="stat">
+          <Readout label="Tempo" size="display" value={st().grid.bpm > 0 ? (st().grid.bpm * st().speed).toFixed(1) : "-"} />
+        </div>
+        <div class="stat">
+          <Readout label="Position" size="display" value={formatClock(st().positionMs)} />
+        </div>
+        <div class="stat">
+          <Readout label="Bar and beat" size="display" value={st().grid.bpm > 0 ? barAndBeat(st().positionMs, st().grid).bar + " : " + barAndBeat(st().positionMs, st().grid).beat : "-"} />
+        </div>
+        <div class="stat">
+          <Readout label="Speed" size="display" value={Math.round(st().speed * 100) + "%"} />
+        </div>
+        <div class="stat">
+          <Readout label="Loop" size="display" value={st().loop.enabled ? "On, " + st().loops : "Off"} />
+        </div>
+      </div>
 
-      <div class="grid-2">
+      <div class="player" showIf={st().loaded}>
         <div class="stack">
+          <Panel>
+            <PanelHead title="Waveform">
+              <Select id="snap" label="Snapping" value={snap()} options={SNAPS} onChange={(v) => setSnap(v as SnapMode)} />
+            </PanelHead>
+            <PanelBody>
+              <Waveform
+                peaks={peaks()}
+                durationMs={st().durationMs}
+                positionMs={st().positionMs}
+                loopStart={st().loop.startMs}
+                loopEnd={st().loop.endMs}
+                loopOn={st().loop.enabled}
+                gridBpm={st().grid.bpm}
+                gridOffset={st().grid.offsetMs}
+                gridBeats={st().grid.beatsPerBar}
+                gridDownbeat={st().grid.downbeat}
+                snap={snap()}
+                onSeek={(ms) => guard(() => PlayerSeek(ms))}
+                onLoop={(s, e) => setLoop(s, e)}
+              />
+              <div class="transport">
+                <button class="krate-button krate-button-primary krate-button-lg" type="button" aria-label="Play or pause" disabled={!st().loaded} onClick={togglePlay}>
+                  <PlayGlyph on={st().playing} offLabel="Play" onLabel="Pause" />
+                </button>
+                <button class="krate-button krate-button-secondary" type="button" disabled={!st().loaded} onClick={() => guard(() => PlayerSeek(st().loop.enabled ? st().loop.startMs : 0))}>
+                  <Icon name="lucide:skip-back" />
+                  Restart
+                </button>
+                <button class="krate-button krate-button-secondary" type="button" disabled={!st().loaded} onClick={toggleLoop}>
+                  <Icon name="lucide:repeat" />
+                  Loop
+                </button>
+                <button class="krate-button krate-button-ghost" type="button" disabled={!st().loaded} onClick={clearLoop}>
+                  <Icon name="lucide:x" />
+                  Clear
+                </button>
+                <span class="spacer" />
+                <Select id="count-in" label="Count-in" value={String(st().countIn)} options={COUNT_INS} onChange={(v) => guard(() => PlayerSetCountIn(Number(v)))} />
+              </div>
+              <p class="field-hint">
+                Drag on the waveform to set a loop. Hold <span class="kbd">Alt</span> to skip snapping, press <span class="kbd">Space</span> to play or pause.
+              </p>
+            </PanelBody>
+          </Panel>
+
           <Panel>
             <PanelHead title="Speed and pitch" />
             <PanelBody>
-              <Field label={"Speed " + speedShown() + "%"} htmlFor="speed" hint="Changes tempo without changing pitch.">
+              <Field label={"Speed " + speedShown() + "%"} htmlFor="speed">
                 <input
                   id="speed"
                   class="range"
@@ -321,20 +327,19 @@ export default function PlayerPage() {
                   min="25"
                   max="200"
                   step="1"
-                 
                   value={String(speedShown())}
                   onInput={(e: Event) => setSpeedShown(Number((e.target as HTMLInputElement).value))}
                   onChange={(e: Event) => guard(() => PlayerSetSpeed(Number((e.target as HTMLInputElement).value) / 100))}
                 />
               </Field>
-              <div class="detail-actions">
+              <div class="segmented">
                 {PRESETS.map((p) => (
-                  <button class="krate-button krate-button-secondary krate-button-sm" type="button" key={p} onClick={() => guard(() => PlayerSetSpeed(p / 100))}>
+                  <button class="segment" type="button" key={p} data-active={speedShown() === p ? "true" : "false"} onClick={() => guard(() => PlayerSetSpeed(p / 100))}>
                     {p + "%"}
                   </button>
                 ))}
               </div>
-              <Field label={"Pitch " + (pitchShown() > 0 ? "+" : "") + pitchShown() + " semitones"} htmlFor="pitch" hint="Changes the key without changing tempo.">
+              <Field label={"Pitch " + (pitchShown() > 0 ? "+" : "") + pitchShown() + " semitones"} htmlFor="pitch">
                 <input
                   id="pitch"
                   class="range"
@@ -348,7 +353,8 @@ export default function PlayerPage() {
                 />
               </Field>
               <div class="detail-actions">
-                <button class="krate-button krate-button-ghost krate-button-sm" type="button" onClick={() => guard(() => PlayerSetPitch(0))}>
+                <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={() => guard(() => PlayerSetPitch(0))}>
+                  <Icon name="lucide:rotate-ccw" />
                   Reset pitch
                 </button>
               </div>
@@ -366,10 +372,59 @@ export default function PlayerPage() {
               </Field>
             </PanelBody>
           </Panel>
+        </div>
+
+        <div class="stack">
+          <Panel>
+            <PanelHead title="Sections" />
+            <p class="empty" showIf={sections().length === 0}>
+              No saved sections yet.
+            </p>
+            <div class="song-list">
+              {sections().map((s) => (
+                <div class="section-row" key={s.id}>
+                  <button class="section-main" type="button" onClick={() => applySection(s)}>
+                    <span class="song-title">{s.name}</span>
+                    <span class="song-sub mono">{formatClock(s.startMs) + " to " + formatClock(s.endMs)}</span>
+                  </button>
+                  <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label={"Delete " + s.name} onClick={() => guard(async () => { await PlayerDeleteSection(s.id); await loadSections(); })}>
+                    <Icon name="lucide:x" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <PanelBody>
+              <div class="tag-row">
+                {SECTION_NAMES.map((n) => (
+                  <button class="tag-button" type="button" key={n} onClick={() => setSectionName(n)}>
+                    {n}
+                  </button>
+                ))}
+              </div>
+              <div class="inline-form">
+                <input
+                  class="krate-input"
+                  type="text"
+                  placeholder="Section name"
+                  aria-label="Section name"
+                  value={sectionName()}
+                  onInput={(e: Event) => setSectionName((e.target as HTMLInputElement).value)}
+                  onKeyDown={(e: KeyboardEvent) => {
+                    if (e.key === "Enter") saveSection();
+                  }}
+                />
+                <button class="krate-button krate-button-secondary" type="button" disabled={!st().loop.enabled} onClick={saveSection}>
+                  <Icon name="lucide:bookmark" />
+                  Save
+                </button>
+              </div>
+            </PanelBody>
+          </Panel>
 
           <Panel>
             <PanelHead title="Beat grid">
               <button class="krate-button krate-button-secondary krate-button-sm" type="button" disabled={!st().loaded} onClick={detectGrid}>
+                <Icon name="lucide:scan-search" />
                 Detect
               </button>
             </PanelHead>
@@ -386,66 +441,21 @@ export default function PlayerPage() {
                 <Field label="Beats per bar" htmlFor="grid-beats">
                   <input id="grid-beats" class="krate-input" type="number" min="1" max="32" step="1" value={String(beatsEdit())} onInput={(e: Event) => setBeatsEdit(Number((e.target as HTMLInputElement).value))} />
                 </Field>
-                <Field label="Bar starts on beat" htmlFor="grid-down" hint="0 is the first beat of the grid.">
+                <Field label="Bar starts on beat" htmlFor="grid-down">
                   <input id="grid-down" class="krate-input" type="number" min="0" max="31" step="1" value={String(downbeatEdit())} onInput={(e: Event) => setDownbeatEdit(Number((e.target as HTMLInputElement).value))} />
                 </Field>
               </div>
               <div class="detail-actions">
                 <button class="krate-button krate-button-primary" type="button" disabled={!st().loaded} onClick={applyGrid}>
-                  Apply grid
+                  <Icon name="lucide:check" />
+                  Apply
                 </button>
                 <button class="krate-button krate-button-secondary" type="button" disabled={!st().loaded} onClick={markBeatOne}>
-                  Beat one is at the playhead
+                  <Icon name="lucide:flag" />
+                  Beat one here
                 </button>
               </div>
-              <p class="field-hint">{st().grid.found ? (st().grid.userEdited ? "Set by hand." : "Detected, confidence " + Math.round(st().grid.confidence * 100) + "%.") : "No tempo yet. Detect it or enter it by hand."}</p>
-            </PanelBody>
-          </Panel>
-        </div>
-
-        <div class="stack">
-          <Panel>
-            <PanelHead title="Sections" />
-            <PanelBody>
-              <p class="empty" showIf={sections().length === 0}>
-                Save loops here, for example Verse, Chorus or Fill.
-              </p>
-              <div class="song-list">
-                {sections().map((s) => (
-                  <div class="section-row" key={s.id}>
-                    <button class="section-main" type="button" onClick={() => applySection(s)}>
-                      <span class="song-title">{s.name}</span>
-                      <span class="song-sub mono">{formatClock(s.startMs) + " to " + formatClock(s.endMs)}</span>
-                    </button>
-                    <button class="krate-button krate-button-ghost krate-button-sm" type="button" aria-label={"Delete " + s.name} onClick={() => guard(async () => { await PlayerDeleteSection(s.id); await loadSections(); })}>
-                      <Icon name="lucide:x" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <div class="tag-row">
-                {SECTION_NAMES.map((n) => (
-                  <button class="tag-button" type="button" key={n} onClick={() => setSectionName(n)}>
-                    {n}
-                  </button>
-                ))}
-              </div>
-              <div class="toolbar">
-                <input
-                  class="krate-input grow"
-                  type="text"
-                  placeholder="Section name"
-                  aria-label="Section name"
-                  value={sectionName()}
-                  onInput={(e: Event) => setSectionName((e.target as HTMLInputElement).value)}
-                  onKeyDown={(e: KeyboardEvent) => {
-                    if (e.key === "Enter") saveSection();
-                  }}
-                />
-                <button class="krate-button krate-button-secondary" type="button" disabled={!st().loop.enabled} onClick={saveSection}>
-                  Save loop
-                </button>
-              </div>
+              <p class="field-hint">{st().grid.found ? (st().grid.userEdited ? "Set by hand." : "Detected, confidence " + Math.round(st().grid.confidence * 100) + "%.") : "No tempo yet."}</p>
             </PanelBody>
           </Panel>
         </div>

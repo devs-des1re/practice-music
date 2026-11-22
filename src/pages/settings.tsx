@@ -252,26 +252,30 @@ export default function SettingsPage() {
 
   return (
     <main class="page">
-      <div class="page-head">
-        <div>
-          <h1 class="page-title">Settings</h1>
-          <p class="page-sub">Audio devices, library folders and appearance. Nothing changes until you save.</p>
+      <header class="page-head">
+        <h1 class="page-title">
+          <Icon name="lucide:settings" />
+          Settings
+        </h1>
+        <div class="actions">
+          <Link class="krate-button krate-button-secondary" href="/latency">
+            <Icon name="lucide:timer" />
+            Latency tools
+          </Link>
         </div>
-      </div>
+      </header>
 
       <div showIf={!!notice()}>
         <Notice tone="warn" title="Settings were reset" text={notice()} />
       </div>
       <div showIf={!!error()}>
-        <Notice tone="bad" title="Something went wrong" text={error()} />
+        <Notice tone="bad" text={error()} />
       </div>
       <div showIf={!!devicesError()}>
         <Notice tone="warn" title="Device list unavailable" text={devicesError()} />
       </div>
       <div showIf={engine().state !== "running"}>
-        <Notice tone="warn" title="Audio engine is not running">
-          Device pickers fill in once the engine is up. Saved choices are kept.
-        </Notice>
+        <Notice tone="warn" text="The audio engine is not running. Device lists fill in once it is up, and saved choices are kept." />
       </div>
 
       <p class="empty" showIf={!draft() && !error()}>
@@ -287,7 +291,7 @@ export default function SettingsPage() {
             </button>
           </PanelHead>
           <PanelBody>
-          <Field label="Driver" htmlFor="audio-host" hint="Automatic uses the platform default. Choose ASIO, JACK or PipeWire for low latency.">
+          <Field label="Driver" htmlFor="audio-host" hint="Choose ASIO, JACK or PipeWire for the lowest latency.">
             <Select
               id="audio-host"
               value={draft()?.audio.host || ""}
@@ -310,7 +314,6 @@ export default function SettingsPage() {
           <Field
             label="Amp output"
             htmlFor="audio-output"
-            hint="The device that feeds your drum amp."
             warning={missing("output", draft()?.audio.outputDevice || "")}
           >
             <Select
@@ -323,7 +326,7 @@ export default function SettingsPage() {
           <Field
             label="Monitor output"
             htmlFor="audio-monitor"
-            hint="Headphones or a second output for the monitor mix. Leave on default to play the monitor mix on the amp output."
+            hint="Headphones or a second output for the monitor mix."
             warning={missing("output", draft()?.audio.monitorDevice || "")}
           >
             <Select
@@ -336,7 +339,7 @@ export default function SettingsPage() {
           <Field
             label="Input"
             htmlFor="audio-input"
-            hint="Your kit or audio interface. Its channels feed the mixer input strips. Nothing is opened until you choose one."
+            hint="Your kit or audio interface. It feeds the mixer input strips."
             warning={missing("input", draft()?.audio.inputDevice || "")}
           >
             <Select
@@ -384,7 +387,7 @@ export default function SettingsPage() {
                     {f}
                   </span>
                   <button
-                    class="krate-button krate-button-ghost krate-button-sm"
+                    class="krate-button krate-button-ghost krate-button-icon krate-button-sm"
                     type="button"
                     aria-label={"Remove " + f}
                     onClick={() => edit((s) => s.library.folders.splice(i, 1))}
@@ -395,19 +398,19 @@ export default function SettingsPage() {
               ))}
             </div>
             <p class="empty" showIf={(draft()?.library.folders.length ?? 1) === 0}>
-              No library folder yet. Add one to keep downloaded songs.
+              No library folder yet.
             </p>
             <Toggle
               id="library-normalize"
               label="Normalise loudness on import"
-              hint="Applies when songs are added to the library."
+              hint="Applies as songs are added."
               checked={!!draft()?.library.normalizeOnImport}
               onChange={(v) => edit((s) => (s.library.normalizeOnImport = v))}
             />
             <Toggle
               id="library-tool-updates"
               label="Update yt-dlp automatically"
-              hint="Checks for a newer release when the app starts. Only applies to the copy PracticeMusic manages."
+              hint="Only for the copy PracticeMusic manages."
               checked={!draft()?.library.disableToolUpdates}
               onChange={(v) => edit((s) => (s.library.disableToolUpdates = !v))}
             />
@@ -417,7 +420,7 @@ export default function SettingsPage() {
           <Panel>
             <PanelHead title="Appearance" />
             <PanelBody>
-            <Field label="Interface size" htmlFor="ui-scale" hint="Scales text and controls. Takes effect when saved.">
+            <Field label="Interface size" htmlFor="ui-scale">
               <Select
                 id="ui-scale"
                 value={String(draft()?.appearance.uiScale || 100)}
@@ -431,9 +434,6 @@ export default function SettingsPage() {
           <Panel>
             <PanelHead title="Backup" />
             <PanelBody>
-              <p class="field-hint">
-                Export your settings, mixer, metronome and scenes to a file, or bring them in on another computer. Audio devices that are not connected here are cleared on import.
-              </p>
               <div class="detail-actions">
                 <button class="krate-button krate-button-secondary" type="button" onClick={exportAll}>
                   <Icon name="lucide:download" />
@@ -445,7 +445,7 @@ export default function SettingsPage() {
                 </button>
               </div>
               <div showIf={!!transferInfo()}>
-                <Notice tone="ok" title="Backup" text={transferInfo()} />
+                <Notice tone="ok" text={transferInfo()} />
               </div>
               <div showIf={!!transferNotes()}>
                 <Notice tone="warn" title="Check these" text={transferNotes()} />
@@ -464,9 +464,11 @@ export default function SettingsPage() {
         </span>
         <div class="actions">
           <button class="krate-button krate-button-ghost" type="button" disabled={!dirty() || busy()} onClick={discard}>
+            <Icon name="lucide:undo-2" />
             Discard
           </button>
           <button class="krate-button krate-button-primary" type="button" disabled={!dirty() || busy()} onClick={save}>
+            <Icon name="lucide:save" />
             Save settings
           </button>
         </div>

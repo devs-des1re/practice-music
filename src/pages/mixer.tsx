@@ -231,69 +231,69 @@ export default function MixerPage() {
 
   return (
     <main class="page">
-      <div class="page-head">
-        <div>
-          <h1 class="page-title">Mixer</h1>
-          <p class="page-sub">Song, click and kit inputs, with a main mix for the amp and a monitor mix for headphones.</p>
-        </div>
+      <header class="page-head">
+        <h1 class="page-title">
+          <Icon name="lucide:sliders-vertical" />
+          Mixer
+        </h1>
         <div class="actions">
           <button class="krate-button krate-button-secondary" type="button" onClick={() => guard(() => ResetMeters())}>
+            <Icon name="lucide:eraser" />
             Clear clip lights
           </button>
-          <button class="krate-button krate-button-ghost" type="button" onClick={resetAll}>
+          <button class="krate-button krate-button-secondary" type="button" onClick={resetAll}>
+            <Icon name="lucide:rotate-ccw" />
             Reset mixer
           </button>
         </div>
-      </div>
+      </header>
 
       <div showIf={!!error()}>
-        <Notice tone="bad" title="Mixer" text={error()} />
+        <Notice tone="bad" text={error()} />
       </div>
       <div showIf={!!info() && !error()}>
-        <Notice tone="ok" title="Mixer" text={info()} />
+        <Notice tone="ok" text={info()} />
       </div>
       <div showIf={!audio().running && !error()}>
-        <Notice tone="info" title="Audio engine" text="Starting the audio engine. Faders work now and take effect as soon as it is running." />
+        <Notice tone="info" text="Starting the audio engine. Faders already work." />
       </div>
 
-      <Panel>
-        <PanelHead title="Scenes">
+      <div class="scenebar">
+        <div class="scene-list">
+          <span class="muted">Scenes</span>
+          {scenes().length === 0 ? <span class="field-hint">None saved yet</span> : null}
+          {scenes().map((sc) => (
+            <button class="scene-button" type="button" key={sc.id} data-active={active().id === sc.id ? "true" : "false"} onClick={() => recall(sc.id)}>
+              {sc.name}
+            </button>
+          ))}
           <LiveText class="scene-status mono" text={statusText()} />
-        </PanelHead>
-        <PanelBody>
-          <div class="scene-list">
-            {scenes().length === 0 ? <span class="empty">Save the current mix, routing and metronome as a scene, for example Lesson, Solo practice or Headphones only.</span> : null}
-            {scenes().map((sc) => (
-              <button class="scene-button" type="button" key={sc.id} data-active={active().id === sc.id ? "true" : "false"} onClick={() => recall(sc.id)}>
-                {sc.name}
-              </button>
-            ))}
-          </div>
-          <div class="toolbar">
-            <input
-              class="krate-input grow"
-              type="text"
-              placeholder="Scene name"
-              aria-label="Scene name"
-              maxLength={40}
-              value={sceneName()}
-              onInput={(e: Event) => setSceneName((e.target as HTMLInputElement).value)}
-              onKeyDown={(e: KeyboardEvent) => {
-                if (e.key === "Enter") saveAs();
-              }}
-            />
-            <button class="krate-button krate-button-primary" type="button" onClick={saveAs}>
-              Save as scene
-            </button>
-            <button class="krate-button krate-button-secondary" type="button" disabled={active().id === 0 || !active().modified} onClick={updateActive}>
-              Update current
-            </button>
-            <button class="krate-button krate-button-ghost" type="button" disabled={active().id === 0} onClick={removeActive}>
-              Delete
-            </button>
-          </div>
-        </PanelBody>
-      </Panel>
+        </div>
+        <div class="scene-form">
+          <input
+            class="krate-input"
+            type="text"
+            placeholder="Scene name"
+            aria-label="Scene name"
+            maxLength={40}
+            value={sceneName()}
+            onInput={(e: Event) => setSceneName((e.target as HTMLInputElement).value)}
+            onKeyDown={(e: KeyboardEvent) => {
+              if (e.key === "Enter") saveAs();
+            }}
+          />
+          <button class="krate-button krate-button-primary" type="button" onClick={saveAs}>
+            <Icon name="lucide:save" />
+            Save
+          </button>
+          <button class="krate-button krate-button-secondary krate-button-icon" type="button" aria-label="Update the current scene" disabled={active().id === 0 || !active().modified} onClick={updateActive}>
+            <Icon name="lucide:refresh-cw" />
+          </button>
+          <button class="krate-button krate-button-destructive krate-button-icon" type="button" aria-label="Delete the current scene" disabled={active().id === 0} onClick={removeActive}>
+            <Icon name="lucide:trash-2" />
+          </button>
+        </div>
+      </div>
 
       <div class="mixer">
         <div class="strips">
@@ -340,7 +340,7 @@ export default function MixerPage() {
                   aria-label={"Mute " + s.name}
                   onClick={() => patchStrip(s.index, (x) => ({ ...x, mute: !x.mute }))}
                 >
-                  M
+                  <Icon name="lucide:volume-x" />
                 </button>
                 <button
                   class="strip-toggle"
@@ -351,7 +351,7 @@ export default function MixerPage() {
                   aria-label={"Solo " + s.name}
                   onClick={() => patchStrip(s.index, (x) => ({ ...x, solo: !x.solo }))}
                 >
-                  S
+                  <Icon name="lucide:headphones" />
                 </button>
               </div>
 
@@ -531,7 +531,7 @@ export default function MixerPage() {
         <Panel>
           <PanelHead title="Outputs" />
           <PanelBody>
-            <Field label="Main mix goes to" htmlFor="main-pair" hint={audio().running ? "On " + (audio().device || "the output device") + ". Choose the pair that feeds your amp." : "Start the audio engine to see the output channels."}>
+            <Field label="Main mix" htmlFor="main-pair" hint={audio().running ? "On " + (audio().device || "the output device") : "Waiting for the audio engine."}>
               <Select
                 id="main-pair"
                 label="Main output channels"
@@ -541,13 +541,9 @@ export default function MixerPage() {
               />
             </Field>
             <Field
-              label="Monitor mix goes to"
+              label="Monitor mix"
               htmlFor="monitor-pair"
-              hint={
-                mon() && mon().mode === "device"
-                  ? "On " + (mon().device || "the monitor device") + "."
-                  : "No separate monitor device is chosen, so the monitor mix plays on the main output. Pick a monitor device in Settings, or use another channel pair here."
-              }
+              hint={mon() && mon().mode === "device" ? "On " + (mon().device || "the monitor device") : "No monitor device chosen, so it plays on the main output."}
             >
               <Select
                 id="monitor-pair"
@@ -561,13 +557,18 @@ export default function MixerPage() {
               {"Monitor output: " + (mon() ? mon().error : "")}
             </p>
             <p class="field-warn" showIf={!!mon() && mon().rateMismatch}>
-              The monitor device runs at a different sample rate, so its audio is converted with basic interpolation. Set both devices to the same rate for the best quality.
+              The monitor device runs at a different sample rate. Set both devices to the same rate for the best quality.
             </p>
           </PanelBody>
         </Panel>
 
         <Panel>
-          <PanelHead title="Latency" />
+          <PanelHead title="Latency">
+            <Link class="krate-button krate-button-secondary krate-button-sm" href="/latency">
+              <Icon name="lucide:timer" />
+              Tools
+            </Link>
+          </PanelHead>
           <PanelBody>
             <div class="latency-lines">
               <div class="latency-line">
@@ -587,13 +588,6 @@ export default function MixerPage() {
                 <LiveText class="mono" text={latMonitor()} />
               </div>
             </div>
-            <p class="field-hint">
-              Separate input and monitor devices run on their own clocks and add buffering of their own. Measure the real round trip on the Latency page.
-            </p>
-            <Link class="krate-button krate-button-secondary" href="/latency">
-              <Icon name="lucide:timer" />
-              Open the latency tools
-            </Link>
           </PanelBody>
         </Panel>
       </div>

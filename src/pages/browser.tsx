@@ -66,7 +66,7 @@ export default function BrowserPage() {
     setInfo("");
     try {
       await EnqueueDownload(current(), format(), quality());
-      setInfo("Added to the download queue. Open the Downloads page to follow it.");
+      setInfo("Added to the download queue.");
     } catch (e) {
       setError(describe(e));
     }
@@ -74,27 +74,24 @@ export default function BrowserPage() {
 
   return (
     <main class="page">
-      <div class="page-head">
-        <div>
-          <h1 class="page-title">Browser</h1>
-          <p class="page-sub">Find a song on any site, then send the page you are on to the downloader.</p>
-        </div>
-      </div>
+      <header class="page-head">
+        <h1 class="page-title">
+          <Icon name="lucide:globe" />
+          Browser
+        </h1>
+      </header>
 
       <div showIf={!!error()}>
-        <Notice tone="bad" title="Browser" text={error()} />
+        <Notice tone="bad" text={error()} />
       </div>
       <div showIf={!!info()}>
-        <Notice tone="ok" title="Downloads" text={info()} />
+        <Notice tone="ok" text={info()} />
       </div>
       <div showIf={!pane().open && !error()}>
-        <Notice tone="info" title="Opening the browser pane">
-          The pane appears on the right of the window.
-        </Notice>
+        <Notice tone="info" text="Opening the browser pane on the right of the window." />
       </div>
 
       <Panel>
-        <PanelHead title="Address" />
         <PanelBody>
           <div class="address-bar">
             <button class="krate-button krate-button-ghost krate-button-icon" type="button" aria-label="Home" disabled={!pane().open} onClick={() => go(HOME)}>
@@ -103,18 +100,22 @@ export default function BrowserPage() {
             <button class="krate-button krate-button-ghost krate-button-icon" type="button" aria-label="Reload" disabled={!pane().open} onClick={() => go(current())}>
               <Icon name="lucide:rotate-cw" />
             </button>
-            <input
-              class="krate-input grow"
-              type="text"
-              aria-label="Address"
-              placeholder="Search or enter a site"
-              value={address()}
-              onInput={(e: Event) => setAddress((e.target as HTMLInputElement).value)}
-              onKeyDown={(e: KeyboardEvent) => {
-                if (e.key === "Enter") go(address());
-              }}
-            />
+            <div class="search-box grow">
+              <Icon name="lucide:globe" />
+              <input
+                class="krate-input"
+                type="text"
+                aria-label="Address"
+                placeholder="Search or enter a site"
+                value={address()}
+                onInput={(e: Event) => setAddress((e.target as HTMLInputElement).value)}
+                onKeyDown={(e: KeyboardEvent) => {
+                  if (e.key === "Enter") go(address());
+                }}
+              />
+            </div>
             <button class="krate-button krate-button-secondary" type="button" disabled={!pane().open} onClick={() => go(address())}>
+              <Icon name="lucide:arrow-right" />
               Go
             </button>
           </div>
@@ -124,6 +125,7 @@ export default function BrowserPage() {
       <Panel>
         <PanelHead title="Download this page" />
         <PanelBody>
+          <p class="field-hint mono">{current()}</p>
           <div class="field-row">
             <Field label="Format" htmlFor="br-format">
               <Select
@@ -162,16 +164,13 @@ export default function BrowserPage() {
               />
             </Field>
           </div>
-          <p class="field-hint mono">{current()}</p>
           <div class="actions">
             <button class="krate-button krate-button-primary" type="button" disabled={!pane().open} onClick={download}>
               <Icon name="lucide:download" />
               Download
             </button>
           </div>
-          <p class="field-hint">
-            Only https pages open in the pane. Links to other schemes open in your system browser. Download only what you have the right to keep.
-          </p>
+          <p class="field-hint">Download only what you have the right to keep.</p>
         </PanelBody>
       </Panel>
     </main>

@@ -16,6 +16,7 @@ import {
 import { Panel, PanelHead, PanelBody } from "../components/ui/panel";
 import { Field } from "../components/ui/field";
 import { Select } from "../components/ui/select";
+import { RunGlyph } from "../components/ui/glyphs";
 import { Notice } from "../components/ui/notice";
 import { Readout } from "../components/ui/readout";
 import { LiveText } from "../components/ui/live-text";
@@ -89,7 +90,6 @@ export default function MetronomePage() {
   const [volumeShown, setVolumeShown] = createSignal(50);
   const [subShown, setSubShown] = createSignal(55);
   const [polyShown, setPolyShown] = createSignal(80);
-  const [taps, setTaps] = createSignal(0);
   const [numberText, setNumberText] = createSignal("-");
   const [captionText, setCaptionText] = createSignal("Press Start or the space bar");
 
@@ -191,7 +191,6 @@ export default function MetronomePage() {
     guard(async () => {
       await ensureAudio();
       const res = await TapTempo();
-      setTaps(res.taps);
       if (res.found) {
         setCfg({ ...cfg(), bpm: res.bpm });
       }
@@ -249,66 +248,77 @@ export default function MetronomePage() {
 
   return (
     <main class="page">
-      <div class="page-head">
-        <div>
-          <h1 class="page-title">Metronome</h1>
-          <p class="page-sub">Accents, subdivisions, polyrhythms and silent bars, routed through the mixer.</p>
+      <header class="page-head">
+        <h1 class="page-title">
+          <Icon name="lucide:metronome" />
+          Metronome
+        </h1>
+        <div class="actions">
+          <span class="kbd">Space</span>
+          <span class="muted">start</span>
+          <span class="kbd">T</span>
+          <span class="muted">tap</span>
+          <span class="kbd">Up</span>
+          <span class="kbd">Down</span>
+          <span class="muted">tempo</span>
         </div>
-      </div>
+      </header>
 
       <div showIf={!!error()}>
-        <Notice tone="bad" title="Metronome" text={error()} />
+        <Notice tone="bad" text={error()} />
       </div>
       <div showIf={!!info() && !error()}>
-        <Notice tone="ok" title="Metronome" text={info()} />
+        <Notice tone="ok" text={info()} />
       </div>
       <div showIf={!audio().running && !error()}>
-        <Notice tone="info" title="Audio engine" text="Starting the audio engine. The metronome needs it to make sound." />
+        <Notice tone="info" text="Starting the audio engine." />
       </div>
-
-      <Panel>
-        <PanelBody>
-          <div class="beat-stage" data-silent={shown().silent ? "true" : "false"}>
-            <LiveText class="beat-number" text={numberText()} level={String(shown().level)} on={shown().beat >= 0} />
-            <LiveText class="beat-caption" text={captionText()} />
-            <div class="beat-cells">
-              {cfg().accents.map((level, i) => (
-                <div class="beat-cell" key={i} data-level={String(level)} data-on={shown().beat === i ? "true" : "false"} data-silent={shown().silent ? "true" : "false"}>
-                  {String(i + 1)}
-                </div>
-              ))}
-            </div>
-          </div>
-        </PanelBody>
-      </Panel>
 
       <div class="grid-2">
         <div class="stack">
           <Panel>
+            <PanelBody>
+              <div class="beat-stage" data-silent={shown().silent ? "true" : "false"}>
+                <LiveText class="beat-number" text={numberText()} level={String(shown().level)} on={shown().beat >= 0} />
+                <LiveText class="beat-caption" text={captionText()} />
+                <div class="beat-cells">
+                  {cfg().accents.map((level, i) => (
+                    <div class="beat-cell" key={i} data-level={String(level)} data-on={shown().beat === i ? "true" : "false"} data-silent={shown().silent ? "true" : "false"}>
+                      {String(i + 1)}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </PanelBody>
+          </Panel>
+
+          <Panel>
             <PanelHead title="Tempo" />
             <PanelBody>
               <div class="tempo-row">
-                <button class="krate-button krate-button-secondary" type="button" onClick={() => nudge(-5)}>
-                  -5
+                <button class="krate-button krate-button-secondary" type="button" aria-label="Down 5" onClick={() => nudge(-5)}>
+                  <Icon name="lucide:chevrons-left" />
                 </button>
-                <button class="krate-button krate-button-secondary" type="button" onClick={() => nudge(-1)}>
-                  -1
+                <button class="krate-button krate-button-secondary" type="button" aria-label="Down 1" onClick={() => nudge(-1)}>
+                  <Icon name="lucide:minus" />
                 </button>
                 <Readout label="BPM" size="display" value={cfg().bpm.toFixed(cfg().bpm % 1 === 0 ? 0 : 1)} />
-                <button class="krate-button krate-button-secondary" type="button" onClick={() => nudge(1)}>
-                  +1
+                <button class="krate-button krate-button-secondary" type="button" aria-label="Up 1" onClick={() => nudge(1)}>
+                  <Icon name="lucide:plus" />
                 </button>
-                <button class="krate-button krate-button-secondary" type="button" onClick={() => nudge(5)}>
-                  +5
+                <button class="krate-button krate-button-secondary" type="button" aria-label="Up 5" onClick={() => nudge(5)}>
+                  <Icon name="lucide:chevrons-right" />
                 </button>
               </div>
               <div class="transport">
-                <button class="krate-button krate-button-primary press-target" type="button" onClick={toggleRun}>
-                  {audio().metronome.running ? "Stop" : "Start"}
+                <button class="krate-button krate-button-primary krate-button-lg" type="button" onClick={toggleRun}>
+                  <RunGlyph on={audio().metronome.running} offLabel="Start" onLabel="Stop" />
                 </button>
-                <button class="krate-button krate-button-secondary press-target" type="button" onClick={tap}>
-                  Tap tempo
+                <button class="krate-button krate-button-secondary krate-button-lg" type="button" onClick={tap}>
+                  <Icon name="lucide:hand" />
+                  Tap
                 </button>
+                <span class="spacer" />
                 <input
                   id="bpm"
                   class="krate-input tempo-input"
@@ -322,10 +332,6 @@ export default function MetronomePage() {
                   onChange={(e: Event) => setTempo(Number((e.target as HTMLInputElement).value))}
                 />
               </div>
-              <p class="field-hint">
-                {taps() > 1 ? "Tapped " + taps() + " times. " : ""}
-                Space starts and stops, T taps, the arrow keys change the tempo.
-              </p>
               <Field label={"Volume " + volumeShown() + "%"} htmlFor="met-volume">
                 <input
                   id="met-volume"
@@ -341,7 +347,9 @@ export default function MetronomePage() {
               </Field>
             </PanelBody>
           </Panel>
+        </div>
 
+        <div class="stack">
           <Panel>
             <PanelHead title="Bar" />
             <PanelBody>
@@ -386,28 +394,28 @@ export default function MetronomePage() {
               </Field>
             </PanelBody>
           </Panel>
-        </div>
 
-        <div class="stack">
           <Panel>
             <PanelHead title="Polyrhythm" />
             <PanelBody>
-              <Field label={"Second rhythm: " + polyLabel(cfg().polyBeats, cfg().beatsPerBar)} htmlFor="poly" hint="Spreads this many extra clicks evenly across the bar, for example 3 over 4.">
-                <Select id="poly" label="Polyrhythm" value={String(cfg().polyBeats)} options={POLYS} onChange={(v) => update({ polyBeats: Number(v) })} />
-              </Field>
-              <Field label={"Polyrhythm level " + polyShown() + "%"} htmlFor="poly-level">
-                <input
-                  id="poly-level"
-                  class="range"
-                  type="range"
-                  min="0"
-                  max="100"
-                  step="1"
-                  value={String(polyShown())}
-                  onInput={(e: Event) => setPolyShown(Number((e.target as HTMLInputElement).value))}
-                  onChange={(e: Event) => update({ polyLevel: Number((e.target as HTMLInputElement).value) / 100 })}
-                />
-              </Field>
+              <div class="field-row">
+                <Field label={"Second rhythm: " + polyLabel(cfg().polyBeats, cfg().beatsPerBar)} htmlFor="poly">
+                  <Select id="poly" label="Polyrhythm" value={String(cfg().polyBeats)} options={POLYS} onChange={(v) => update({ polyBeats: Number(v) })} />
+                </Field>
+                <Field label={"Level " + polyShown() + "%"} htmlFor="poly-level">
+                  <input
+                    id="poly-level"
+                    class="range"
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={String(polyShown())}
+                    onInput={(e: Event) => setPolyShown(Number((e.target as HTMLInputElement).value))}
+                    onChange={(e: Event) => update({ polyLevel: Number((e.target as HTMLInputElement).value) / 100 })}
+                  />
+                </Field>
+              </div>
             </PanelBody>
           </Panel>
 
@@ -440,18 +448,13 @@ export default function MetronomePage() {
                   />
                 </Field>
               </div>
-              <p class="field-hint">
-                {cfg().silentBars > 0
-                  ? "The click plays for " + cfg().playBars + " bar" + (cfg().playBars === 1 ? "" : "s") + " and drops out for " + cfg().silentBars + ". The beat display keeps counting."
-                  : "Set silent bars above zero to practise keeping time without the click."}
-              </p>
             </PanelBody>
           </Panel>
 
           <Panel>
             <PanelHead title="Sound" />
             <PanelBody>
-              <Field label="Built-in sound" htmlFor="sound" hint="Choosing a built-in sound replaces any custom samples.">
+              <Field label="Built-in sound" htmlFor="sound">
                 <Select id="sound" label="Built-in sound" value={cfg().sound} options={SOUNDS} onChange={(v) => update({ sound: v })} />
               </Field>
               <div class="sound-list">
@@ -462,7 +465,8 @@ export default function MetronomePage() {
                       {cfg().customSounds[r.role] ? baseName(cfg().customSounds[r.role]) : "Built-in"}
                     </span>
                     <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={() => chooseSound(r.role)}>
-                      Choose file
+                      <Icon name="lucide:folder-open" />
+                      Choose
                     </button>
                     <button class="krate-button krate-button-ghost krate-button-sm" type="button" disabled={!cfg().customSounds[r.role]} onClick={() => resetSound(r.role)}>
                       Reset
@@ -472,7 +476,7 @@ export default function MetronomePage() {
               </div>
               <div class="detail-actions">
                 <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={() => chooseSound("all")}>
-                  Use one file for every slot
+                  Use one file for all
                 </button>
                 <button class="krate-button krate-button-ghost krate-button-sm" type="button" onClick={() => resetSound("all")}>
                   Reset all

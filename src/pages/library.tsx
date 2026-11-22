@@ -238,11 +238,11 @@ export default function LibraryPage() {
 
   return (
     <main class="page">
-      <div class="page-head">
-        <div>
-          <h1 class="page-title">Library</h1>
-          <p class="page-sub">Your songs, tags and playlists.</p>
-        </div>
+      <header class="page-head">
+        <h1 class="page-title">
+          <Icon name="lucide:library-big" />
+          Library
+        </h1>
         <div class="actions">
           <button class="krate-button krate-button-secondary" type="button" onClick={rescan}>
             <Icon name="lucide:refresh-cw" />
@@ -253,13 +253,13 @@ export default function LibraryPage() {
             Import files
           </button>
         </div>
-      </div>
+      </header>
 
       <div showIf={!!error()}>
-        <Notice tone="bad" title="Something went wrong" text={error()} />
+        <Notice tone="bad" text={error()} />
       </div>
       <div showIf={!!info()}>
-        <Notice tone="ok" title="Library" text={info()} />
+        <Notice tone="ok" text={info()} />
       </div>
       <div showIf={importing().running}>
         <Notice tone="info" title="Importing" text={importing().done + " of " + importing().total + ": " + importing().current} />
@@ -268,66 +268,110 @@ export default function LibraryPage() {
         <Notice tone="warn" title="Some files were not imported" text={importing().errors.join("; ")} />
       </div>
 
-      <div class="toolbar">
-        <input
-          class="krate-input grow"
-          type="search"
-          placeholder="Search title, artist, album or tag"
-          aria-label="Search the library"
-          value={text()}
-          onInput={(e: Event) => setText((e.target as HTMLInputElement).value)}
-        />
-        <Select
-          id="sort"
-          label="Sort"
-          value={sort()}
-          options={SORTS}
-          onChange={(v) => setSort(v)}
-        />
-        <Select
-          id="playlist-filter"
-          label="Playlist"
-          value={String(playlistId())}
-          options={[{ value: "0", label: "All songs" }].concat(playlists().map((p) => ({ value: String(p.id), label: p.name + " (" + p.count + ")" })))}
-          onChange={(v) => setPlaylistId(Number(v))}
-        />
-      </div>
+      <div class="library">
+        <aside class="rail" aria-label="Playlists and tags">
+          <div class="rail-group">
+            <div class="rail-title">Playlists</div>
+            <button class="rail-item" type="button" data-active={playlistId() === 0 ? "true" : "false"} onClick={() => setPlaylistId(0)}>
+              <span class="rail-label">
+                <Icon name="lucide:music" />
+                All songs
+              </span>
+            </button>
+            {playlists().map((p) => (
+              <button class="rail-item" type="button" key={p.id} data-active={playlistId() === p.id ? "true" : "false"} onClick={() => setPlaylistId(p.id)}>
+                <span class="rail-label">
+                  <Icon name="lucide:list-music" />
+                  {p.name}
+                </span>
+                <span class="rail-count">{p.count}</span>
+              </button>
+            ))}
+            <div class="inline-form">
+              <input
+                class="krate-input"
+                type="text"
+                placeholder="New playlist"
+                aria-label="New playlist name"
+                value={newList()}
+                onInput={(e: Event) => setNewList((e.target as HTMLInputElement).value)}
+                onKeyDown={(e: KeyboardEvent) => {
+                  if (e.key === "Enter") createList();
+                }}
+              />
+              <button class="krate-button krate-button-secondary krate-button-icon" type="button" aria-label="Create playlist" onClick={createList}>
+                <Icon name="lucide:plus" />
+              </button>
+            </div>
+            <div class="inline-form" showIf={!!playlistId()}>
+              <input
+                class="krate-input"
+                type="text"
+                placeholder="Rename playlist"
+                aria-label="Rename playlist"
+                value={renameTo()}
+                onInput={(e: Event) => setRenameTo((e.target as HTMLInputElement).value)}
+                onKeyDown={(e: KeyboardEvent) => {
+                  if (e.key === "Enter") renameList();
+                }}
+              />
+              <button class="krate-button krate-button-secondary krate-button-icon" type="button" aria-label="Rename playlist" onClick={renameList}>
+                <Icon name="lucide:pencil" />
+              </button>
+              <button class="krate-button krate-button-destructive krate-button-icon" type="button" aria-label="Delete playlist" onClick={deleteList}>
+                <Icon name="lucide:trash-2" />
+              </button>
+            </div>
+          </div>
 
-      <div class="tag-row" showIf={tags().length > 0}>
-        {tags().map((t) => (
-          <button
-            class="tag-button"
-            type="button"
-            key={t.name}
-            data-active={tag() === t.name ? "true" : "false"}
-            onClick={() => setTag(tag() === t.name ? "" : t.name)}
-          >
-            {t.name + " " + t.count}
-          </button>
-        ))}
-      </div>
+          <div class="rail-group" showIf={tags().length > 0}>
+            <div class="rail-title">Tags</div>
+            {tags().map((t) => (
+              <button class="rail-item" type="button" key={t.name} data-active={tag() === t.name ? "true" : "false"} onClick={() => setTag(tag() === t.name ? "" : t.name)}>
+                <span class="rail-label">
+                  <Icon name="lucide:tag" />
+                  {t.name}
+                </span>
+                <span class="rail-count">{t.count}</span>
+              </button>
+            ))}
+          </div>
+        </aside>
 
-      <div class="grid-2 library-grid">
         <Panel>
           <PanelHead title={playlistId() ? "Playlist" : "Songs"}>
-            <span class="muted mono">{songs().length + (songs().length === 1 ? " song" : " songs")}</span>
+            <span class="muted mono">{songs().length}</span>
           </PanelHead>
-          <p class="empty" showIf={songs().length === 0}>
-            Nothing here yet. Import files, or download songs from the Downloads page.
-          </p>
+          <div class="panel-body">
+            <div class="toolbar">
+              <div class="search-box">
+                <Icon name="lucide:search" />
+                <input
+                  class="krate-input"
+                  type="search"
+                  placeholder="Search songs"
+                  aria-label="Search the library"
+                  value={text()}
+                  onInput={(e: Event) => setText((e.target as HTMLInputElement).value)}
+                />
+              </div>
+              <Select id="sort" label="Sort" value={sort()} options={SORTS} onChange={(v) => setSort(v)} />
+            </div>
+          </div>
+          <div class="empty-state" showIf={songs().length === 0}>
+            <span class="empty-icon">
+              <Icon name="lucide:list-music" />
+            </span>
+            <span class="empty-title">No songs here</span>
+            <span>Import files or download a song to get started.</span>
+          </div>
           <div class="song-list">
             {songs().map((s) => (
-              <button
-                class="song-row"
-                type="button"
-                key={s.id}
-                data-selected={selected() === s.id ? "true" : "false"}
-                onClick={() => setSelected(s.id)}
-              >
+              <button class="song-row" type="button" key={s.id} data-selected={selected() === s.id ? "true" : "false"} onClick={() => setSelected(s.id)}>
                 <span class="thumb">{thumbs()[s.id] ? <img alt="" src={thumbs()[s.id]} /> : <Icon name="lucide:music" />}</span>
                 <span class="song-main">
                   <span class="song-title">{s.title}</span>
-                  <span class="song-sub">{(s.artist || "Unknown artist") + (s.tags.length > 0 ? "  -  " + s.tags.join(", ") : "")}</span>
+                  <span class="song-sub">{(s.artist || "Unknown artist") + (s.tags.length > 0 ? ", " + s.tags.join(", ") : "")}</span>
                 </span>
                 <span class="song-meta">
                   <span class="hide-small">{s.kind}</span>
@@ -338,128 +382,89 @@ export default function LibraryPage() {
           </div>
         </Panel>
 
-        <div class="stack">
-          <Panel>
-            <PanelHead title="Song" />
-            <PanelBody>
-              <p class="empty" showIf={!selected()}>
-                Select a song to edit its details, tags and playlists.
-              </p>
-              <div class="stack" showIf={!!selected()}>
-                <Field label="Title" htmlFor="song-title">
-                  <input id="song-title" class="krate-input" type="text" value={title()} onInput={(e: Event) => setTitle((e.target as HTMLInputElement).value)} />
-                </Field>
-                <div class="field-row">
-                  <Field label="Artist" htmlFor="song-artist">
-                    <input id="song-artist" class="krate-input" type="text" value={artist()} onInput={(e: Event) => setArtist((e.target as HTMLInputElement).value)} />
-                  </Field>
-                  <Field label="Album" htmlFor="song-album">
-                    <input id="song-album" class="krate-input" type="text" value={album()} onInput={(e: Event) => setAlbum((e.target as HTMLInputElement).value)} />
-                  </Field>
+        <Panel>
+          <PanelHead title="Details" />
+          <div class="empty-state" showIf={!selected()}>
+            <span class="empty-icon">
+              <Icon name="lucide:music" />
+            </span>
+            <span>Select a song</span>
+          </div>
+          <PanelBody>
+            <div class="stack" showIf={!!selected()}>
+              <button class="krate-button krate-button-primary krate-button-lg" type="button" onClick={() => navigate("/player?song=" + selected())}>
+                <Icon name="lucide:play" />
+                Open in player
+              </button>
+              <Field label="Title" htmlFor="song-title">
+                <input id="song-title" class="krate-input" type="text" value={title()} onInput={(e: Event) => setTitle((e.target as HTMLInputElement).value)} />
+              </Field>
+              <Field label="Artist" htmlFor="song-artist">
+                <input id="song-artist" class="krate-input" type="text" value={artist()} onInput={(e: Event) => setArtist((e.target as HTMLInputElement).value)} />
+              </Field>
+              <Field label="Album" htmlFor="song-album">
+                <input id="song-album" class="krate-input" type="text" value={album()} onInput={(e: Event) => setAlbum((e.target as HTMLInputElement).value)} />
+              </Field>
+              <button class="krate-button krate-button-secondary" type="button" onClick={saveMeta}>
+                <Icon name="lucide:save" />
+                Save details
+              </button>
+              <Field label="Tags" htmlFor="song-new-tag">
+                <div class="tag-row">
+                  {(selectedSong()?.tags || []).map((t) => (
+                    <button class="tag-button" type="button" key={t} aria-label={"Remove tag " + t} onClick={() => guard(() => RemoveSongTag(selected(), t))}>
+                      {t}
+                      <Icon name="lucide:x" />
+                    </button>
+                  ))}
                 </div>
-                <div class="detail-actions">
-                  <button class="krate-button krate-button-primary" type="button" onClick={() => navigate("/player?song=" + selected())}>
-                    <Icon name="lucide:play" />
-                    Open in player
-                  </button>
-                  <button class="krate-button krate-button-secondary" type="button" onClick={saveMeta}>
-                    Save details
-                  </button>
-                </div>
-                <Field label="Tags" htmlFor="song-new-tag" hint="Press Enter to add a tag, click a tag to remove it.">
-                  <div class="tag-row">
-                    {(selectedSong()?.tags || []).map((t) => (
-                      <button class="tag-button" type="button" key={t} aria-label={"Remove tag " + t} onClick={() => guard(() => RemoveSongTag(selected(), t))}>
-                        {t}
-                        <Icon name="lucide:x" />
-                      </button>
-                    ))}
-                  </div>
-                  <input
-                    id="song-new-tag"
-                    class="krate-input"
-                    type="text"
-                    placeholder="fills, odd time, warm up"
-                    value={newTag()}
-                    onInput={(e: Event) => setNewTag((e.target as HTMLInputElement).value)}
-                    onKeyDown={(e: KeyboardEvent) => {
-                      if (e.key === "Enter") addTag();
-                    }}
-                  />
-                </Field>
-                <Field label="Add to playlist" htmlFor="song-add-list">
-                  <Select
-                    id="song-add-list"
-                    value=""
-                    options={[{ value: "", label: "Choose a playlist" }].concat(playlists().map((p) => ({ value: String(p.id), label: p.name })))}
-                    onChange={(v) => addToList(v)}
-                  />
-                </Field>
-                <div class="detail-actions" showIf={!!playlistId()}>
-                  <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={() => move(-1)}>
-                    <Icon name="lucide:arrow-up" />
-                    Move up
-                  </button>
-                  <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={() => move(1)}>
-                    <Icon name="lucide:arrow-down" />
-                    Move down
-                  </button>
-                  <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={removeFromList}>
-                    Remove from playlist
-                  </button>
-                </div>
-                <p class="field-hint mono">{selectedSong()?.path || ""}</p>
-                <div class="detail-actions">
-                  <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={forget}>
-                    Remove from library
-                  </button>
-                  <button class="krate-button krate-button-destructive krate-button-sm" type="button" onClick={removeSong}>
-                    Delete file
-                  </button>
-                </div>
-              </div>
-            </PanelBody>
-          </Panel>
-
-          <Panel>
-            <PanelHead title="Playlists" />
-            <PanelBody>
-              <div class="toolbar">
                 <input
-                  class="krate-input grow"
+                  id="song-new-tag"
+                  class="krate-input"
                   type="text"
-                  placeholder="New playlist name"
-                  aria-label="New playlist name"
-                  value={newList()}
-                  onInput={(e: Event) => setNewList((e.target as HTMLInputElement).value)}
+                  placeholder="Add a tag and press Enter"
+                  value={newTag()}
+                  onInput={(e: Event) => setNewTag((e.target as HTMLInputElement).value)}
                   onKeyDown={(e: KeyboardEvent) => {
-                    if (e.key === "Enter") createList();
+                    if (e.key === "Enter") addTag();
                   }}
                 />
-                <button class="krate-button krate-button-secondary" type="button" onClick={createList}>
-                  Create
-                </button>
-              </div>
-              <div class="toolbar" showIf={!!playlistId()}>
-                <input
-                  class="krate-input grow"
-                  type="text"
-                  placeholder="Rename the selected playlist"
-                  aria-label="Rename playlist"
-                  value={renameTo()}
-                  onInput={(e: Event) => setRenameTo((e.target as HTMLInputElement).value)}
+              </Field>
+              <Field label="Playlist" htmlFor="song-add-list">
+                <Select
+                  id="song-add-list"
+                  value=""
+                  options={[{ value: "", label: "Add to a playlist" }].concat(playlists().map((p) => ({ value: String(p.id), label: p.name })))}
+                  onChange={(v) => addToList(v)}
                 />
-                <button class="krate-button krate-button-secondary" type="button" onClick={renameList}>
-                  Rename
+              </Field>
+              <div class="detail-actions" showIf={!!playlistId()}>
+                <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={() => move(-1)}>
+                  <Icon name="lucide:arrow-up" />
+                  Up
                 </button>
-                <button class="krate-button krate-button-destructive" type="button" onClick={deleteList}>
-                  Delete
+                <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={() => move(1)}>
+                  <Icon name="lucide:arrow-down" />
+                  Down
+                </button>
+                <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={removeFromList}>
+                  Remove from playlist
                 </button>
               </div>
-              <p class="field-hint">Pick a playlist in the filter above to see and reorder its songs.</p>
-            </PanelBody>
-          </Panel>
-        </div>
+              <p class="field-hint mono">{selectedSong()?.path || ""}</p>
+              <div class="detail-actions">
+                <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={forget}>
+                  <Icon name="lucide:x" />
+                  Remove from library
+                </button>
+                <button class="krate-button krate-button-destructive krate-button-sm" type="button" onClick={removeSong}>
+                  <Icon name="lucide:trash-2" />
+                  Delete file
+                </button>
+              </div>
+            </div>
+          </PanelBody>
+        </Panel>
       </div>
     </main>
   );

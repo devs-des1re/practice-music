@@ -121,108 +121,71 @@ export default function DownloadsPage() {
 
   return (
     <main class="page">
-      <div class="page-head">
-        <div>
-          <h1 class="page-title">Downloads</h1>
-          <p class="page-sub">Save songs to your library with yt-dlp.</p>
-        </div>
-      </div>
+      <header class="page-head">
+        <h1 class="page-title">
+          <Icon name="lucide:download" />
+          Downloads
+        </h1>
+      </header>
 
       <div showIf={!!error()}>
-        <Notice tone="bad" title="Something went wrong" text={error()} />
+        <Notice tone="bad" text={error()} />
       </div>
       <div showIf={!!info() && !error()}>
-        <Notice tone="ok" title="Downloads" text={info()} />
+        <Notice tone="ok" text={info()} />
       </div>
       <div showIf={tools().ytDlp.source === "missing"}>
-        <Notice tone="warn" title="yt-dlp is not installed">
-          Use the Install button in the tools panel. It downloads the official release from GitHub and checks its SHA-256 before using it.
-        </Notice>
+        <Notice tone="warn" title="yt-dlp is not installed" text="Install it from the Tools panel. The release is checked against its SHA-256 before use." />
       </div>
       <div showIf={!tools().ffmpeg}>
-        <Notice tone="warn" title="ffmpeg was not found">
-          Converting to MP3, merging video and thumbnails need ffmpeg. Install it and make sure it is on your PATH.
-        </Notice>
+        <Notice tone="warn" title="ffmpeg was not found" text="MP3 conversion and video merging need ffmpeg on your PATH." />
       </div>
 
-      <div class="grid-2">
-        <div class="stack">
-          <Panel>
-            <PanelHead title="New download" />
-            <PanelBody>
-              <Field label="Link" htmlFor="dl-url" hint="Any page yt-dlp supports. For one video, not a playlist.">
-                <input
-                  id="dl-url"
-                  class="krate-input"
-                  type="url"
-                  placeholder="https://"
-                  value={url()}
-                  onInput={(e: Event) => setUrl((e.target as HTMLInputElement).value)}
-                  onKeyDown={(e: KeyboardEvent) => {
-                    if (e.key === "Enter") add();
-                  }}
-                />
-              </Field>
-              <div class="field-row">
-                <Field label="Format" htmlFor="dl-format">
-                  <Select id="dl-format" value={format()} options={FORMATS} onChange={(v) => chooseFormat(v)} />
-                </Field>
-                <Field label="Quality" htmlFor="dl-quality">
-                  <Select id="dl-quality" value={quality()} options={qualityOptions()} onChange={(v) => setQuality(v)} />
-                </Field>
-              </div>
-              <div class="actions">
-                <button class="krate-button krate-button-primary" type="button" onClick={add}>
-                  <Icon name="lucide:download" />
-                  Download
-                </button>
-              </div>
-            </PanelBody>
-          </Panel>
+      <Panel>
+        <PanelHead title="New download" />
+        <PanelBody>
+          <div class="field-row dl-form">
+            <Field label="Link" htmlFor="dl-url">
+              <input
+                id="dl-url"
+                class="krate-input"
+                type="url"
+                placeholder="https://"
+                value={url()}
+                onInput={(e: Event) => setUrl((e.target as HTMLInputElement).value)}
+                onKeyDown={(e: KeyboardEvent) => {
+                  if (e.key === "Enter") add();
+                }}
+              />
+            </Field>
+            <Field label="Format" htmlFor="dl-format">
+              <Select id="dl-format" value={format()} options={FORMATS} onChange={(v) => chooseFormat(v)} />
+            </Field>
+            <Field label="Quality" htmlFor="dl-quality">
+              <Select id="dl-quality" value={quality()} options={qualityOptions()} onChange={(v) => setQuality(v)} />
+            </Field>
+            <button class="krate-button krate-button-primary" type="button" onClick={add}>
+              <Icon name="lucide:download" />
+              Download
+            </button>
+          </div>
+        </PanelBody>
+      </Panel>
 
-          <Panel>
-            <PanelHead title="Tools" />
-            <PanelBody>
-              <div class="readout-grid">
-                <Readout label="yt-dlp" value={ytVersion()} />
-                <Readout label="Latest" value={ytLatest()} />
-              </div>
-              <Readout label="Source" value={ytSource()} />
-              <Readout label="ffmpeg" value={ffmpegText()} />
-              <Readout label="Saves to" value={libDir()} />
-              <div showIf={!!ytError()}>
-                <Notice tone="bad" title="yt-dlp" text={ytError()} />
-              </div>
-              <div class="actions">
-                <button
-                  class="krate-button krate-button-secondary"
-                  type="button"
-                  disabled={!!ytBusy() || (tools().ytDlp.source === "managed" && !tools().ytDlp.updateAvailable)}
-                  onClick={() => guard(() => InstallYtDlp())}
-                >
-                  <Icon name="lucide:package" />
-                  {ytBusy() === "installing" ? "Installing" : installLabel()}
-                </button>
-                <button class="krate-button krate-button-ghost" type="button" disabled={!!ytBusy()} onClick={() => guard(() => CheckTools())}>
-                  {ytBusy() === "checking" ? "Checking" : "Check for updates"}
-                </button>
-              </div>
-              <p class="field-hint" showIf={tools().ytDlp.source === "path"}>
-                This copy was found on your PATH, so PracticeMusic will not change it. Install the managed copy for automatic updates.
-              </p>
-            </PanelBody>
-          </Panel>
-        </div>
-
+      <div class="grid-2 downloads">
         <Panel>
           <PanelHead title="Queue">
             <button class="krate-button krate-button-ghost krate-button-sm" type="button" onClick={() => guard(() => ClearDownloads())}>
+              <Icon name="lucide:eraser" />
               Clear finished
             </button>
           </PanelHead>
-          <p class="empty" showIf={jobs().length === 0}>
-            No downloads yet.
-          </p>
+          <div class="empty-state" showIf={jobs().length === 0}>
+            <span class="empty-icon">
+              <Icon name="lucide:download" />
+            </span>
+            <span>No downloads yet</span>
+          </div>
           <div>
             {jobs().map((j) => (
               <div class="job-row" key={j.id}>
@@ -253,11 +216,12 @@ export default function DownloadsPage() {
                   )}
                   {(j.state === "failed" || j.state === "cancelled") && (
                     <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={() => guard(() => RetryDownload(j.id))}>
+                      <Icon name="lucide:rotate-cw" />
                       Retry
                     </button>
                   )}
                   {(j.state === "done" || j.state === "failed" || j.state === "cancelled") && (
-                    <button class="krate-button krate-button-ghost krate-button-sm" type="button" aria-label="Remove from the list" onClick={() => guard(() => RemoveDownload(j.id))}>
+                    <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Remove from the list" onClick={() => guard(() => RemoveDownload(j.id))}>
                       <Icon name="lucide:x" />
                     </button>
                   )}
@@ -265,6 +229,40 @@ export default function DownloadsPage() {
               </div>
             ))}
           </div>
+        </Panel>
+
+        <Panel>
+          <PanelHead title="Tools" />
+          <PanelBody>
+            <div class="readout-grid">
+              <Readout label="yt-dlp" value={ytVersion()} />
+              <Readout label="Latest" value={ytLatest()} />
+            </div>
+            <Readout label="Source" value={ytSource()} />
+            <Readout label="ffmpeg" value={ffmpegText()} />
+            <Readout label="Saves to" value={libDir()} />
+            <div showIf={!!ytError()}>
+              <Notice tone="bad" title="yt-dlp" text={ytError()} />
+            </div>
+            <div class="actions">
+              <button
+                class="krate-button krate-button-secondary"
+                type="button"
+                disabled={!!ytBusy() || (tools().ytDlp.source === "managed" && !tools().ytDlp.updateAvailable)}
+                onClick={() => guard(() => InstallYtDlp())}
+              >
+                <Icon name="lucide:package" />
+                {ytBusy() === "installing" ? "Installing" : installLabel()}
+              </button>
+              <button class="krate-button krate-button-ghost" type="button" disabled={!!ytBusy()} onClick={() => guard(() => CheckTools())}>
+                <Icon name="lucide:refresh-cw" />
+                {ytBusy() === "checking" ? "Checking" : "Check for updates"}
+              </button>
+            </div>
+            <p class="field-hint" showIf={tools().ytDlp.source === "path"}>
+              This copy comes from your PATH, so it is not updated here.
+            </p>
+          </PanelBody>
         </Panel>
       </div>
     </main>

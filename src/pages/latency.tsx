@@ -16,6 +16,7 @@ import { Panel, PanelHead, PanelBody } from "../components/ui/panel";
 import { Field } from "../components/ui/field";
 import { Select } from "../components/ui/select";
 import { Readout } from "../components/ui/readout";
+import { RunGlyph } from "../components/ui/glyphs";
 import { Notice } from "../components/ui/notice";
 import { emptyDevices } from "../lib/devices";
 import { formatMs } from "../lib/format";
@@ -244,21 +245,21 @@ export default function LatencyPage() {
 
   return (
     <main class="page">
-      <div class="page-head">
-        <div>
-          <h1 class="page-title">Latency</h1>
-          <p class="page-sub">Press the button and see how long it takes to reach the output, layer by layer.</p>
-        </div>
+      <header class="page-head">
+        <h1 class="page-title">
+          <Icon name="lucide:timer" />
+          Latency
+        </h1>
         <div class="actions">
           <button class="krate-button krate-button-secondary" type="button" disabled={busy()} onClick={toggleAudio}>
             <Icon name="lucide:power" />
             {running() ? "Stop audio" : "Start audio"}
           </button>
         </div>
-      </div>
+      </header>
 
       <div showIf={!!error()}>
-        <Notice tone="bad" title="Something went wrong" text={error()} />
+        <Notice tone="bad" text={error()} />
       </div>
       <div showIf={!!audioError()}>
         <Notice tone="bad" title="Audio output problem" text={audioError()} />
@@ -273,7 +274,7 @@ export default function LatencyPage() {
           <Panel>
             <PanelHead title="Audio output" />
             <PanelBody>
-              <Field label="Output mode" htmlFor="out-mode" hint="Switching restarts the stream and clears the measurements.">
+              <Field label="Output mode" htmlFor="out-mode" hint="Switching restarts the stream.">
                 <Select
                   id="out-mode"
                   value={modeSetting()}
@@ -299,7 +300,7 @@ export default function LatencyPage() {
                 <Readout label="UI clock error" value={uiClock()} />
                 <Readout label="Engine clock error" value={engineClock()} />
               </div>
-              <p class="field-hint">The output device, sample rate and buffer size come from Settings. Saving new values restarts the stream.</p>
+              <p class="field-hint">Device, sample rate and buffer size are set in Settings.</p>
             </PanelBody>
           </Panel>
 
@@ -307,7 +308,7 @@ export default function LatencyPage() {
             <PanelHead title="Metronome" />
             <PanelBody>
               <div class="field-row">
-                <Field label="Tempo" htmlFor="metro-bpm" hint="20 to 400 BPM">
+                <Field label="Tempo" htmlFor="metro-bpm">
                   <input
                     id="metro-bpm"
                     class="krate-input"
@@ -322,7 +323,7 @@ export default function LatencyPage() {
                     }}
                   />
                 </Field>
-                <Field label="Beats per bar" htmlFor="metro-beats" hint="Accent on beat one">
+                <Field label="Beats per bar" htmlFor="metro-beats">
                   <input
                     id="metro-beats"
                     class="krate-input"
@@ -360,7 +361,7 @@ export default function LatencyPage() {
                   disabled={!running()}
                   onClick={() => applyMetronome(!audio().metronome.running)}
                 >
-                  {audio().metronome.running ? "Stop metronome" : "Start metronome"}
+                  <RunGlyph on={audio().metronome.running} offLabel="Start metronome" onLabel="Stop metronome" />
                 </button>
               </div>
             </PanelBody>
@@ -376,18 +377,21 @@ export default function LatencyPage() {
               </div>
               <div class="actions">
                 <button
-                  class="krate-button krate-button-primary press-target"
+                  class="krate-button krate-button-primary krate-button-lg"
                   type="button"
                   disabled={!running()}
                   onPointerDown={onPress}
                   onKeyDown={onKey}
                 >
+                  <Icon name="lucide:hand" />
                   Press for a click
                 </button>
                 <button class="krate-button krate-button-secondary" type="button" disabled={!running() || batch()} onClick={runBatch}>
+                  <Icon name="lucide:repeat" />
                   Run 20 clicks
                 </button>
                 <button class="krate-button krate-button-ghost" type="button" onClick={() => ResetLatency()}>
+                  <Icon name="lucide:eraser" />
                   Clear
                 </button>
               </div>
@@ -433,27 +437,25 @@ export default function LatencyPage() {
                   </tr>
                 </tbody>
               </table>
-              <p class="field-hint">
-                The driver figure is the driver's own estimate of when the data reaches the device. It does not include converter or amp delay. Use the loopback test below for a measured number.
-              </p>
+              <p class="field-hint">The driver figure is the driver's own estimate. It excludes converter and amp delay.</p>
             </PanelBody>
           </Panel>
 
           <Panel>
             <PanelHead title="Loopback measurement" />
             <PanelBody>
-              <Field label="Input" htmlFor="loop-input" hint="Connect an output to this input with a cable, or put a microphone next to the speaker.">
+              <Field label="Input" htmlFor="loop-input" hint="Use a cable from an output, or a microphone next to the speaker.">
                 <Select id="loop-input" value={inputId()} options={inputOptions()} onChange={(v) => setInputId(v)} />
               </Field>
               <div class="actions">
                 <button class="krate-button krate-button-secondary" type="button" disabled={!running() || loopBusy()} onClick={runLoopback}>
+                  <Icon name="lucide:activity" />
                   {loopBusy() ? "Measuring" : "Measure round trip"}
                 </button>
               </div>
               <p class="field-hint" showIf={!!loopSummary()}>
                 {loopSummary()}
               </p>
-              <p class="field-hint">The result covers output and input together, plus any acoustic distance.</p>
             </PanelBody>
           </Panel>
         </div>
