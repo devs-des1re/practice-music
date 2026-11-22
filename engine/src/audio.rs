@@ -1,7 +1,7 @@
 use std::str::FromStr;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
-use std::sync::mpsc::Sender;
+use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -9,7 +9,9 @@ use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{BufferSize, DeviceId, OutputCallbackInfo, SampleFormat, StreamConfig};
 use serde_json::{Value, json};
 
-use crate::click::{Controls, Renderer};
+use crate::click::Controls;
+use crate::dsp::Dsp;
+use crate::player::Command;
 use crate::protocol::{ProtoError, event_frame};
 #[cfg(windows)]
 use crate::wasapi_backend::{self, Mode, StartConfig, WasapiStream};
@@ -41,11 +43,17 @@ pub struct Shared {
     callbacks: AtomicU64,
     last_frames: AtomicU32,
     late_wakes: AtomicU64,
+    player_pos: AtomicU64,
+    player_playing: AtomicBool,
+    player_loops: AtomicU64,
+    pub player_tx: Sender<Command>,
+    pub rate: u32,
 }
 
 impl Shared {
-    fn new() -> Self {
-        Self {
+    pub fn new(rate: u32) -> (Self, Receiver<Command>) {
+        let (tx, rx) = mpsc::channel();
+        let shared = Self {
             controls: Controls::new(),
             report_seq: AtomicU64::new(0),
             report_callback_us: AtomicU64::new(0),
@@ -55,7 +63,27 @@ impl Shared {
             callbacks: AtomicU64::new(0),
             last_frames: AtomicU32::new(0),
             late_wakes: AtomicU64::new(0),
-        }
+            player_pos: AtomicU64::new(0f64.to_bits()),
+            player_playing: AtomicBool::new(false),
+            player_loops: AtomicU64::new(0),
+            player_tx: tx,
+            rate,
+        };
+        (shared, rx)
+    }
+
+    pub fn set_player_state(&self, position: f64, playing: bool, loops: u64) {
+        self.player_pos.store(position.to_bits(), Ordering::Relaxed);
+        self.player_playing.store(playing, Ordering::Relaxed);
+        self.player_loops.store(loops, Ordering::Relaxed);
+    }
+
+    pub fn player_state(&self) -> (f64, bool, u64) {
+        (
+            f64::from_bits(self.player_pos.load(Ordering::Relaxed)),
+            self.player_playing.load(Ordering::Relaxed),
+            self.player_loops.load(Ordering::Relaxed),
+        )
     }
 
     #[cfg(windows)]
@@ -175,16 +203,13 @@ fn start_wasapi_mode(
     } else {
         Mode::LowLatency
     };
-    let shared = Arc::new(Shared::new());
-    let stream = wasapi_backend::start(
-        &StartConfig {
-            device_id: params.output_device.clone(),
-            mode,
-            sample_rate: params.sample_rate,
-            buffer_frames: params.buffer_frames,
-        },
-        Arc::clone(&shared),
-    )?;
+    let stream = wasapi_backend::start(&StartConfig {
+        device_id: params.output_device.clone(),
+        mode,
+        sample_rate: params.sample_rate,
+        buffer_frames: params.buffer_frames,
+    })?;
+    let shared = Arc::clone(&stream.shared);
     let mut info = stream.info.clone();
     info["deviceId"] = json!(params.output_device);
     info["bufferFramesRequested"] = json!(params.buffer_frames);
@@ -267,16 +292,16 @@ fn start_shared(params: &Params, events: Sender<String>) -> Result<AudioHandle, 
         buffer_size,
     };
 
-    let shared = Arc::new(Shared::new());
-    let mut renderer = Renderer::with_builtin(sample_rate, usize::from(channels));
+    let (shared, rx) = Shared::new(sample_rate);
+    let shared = Arc::new(shared);
+    let mut dsp = Dsp::new(sample_rate, usize::from(channels), rx);
     let cb_shared = Arc::clone(&shared);
     let err_tx = events.clone();
     let stream = device
         .build_output_stream::<f32, _, _>(
             config,
             move |data: &mut [f32], info: &OutputCallbackInfo| {
-                renderer.apply(&cb_shared.controls);
-                let started = renderer.render(data);
+                let started = dsp.process(&cb_shared, data);
                 let frames = (data.len() / usize::from(channels)) as u32;
                 cb_shared.note_callback(frames);
                 if let Some(id) = started {
@@ -337,7 +362,28 @@ fn spawn_reporter(
 ) -> JoinHandle<()> {
     thread::spawn(move || {
         let mut seen = 0u64;
+        let mut last_player = (0u64, false, 0u64);
+        let mut last_emit = std::time::Instant::now();
         while !stop.load(Ordering::Acquire) {
+            if last_emit.elapsed() >= Duration::from_millis(33) {
+                last_emit = std::time::Instant::now();
+                let (pos, playing, loops) = shared.player_state();
+                let key = (pos.to_bits(), playing, loops);
+                if playing || key != last_player {
+                    last_player = key;
+                    let frame = event_frame(
+                        "player",
+                        json!({
+                            "positionMs": pos * 1000.0 / f64::from(sample_rate),
+                            "playing": playing,
+                            "loops": loops,
+                        }),
+                    );
+                    if events.send(frame).is_err() {
+                        return;
+                    }
+                }
+            }
             let seq = shared.report_seq.load(Ordering::Acquire);
             if seq != seen {
                 seen = seq;

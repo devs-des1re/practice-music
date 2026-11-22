@@ -7,6 +7,7 @@ use crate::audio::{self, AudioHandle};
 use crate::click::{MAX_BPM, MIN_BPM};
 use crate::devices;
 use crate::loopback;
+use crate::player_api::{self, Loaded};
 
 pub const PROTOCOL_VERSION: u32 = 1;
 
@@ -48,6 +49,7 @@ pub struct Outcome {
 pub struct Session {
     pub greeted: bool,
     pub audio: Option<AudioHandle>,
+    pub loaded: Option<Loaded>,
     pub events: Option<Sender<String>>,
 }
 
@@ -56,6 +58,7 @@ impl Session {
         Self {
             greeted: false,
             audio: None,
+            loaded: None,
             events: Some(events),
         }
     }
@@ -149,6 +152,7 @@ fn dispatch(session: &mut Session, request: &Request, recv_us: u64) -> Result<Va
         }
         "audio_stop" => require_greeted(session).map(|_| {
             session.audio = None;
+            session.loaded = None;
             json!({ "stopped": true })
         }),
         "audio_status" => require_greeted(session).map(|_| match &session.audio {
@@ -183,6 +187,14 @@ fn dispatch(session: &mut Session, request: &Request, recv_us: u64) -> Result<Va
             )
         }),
         "wasapi_probe" => require_greeted(session).map(|_| wasapi_probe(&request.params)),
+        "player_load" => {
+            require_greeted(session).and_then(|_| player_api::load(session, &request.params))
+        }
+        "player_analyze" => require_greeted(session).and_then(|_| player_api::analyze(session)),
+        "player_control" => {
+            require_greeted(session).and_then(|_| player_api::control(session, &request.params))
+        }
+        "player_status" => require_greeted(session).map(|_| player_api::status(session)),
         "metronome_set" => {
             require_greeted(session).and_then(|_| metronome_set(session, &request.params))
         }
@@ -229,6 +241,7 @@ fn audio_start(session: &mut Session, params: &Value) -> Result<Value, ProtoErro
         .clone()
         .ok_or_else(|| ProtoError::new("audio_unavailable", "this session has no event channel"))?;
     session.audio = None;
+    session.loaded = None;
     let handle = audio::start(
         &audio::Params {
             host: text(params, "host"),

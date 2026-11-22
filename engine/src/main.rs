@@ -1,8 +1,14 @@
 mod audio;
 mod click;
+mod decode;
 mod devices;
+mod dsp;
 mod loopback;
+mod player;
+mod player_api;
 mod protocol;
+mod stretch;
+mod tempo;
 #[cfg(windows)]
 mod wasapi_backend;
 

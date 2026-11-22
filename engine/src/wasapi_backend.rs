@@ -17,7 +17,7 @@ use windows::Win32::System::Threading::AvSetMmThreadCharacteristicsW;
 use windows::core::w;
 
 use crate::audio::{Shared, now_us};
-use crate::click::Renderer;
+use crate::dsp::Dsp;
 use crate::protocol::ProtoError;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -42,7 +42,10 @@ pub struct StartConfig {
     pub buffer_frames: u32,
 }
 
+type Ready = Result<(Value, Arc<Shared>), ProtoError>;
+
 pub struct WasapiStream {
+    pub shared: Arc<Shared>,
     stop: Arc<AtomicBool>,
     thread: Option<JoinHandle<()>>,
     pub info: Value,
@@ -327,7 +330,12 @@ fn finish_setup(
     })
 }
 
-fn render_loop(setup: Setup, shared: Arc<Shared>, stop: Arc<AtomicBool>) {
+fn render_loop(
+    setup: Setup,
+    shared: Arc<Shared>,
+    rx: std::sync::mpsc::Receiver<crate::player::Command>,
+    stop: Arc<AtomicBool>,
+) {
     let Setup {
         client,
         render,
@@ -341,7 +349,7 @@ fn render_loop(setup: Setup, shared: Arc<Shared>, stop: Arc<AtomicBool>) {
         stream_latency_ns,
         ..
     } = setup;
-    let mut renderer = Renderer::with_builtin(rate, channels);
+    let mut dsp = Dsp::new(rate, channels, rx);
     let period_us = (period_frames as f64 / f64::from(rate) * 1e6) as u64;
     let mut scratch = vec![0.0f32; buffer_frames * channels];
     let mut bytes = vec![0u8; buffer_frames * block];
@@ -374,8 +382,7 @@ fn render_loop(setup: Setup, shared: Arc<Shared>, stop: Arc<AtomicBool>) {
             continue;
         }
         let queued = buffer_frames - frames;
-        renderer.apply(&shared.controls);
-        let started = renderer.render(&mut scratch[..frames * channels]);
+        let started = dsp.process(&shared, &mut scratch[..frames * channels]);
         encoding.convert(&scratch[..frames * channels], &mut bytes[..frames * block]);
         if render
             .write_to_device(&bytes[..frames * block], None)
@@ -392,8 +399,8 @@ fn render_loop(setup: Setup, shared: Arc<Shared>, stop: Arc<AtomicBool>) {
     let _ = client.stop_stream();
 }
 
-pub fn start(cfg: &StartConfig, shared: Arc<Shared>) -> Result<WasapiStream, ProtoError> {
-    let (ready_tx, ready_rx): (SyncSender<Result<Value, ProtoError>>, _) = mpsc::sync_channel(1);
+pub fn start(cfg: &StartConfig) -> Result<WasapiStream, ProtoError> {
+    let (ready_tx, ready_rx): (SyncSender<Ready>, _) = mpsc::sync_channel(1);
     let stop = Arc::new(AtomicBool::new(false));
     let thread_stop = Arc::clone(&stop);
     let config = StartConfig {
@@ -415,14 +422,17 @@ pub fn start(cfg: &StartConfig, shared: Arc<Shared>) -> Result<WasapiStream, Pro
                     let _ = ready_tx.send(Err(error));
                 }
                 Ok(setup) => {
-                    let _ = ready_tx.send(Ok(setup.info.clone()));
-                    render_loop(setup, shared, thread_stop);
+                    let (shared, rx) = Shared::new(setup.rate);
+                    let shared = Arc::new(shared);
+                    let _ = ready_tx.send(Ok((setup.info.clone(), Arc::clone(&shared))));
+                    render_loop(setup, shared, rx, thread_stop);
                 }
             }
         })
         .map_err(|e| audio_error(e.to_string()))?;
     match ready_rx.recv_timeout(Duration::from_secs(5)) {
-        Ok(Ok(info)) => Ok(WasapiStream {
+        Ok(Ok((info, shared))) => Ok(WasapiStream {
+            shared,
             stop,
             thread: Some(thread),
             info,
