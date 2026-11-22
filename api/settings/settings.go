@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -22,6 +23,7 @@ type Library struct {
 }
 
 type Audio struct {
+	Mode          string `json:"mode"`
 	Host          string `json:"host"`
 	OutputDevice  string `json:"outputDevice"`
 	MonitorDevice string `json:"monitorDevice"`
@@ -41,6 +43,8 @@ type Settings struct {
 	Appearance Appearance `json:"appearance"`
 }
 
+var allowedModes = []string{"shared", "lowlatency", "exclusive"}
+
 var allowedSampleRates = []int{0, 22050, 32000, 44100, 48000, 88200, 96000, 176400, 192000}
 
 const (
@@ -50,6 +54,13 @@ const (
 	MaxBufferFrames = 8192
 )
 
+func DefaultMode() string {
+	if runtime.GOOS == "windows" {
+		return "lowlatency"
+	}
+	return "shared"
+}
+
 func Defaults(home string) Settings {
 	folders := []string{}
 	if home != "" {
@@ -58,7 +69,7 @@ func Defaults(home string) Settings {
 	return Settings{
 		Version:    Version,
 		Library:    Library{Folders: folders, NormalizeOnImport: false},
-		Audio:      Audio{SampleRate: 0, BufferFrames: 0},
+		Audio:      Audio{Mode: DefaultMode(), SampleRate: 0, BufferFrames: 0},
 		Appearance: Appearance{UIScale: 100},
 	}
 }
@@ -74,6 +85,12 @@ func Normalize(in Settings) (Settings, error) {
 	}
 	if b := out.Audio.BufferFrames; b != 0 && (b < MinBufferFrames || b > MaxBufferFrames) {
 		return Settings{}, fmt.Errorf("buffer size must be 0 (device default) or between %d and %d frames", MinBufferFrames, MaxBufferFrames)
+	}
+	if out.Audio.Mode == "" {
+		out.Audio.Mode = DefaultMode()
+	}
+	if !slices.Contains(allowedModes, out.Audio.Mode) {
+		return Settings{}, fmt.Errorf("output mode %q is not supported", out.Audio.Mode)
 	}
 	seen := map[string]bool{}
 	folders := make([]string, 0, len(in.Library.Folders))

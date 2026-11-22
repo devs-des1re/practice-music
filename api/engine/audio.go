@@ -13,6 +13,7 @@ import (
 const syncRounds = 12
 
 type AudioParams struct {
+	Mode         string `json:"mode"`
 	Host         string `json:"host"`
 	OutputDevice string `json:"outputDevice"`
 	SampleRate   int    `json:"sampleRate"`
@@ -26,6 +27,12 @@ type AudioInfo struct {
 	Channels              int          `json:"channels"`
 	BufferFramesRequested int          `json:"bufferFramesRequested"`
 	BufferRange           *BufferRange `json:"bufferRange"`
+	Mode                  string       `json:"mode"`
+	BufferFrames          int          `json:"bufferFrames"`
+	PeriodFrames          int          `json:"periodFrames"`
+	PeriodMs              *float64     `json:"periodMs"`
+	StreamLatencyMs       *float64     `json:"streamLatencyMs"`
+	Format                string       `json:"format"`
 }
 
 type MetronomeState struct {
@@ -45,6 +52,7 @@ type MetronomeParams struct {
 type AudioStatus struct {
 	Running         bool           `json:"running"`
 	Callbacks       int64          `json:"callbacks"`
+	LateWakes       int64          `json:"lateWakes"`
 	LastBufferFrame int            `json:"lastBufferFrames"`
 	Metronome       MetronomeState `json:"metronome"`
 	Info            AudioInfo      `json:"info"`
@@ -165,4 +173,37 @@ func DecodeClickReport(data json.RawMessage) (ClickReport, error) {
 	var r ClickReport
 	err := json.Unmarshal(data, &r)
 	return r, err
+}
+
+type WasapiDevice struct {
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	MixRate int    `json:"mixRate"`
+	Shared  *struct {
+		DefaultFrames     int     `json:"defaultFrames"`
+		FundamentalFrames int     `json:"fundamentalFrames"`
+		MinFrames         int     `json:"minFrames"`
+		MaxFrames         int     `json:"maxFrames"`
+		MinMs             float64 `json:"minMs"`
+		DefaultMs         float64 `json:"defaultMs"`
+	} `json:"shared"`
+	Exclusive struct {
+		Supported bool     `json:"supported"`
+		Format    *string  `json:"format"`
+		DefaultMs *float64 `json:"defaultMs"`
+		MinMs     *float64 `json:"minMs"`
+	} `json:"exclusive"`
+}
+
+func (s *Supervisor) WasapiProbe(ctx context.Context) ([]WasapiDevice, error) {
+	var res struct {
+		Devices []WasapiDevice `json:"devices"`
+	}
+	if err := s.Call(ctx, "wasapi_probe", nil, &res); err != nil {
+		return nil, err
+	}
+	if res.Devices == nil {
+		res.Devices = []WasapiDevice{}
+	}
+	return res.Devices, nil
 }

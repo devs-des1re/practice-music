@@ -32,7 +32,7 @@ func TestFreshStoreReturnsDefaultsWithALibraryFolder(t *testing.T) {
 func TestSaveThenLoadRoundTrips(t *testing.T) {
 	s := NewStore(t.TempDir(), "")
 	in := Defaults("")
-	in.Audio = Audio{Host: "wasapi", OutputDevice: "wasapi:out", MonitorDevice: "wasapi:mon", InputDevice: "wasapi:in", SampleRate: 48000, BufferFrames: 128}
+	in.Audio = Audio{Mode: "exclusive", Host: "wasapi", OutputDevice: "wasapi:out", MonitorDevice: "wasapi:mon", InputDevice: "wasapi:in", SampleRate: 48000, BufferFrames: 128}
 	in.Library.Folders = []string{abs(t, "songs")}
 	in.Library.NormalizeOnImport = true
 	in.Appearance.UIScale = 110
@@ -79,6 +79,7 @@ func TestValidationRejectsBadValuesAndDoesNotTouchTheFile(t *testing.T) {
 		"tiny buffer":        func(x *Settings) { x.Audio.BufferFrames = 4 },
 		"huge buffer":        func(x *Settings) { x.Audio.BufferFrames = 1 << 20 },
 		"relative folder":    func(x *Settings) { x.Library.Folders = []string{"songs/here"} },
+		"unknown mode":       func(x *Settings) { x.Audio.Mode = "turbo" },
 		"negative buffer":    func(x *Settings) { x.Audio.BufferFrames = -1 },
 		"negative samplerat": func(x *Settings) { x.Audio.SampleRate = -48000 },
 	}
@@ -169,5 +170,25 @@ func TestPartialFilesGetDefaultsForMissingFields(t *testing.T) {
 	}
 	if got.Audio.Host != "wasapi" || got.Appearance.UIScale != 100 || len(got.Library.Folders) != 1 {
 		t.Fatalf("defaults not merged: %+v", got)
+	}
+}
+
+func TestMissingModeGetsThePlatformDefault(t *testing.T) {
+	out, err := Normalize(Settings{Appearance: Appearance{UIScale: 100}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out.Audio.Mode != DefaultMode() {
+		t.Fatalf("mode %q, want %q", out.Audio.Mode, DefaultMode())
+	}
+}
+
+func TestAllKnownModesAreAccepted(t *testing.T) {
+	for _, mode := range []string{"shared", "lowlatency", "exclusive"} {
+		in := Defaults("")
+		in.Audio.Mode = mode
+		if _, err := Normalize(in); err != nil {
+			t.Fatalf("%s rejected: %v", mode, err)
+		}
 	}
 }

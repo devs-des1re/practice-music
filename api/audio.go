@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"runtime"
 	"sync"
 	"time"
 
@@ -24,6 +26,13 @@ type AudioState struct {
 	Channels              int                   `json:"channels"`
 	BufferFramesRequested int                   `json:"bufferFramesRequested"`
 	BufferRange           *engine.BufferRange   `json:"bufferRange"`
+	Mode                  string                `json:"mode"`
+	BufferFrames          int                   `json:"bufferFrames"`
+	PeriodFrames          int                   `json:"periodFrames"`
+	PeriodMs              float64               `json:"periodMs"`
+	StreamLatencyMs       float64               `json:"streamLatencyMs"`
+	Format                string                `json:"format"`
+	Notice                string                `json:"notice"`
 	Error                 string                `json:"error"`
 	Metronome             engine.MetronomeState `json:"metronome"`
 }
@@ -53,7 +62,12 @@ var (
 )
 
 func paramsFrom(s settings.Settings) engine.AudioParams {
+	mode := s.Audio.Mode
+	if runtime.GOOS != "windows" {
+		mode = "shared"
+	}
 	return engine.AudioParams{
+		Mode:         mode,
 		Host:         s.Audio.Host,
 		OutputDevice: s.Audio.OutputDevice,
 		SampleRate:   s.Audio.SampleRate,
@@ -152,8 +166,15 @@ func startAudioNow() (AudioState, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 	defer cancel()
 	info, err := sup.AudioStart(ctx, params)
+	notice := ""
+	if err != nil && params.Mode == "lowlatency" {
+		logger.Warnf("low-latency mode failed (%v), falling back to shared mode", err)
+		notice = fmt.Sprintf("Low-latency mode failed (%v). Using the standard shared mode instead.", err)
+		params.Mode = "shared"
+		info, err = sup.AudioStart(ctx, params)
+	}
 	if err != nil {
-		setAudio(func(a *AudioState) { a.Running = false; a.Error = err.Error() })
+		setAudio(func(a *AudioState) { a.Running = false; a.Error = err.Error(); a.Notice = "" })
 		return AudioStream.Get(), err
 	}
 	running := false
@@ -169,9 +190,18 @@ func startAudioNow() (AudioState, error) {
 		a.Channels = info.Channels
 		a.BufferFramesRequested = info.BufferFramesRequested
 		a.BufferRange = info.BufferRange
+		a.Mode = info.Mode
+		a.BufferFrames = info.BufferFrames
+		a.PeriodFrames = info.PeriodFrames
+		a.PeriodMs = deref(info.PeriodMs)
+		a.StreamLatencyMs = deref(info.StreamLatencyMs)
+		a.Format = info.Format
+		a.Notice = notice
 		a.Metronome = engine.MetronomeState{Running: false, Bpm: m.Bpm, Volume: m.Volume, BeatsPerBar: m.BeatsPerBar}
 	})
-	logger.Infof("audio started on %s at %d Hz", info.Device, info.SampleRate)
+	tracker.Reset()
+	publishLatency()
+	logger.Infof("audio started on %s at %d Hz (%s)", info.Device, info.SampleRate, info.Mode)
 	return AudioStream.Get(), nil
 }
 
@@ -276,4 +306,34 @@ func applyAudioSettings(saved settings.Settings) {
 			}
 		}()
 	}
+}
+
+func deref(v *float64) float64 {
+	if v == nil {
+		return 0
+	}
+	return *v
+}
+
+type AudioStats struct {
+	Callbacks int64 `json:"callbacks"`
+	LateWakes int64 `json:"lateWakes"`
+}
+
+func GetAudioStats() (AudioStats, error) {
+	boot()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	st, err := sup.AudioStatus(ctx)
+	if err != nil {
+		return AudioStats{}, err
+	}
+	return AudioStats{Callbacks: st.Callbacks, LateWakes: st.LateWakes}, nil
+}
+
+func LowLatencyDevices() ([]engine.WasapiDevice, error) {
+	boot()
+	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
+	defer cancel()
+	return sup.WasapiProbe(ctx)
 }
