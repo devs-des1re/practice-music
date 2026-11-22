@@ -3,10 +3,17 @@ mod click;
 mod decode;
 mod devices;
 mod dsp;
+mod fx;
 mod loopback;
+mod metronome_api;
+mod mixer;
+mod mixer_api;
 mod player;
 mod player_api;
 mod protocol;
+mod ring;
+mod routing;
+mod sounds;
 mod stretch;
 mod tempo;
 #[cfg(windows)]

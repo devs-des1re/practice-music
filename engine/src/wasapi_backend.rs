@@ -333,7 +333,7 @@ fn finish_setup(
 fn render_loop(
     setup: Setup,
     shared: Arc<Shared>,
-    rx: std::sync::mpsc::Receiver<crate::player::Command>,
+    inbox: crate::audio::Inbox,
     stop: Arc<AtomicBool>,
 ) {
     let Setup {
@@ -349,7 +349,7 @@ fn render_loop(
         stream_latency_ns,
         ..
     } = setup;
-    let mut dsp = Dsp::new(rate, channels, rx);
+    let mut dsp = Dsp::new(rate, channels, inbox);
     let period_us = (period_frames as f64 / f64::from(rate) * 1e6) as u64;
     let mut scratch = vec![0.0f32; buffer_frames * channels];
     let mut bytes = vec![0u8; buffer_frames * block];
@@ -422,10 +422,10 @@ pub fn start(cfg: &StartConfig) -> Result<WasapiStream, ProtoError> {
                     let _ = ready_tx.send(Err(error));
                 }
                 Ok(setup) => {
-                    let (shared, rx) = Shared::new(setup.rate);
+                    let (shared, inbox) = Shared::new(setup.rate);
                     let shared = Arc::new(shared);
                     let _ = ready_tx.send(Ok((setup.info.clone(), Arc::clone(&shared))));
-                    render_loop(setup, shared, rx, thread_stop);
+                    render_loop(setup, shared, inbox, thread_stop);
                 }
             }
         })

@@ -1,7 +1,7 @@
 use std::str::FromStr;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -11,8 +11,11 @@ use serde_json::{Value, json};
 
 use crate::click::Controls;
 use crate::dsp::Dsp;
+use crate::mixer::{Meters, ParamTable};
 use crate::player::Command;
 use crate::protocol::{ProtoError, event_frame};
+use crate::ring::FrameRing;
+use crate::routing;
 #[cfg(windows)]
 use crate::wasapi_backend::{self, Mode, StartConfig, WasapiStream};
 
@@ -28,13 +31,36 @@ pub fn now_us() -> u64 {
 pub struct Params {
     pub host: String,
     pub output_device: String,
+    pub monitor_device: String,
+    pub input_device: String,
     pub sample_rate: u32,
     pub buffer_frames: u32,
     pub mode: String,
 }
 
+pub struct Link {
+    pub ring: Arc<FrameRing>,
+    pub rate: u32,
+}
+
+pub struct SoundCommand {
+    pub role: usize,
+    pub table: Arc<[f32]>,
+}
+
+pub struct Inbox {
+    pub player: Receiver<Command>,
+    pub sounds: Receiver<SoundCommand>,
+}
+
 pub struct Shared {
     pub controls: Controls,
+    pub params: ParamTable,
+    pub meters: Meters,
+    pub capture: OnceLock<Link>,
+    pub monitor: OnceLock<Link>,
+    pub sound_tx: Sender<SoundCommand>,
+    kept_sounds: Mutex<Vec<Arc<[f32]>>>,
     report_seq: AtomicU64,
     report_callback_us: AtomicU64,
     report_playback_ns: AtomicU64,
@@ -51,10 +77,17 @@ pub struct Shared {
 }
 
 impl Shared {
-    pub fn new(rate: u32) -> (Self, Receiver<Command>) {
+    pub fn new(rate: u32) -> (Self, Inbox) {
         let (tx, rx) = mpsc::channel();
+        let (sound_tx, sound_rx) = mpsc::channel();
         let shared = Self {
             controls: Controls::new(),
+            params: ParamTable::new(),
+            meters: Meters::new(),
+            capture: OnceLock::new(),
+            monitor: OnceLock::new(),
+            sound_tx,
+            kept_sounds: Mutex::new(Vec::new()),
             report_seq: AtomicU64::new(0),
             report_callback_us: AtomicU64::new(0),
             report_playback_ns: AtomicU64::new(0),
@@ -69,7 +102,20 @@ impl Shared {
             player_tx: tx,
             rate,
         };
-        (shared, rx)
+        (
+            shared,
+            Inbox {
+                player: rx,
+                sounds: sound_rx,
+            },
+        )
+    }
+
+    pub fn send_sound(&self, role: usize, table: Arc<[f32]>) {
+        if let Ok(mut kept) = self.kept_sounds.lock() {
+            kept.push(Arc::clone(&table));
+        }
+        let _ = self.sound_tx.send(SoundCommand { role, table });
     }
 
     pub fn set_player_state(&self, position: f64, playing: bool, loops: u64) {
@@ -120,6 +166,17 @@ impl Shared {
     }
 }
 
+fn link_stats(link: Option<&Link>) -> Value {
+    match link {
+        Some(l) => json!({
+            "fill": l.ring.fill(),
+            "overruns": l.ring.overruns(),
+            "underruns": l.ring.underruns(),
+        }),
+        None => Value::Null,
+    }
+}
+
 #[allow(dead_code)]
 enum Backend {
     Cpal(cpal::Stream),
@@ -129,6 +186,7 @@ enum Backend {
 
 pub struct AudioHandle {
     _stream: Backend,
+    aux: Vec<cpal::Stream>,
     pub shared: Arc<Shared>,
     pub info: Value,
     stop: Arc<AtomicBool>,
@@ -142,11 +200,10 @@ impl AudioHandle {
             "callbacks": self.shared.callbacks.load(Ordering::Relaxed),
             "lastBufferFrames": self.shared.last_frames.load(Ordering::Relaxed),
             "lateWakes": self.shared.late_wakes.load(Ordering::Relaxed),
-            "metronome": {
-                "running": self.shared.controls.running(),
-                "bpm": self.shared.controls.bpm(),
-                "volume": self.shared.controls.volume(),
-                "beatsPerBar": self.shared.controls.beats_per_bar(),
+            "metronome": crate::metronome_api::state(&self.shared.controls),
+            "links": {
+                "capture": link_stats(self.shared.capture.get()),
+                "monitor": link_stats(self.shared.monitor.get()),
             },
             "info": self.info,
         })
@@ -181,11 +238,19 @@ fn pick_host(wanted: &str, device_id: Option<&DeviceId>) -> Result<cpal::Host, P
 }
 
 pub fn start(params: &Params, events: Sender<String>) -> Result<AudioHandle, ProtoError> {
-    match params.mode.as_str() {
-        "" | "shared" => start_shared(params, events),
-        "lowlatency" => start_wasapi_mode(params, events, "lowlatency"),
-        "exclusive" => start_wasapi_mode(params, events, "exclusive"),
-        other => Err(audio_error(format!("unknown output mode {other}"))),
+    let mut handle = match params.mode.as_str() {
+        "" | "shared" => start_shared(params, events.clone())?,
+        "lowlatency" => start_wasapi_mode(params, events.clone(), "lowlatency")?,
+        "exclusive" => start_wasapi_mode(params, events.clone(), "exclusive")?,
+        other => return Err(audio_error(format!("unknown output mode {other}"))),
+    };
+    routing::attach(&mut handle, params, events);
+    Ok(handle)
+}
+
+impl AudioHandle {
+    pub fn add_stream(&mut self, stream: cpal::Stream) {
+        self.aux.push(stream);
     }
 }
 
@@ -218,6 +283,7 @@ fn start_wasapi_mode(
     let reporter = spawn_reporter(Arc::clone(&shared), Arc::clone(&stop), events, rate);
     Ok(AudioHandle {
         _stream: Backend::Wasapi(stream),
+        aux: Vec::new(),
         shared,
         info,
         stop,
@@ -292,9 +358,9 @@ fn start_shared(params: &Params, events: Sender<String>) -> Result<AudioHandle, 
         buffer_size,
     };
 
-    let (shared, rx) = Shared::new(sample_rate);
+    let (shared, inbox) = Shared::new(sample_rate);
     let shared = Arc::new(shared);
-    let mut dsp = Dsp::new(sample_rate, usize::from(channels), rx);
+    let mut dsp = Dsp::new(sample_rate, usize::from(channels), inbox);
     let cb_shared = Arc::clone(&shared);
     let err_tx = events.clone();
     let stream = device
@@ -347,6 +413,7 @@ fn start_shared(params: &Params, events: Sender<String>) -> Result<AudioHandle, 
     let reporter = spawn_reporter(Arc::clone(&shared), Arc::clone(&stop), events, sample_rate);
     Ok(AudioHandle {
         _stream: Backend::Cpal(stream),
+        aux: Vec::new(),
         shared,
         info,
         stop,
@@ -364,9 +431,40 @@ fn spawn_reporter(
         let mut seen = 0u64;
         let mut last_player = (0u64, false, 0u64);
         let mut last_emit = std::time::Instant::now();
+        let mut last_beat = 0u64;
+        let mut meters_were_active = false;
         while !stop.load(Ordering::Acquire) {
+            let (beat_seq, beat) = shared.controls.beat();
+            if beat_seq != last_beat {
+                last_beat = beat_seq;
+                let frame = event_frame(
+                    "beat",
+                    json!({
+                        "seq": beat_seq,
+                        "beat": beat.beat,
+                        "bar": beat.bar,
+                        "beatsPerBar": beat.beats_per_bar,
+                        "level": beat.level,
+                        "silent": beat.silent,
+                    }),
+                );
+                if events.send(frame).is_err() {
+                    return;
+                }
+            }
             if last_emit.elapsed() >= Duration::from_millis(33) {
                 last_emit = std::time::Instant::now();
+                let snapshot = shared.meters.snapshot();
+                let active = !snapshot.is_silent();
+                if active || meters_were_active {
+                    meters_were_active = active;
+                    if events
+                        .send(event_frame("meters", routing::meters_json(&snapshot)))
+                        .is_err()
+                    {
+                        return;
+                    }
+                }
                 let (pos, playing, loops) = shared.player_state();
                 let key = (pos.to_bits(), playing, loops);
                 if playing || key != last_player {

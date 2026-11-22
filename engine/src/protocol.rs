@@ -4,9 +4,10 @@ use serde_json::{Value, json};
 use std::sync::mpsc::Sender;
 
 use crate::audio::{self, AudioHandle};
-use crate::click::{MAX_BPM, MIN_BPM};
 use crate::devices;
 use crate::loopback;
+use crate::metronome_api;
+use crate::mixer_api;
 use crate::player_api::{self, Loaded};
 
 pub const PROTOCOL_VERSION: u32 = 1;
@@ -195,9 +196,28 @@ fn dispatch(session: &mut Session, request: &Request, recv_us: u64) -> Result<Va
             require_greeted(session).and_then(|_| player_api::control(session, &request.params))
         }
         "player_status" => require_greeted(session).map(|_| player_api::status(session)),
-        "metronome_set" => {
-            require_greeted(session).and_then(|_| metronome_set(session, &request.params))
-        }
+        "metronome_set" => require_greeted(session).and_then(|_| {
+            let handle = running_audio(session)?;
+            metronome_api::set(&handle.shared, &request.params)
+        }),
+        "metronome_sound" => require_greeted(session).and_then(|_| {
+            let handle = running_audio(session)?;
+            metronome_api::load_sound(&handle.shared, &request.params)
+        }),
+        "mixer_set" => require_greeted(session).and_then(|_| {
+            let handle = running_audio(session)?;
+            mixer_api::apply(&handle.shared.params, &request.params)?;
+            Ok(mixer_api::state(&handle.shared.params))
+        }),
+        "mixer_get" => require_greeted(session).and_then(|_| {
+            let handle = running_audio(session)?;
+            Ok(mixer_api::state(&handle.shared.params))
+        }),
+        "meters_reset" => require_greeted(session).and_then(|_| {
+            let handle = running_audio(session)?;
+            handle.shared.meters.reset_clips();
+            Ok(json!({ "ok": true }))
+        }),
         "shutdown" => Ok(json!({ "bye": true })),
         other => Err(ProtoError::new(
             "unknown_method",
@@ -246,6 +266,8 @@ fn audio_start(session: &mut Session, params: &Value) -> Result<Value, ProtoErro
         &audio::Params {
             host: text(params, "host"),
             output_device: text(params, "outputDevice"),
+            monitor_device: text(params, "monitorDevice"),
+            input_device: text(params, "inputDevice"),
             sample_rate: params
                 .get("sampleRate")
                 .and_then(Value::as_u64)
@@ -261,47 +283,6 @@ fn audio_start(session: &mut Session, params: &Value) -> Result<Value, ProtoErro
     let info = handle.info.clone();
     session.audio = Some(handle);
     Ok(info)
-}
-
-fn metronome_set(session: &Session, params: &Value) -> Result<Value, ProtoError> {
-    let handle = running_audio(session)?;
-    let controls = &handle.shared.controls;
-    if let Some(bpm) = params.get("bpm").and_then(Value::as_f64) {
-        if !(MIN_BPM..=MAX_BPM).contains(&bpm) {
-            return Err(ProtoError::new(
-                "bad_params",
-                format!("bpm must be between {MIN_BPM} and {MAX_BPM}"),
-            ));
-        }
-        controls.set_bpm(bpm);
-    }
-    if let Some(volume) = params.get("volume").and_then(Value::as_f64) {
-        if !(0.0..=1.0).contains(&volume) {
-            return Err(ProtoError::new(
-                "bad_params",
-                "volume must be between 0 and 1",
-            ));
-        }
-        controls.set_volume(volume as f32);
-    }
-    if let Some(beats) = params.get("beatsPerBar").and_then(Value::as_u64) {
-        if !(1..=32).contains(&beats) {
-            return Err(ProtoError::new(
-                "bad_params",
-                "beatsPerBar must be between 1 and 32",
-            ));
-        }
-        controls.set_beats_per_bar(beats as u32);
-    }
-    if let Some(running) = params.get("running").and_then(Value::as_bool) {
-        controls.set_running(running);
-    }
-    Ok(json!({
-        "bpm": controls.bpm(),
-        "volume": controls.volume(),
-        "beatsPerBar": controls.beats_per_bar(),
-        "running": controls.running(),
-    }))
 }
 
 fn require_greeted(session: &Session) -> Result<(), ProtoError> {
@@ -412,7 +393,7 @@ mod tests {
     fn click_and_metronome_need_running_audio() {
         let mut session = Session::default();
         run(&mut session, r#"{"v":1,"id":1,"method":"hello"}"#);
-        for method in ["click", "metronome_set"] {
+        for method in ["click", "metronome_set", "mixer_set", "mixer_get", "meters_reset", "metronome_sound"] {
             let line = format!(r#"{{"v":1,"id":2,"method":"{method}","params":{{"bpm":120}}}}"#);
             let reply = run(&mut session, &line);
             assert_eq!(reply["error"]["code"], "audio_not_started", "{method}");

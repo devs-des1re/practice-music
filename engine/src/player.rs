@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::click::builtin_click;
+use crate::sounds::builtin_click;
 use crate::stretch::Stretcher;
 
 pub enum Command {
