@@ -1,0 +1,61 @@
+import { createSignal, createEffect } from "@krate/runtime";
+import { Engine } from "../../../api/host.go";
+import { emptyEngine } from "../../lib/engine";
+import type { EngineStatus } from "../../lib/types";
+import { StatusDot } from "../ui/status-dot";
+import { stateLabel, stateTone } from "../../lib/format";
+
+export interface SidebarProps {
+  collapsed: boolean;
+  onToggle: () => void;
+  onNavigate: () => void;
+}
+
+export function Sidebar(props: SidebarProps) {
+  const [engine, setEngine] = createSignal<EngineStatus>(emptyEngine);
+  createEffect(() => {
+    const next = Engine();
+    if (next) setEngine(next);
+  });
+
+  return (
+    <aside class="sidebar" aria-label="Primary">
+      <div class="sidebar-head">
+        <div class="brand">
+          <span class="brand-mark">PM</span>
+          <span class="brand-name">PracticeMusic</span>
+        </div>
+        <button
+          class="krate-button krate-button-ghost krate-button-icon collapse-toggle"
+          type="button"
+          aria-label="Toggle sidebar"
+          onClick={props.onToggle}
+        >
+          <Icon name="lucide:panel-left" />
+        </button>
+      </div>
+      <nav class="sidebar-nav">
+        <span class="nav-label">Workstation</span>
+        <Link class="nav-link" href="/" onClick={props.onNavigate}>
+          <Icon name="lucide:activity" />
+          <span class="nav-text">Overview</span>
+        </Link>
+      </nav>
+      <div class="sidebar-foot">
+        <StatusDot tone={stateTone(engine().state)} label={stateLabel(engine().state)} />
+        <div class="sidebar-foot-text">
+          <span class="sidebar-foot-title">Audio engine</span>
+          <span class="sidebar-foot-sub">{stateLabel(engine().state)}</span>
+        </div>
+        <Link
+          class="krate-button krate-button-ghost krate-button-icon"
+          href="/settings"
+          aria-label="Settings"
+          onClick={props.onNavigate}
+        >
+          <Icon name="lucide:settings" />
+        </Link>
+      </div>
+    </aside>
+  );
+}
