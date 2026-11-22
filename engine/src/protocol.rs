@@ -1,7 +1,12 @@
 use serde::Deserialize;
 use serde_json::{Value, json};
 
+use std::sync::mpsc::Sender;
+
+use crate::audio::{self, AudioHandle};
+use crate::click::{MAX_BPM, MIN_BPM};
 use crate::devices;
+use crate::loopback;
 
 pub const PROTOCOL_VERSION: u32 = 1;
 
@@ -42,6 +47,18 @@ pub struct Outcome {
 #[derive(Default)]
 pub struct Session {
     pub greeted: bool,
+    pub audio: Option<AudioHandle>,
+    pub events: Option<Sender<String>>,
+}
+
+impl Session {
+    pub fn with_events(events: Sender<String>) -> Self {
+        Self {
+            greeted: false,
+            audio: None,
+            events: Some(events),
+        }
+    }
 }
 
 pub fn ok_frame(id: u64, result: Value) -> String {
@@ -62,7 +79,7 @@ pub fn event_frame(name: &str, data: Value) -> String {
     json!({ "v": PROTOCOL_VERSION, "event": name, "data": data }).to_string()
 }
 
-pub fn handle_line(session: &mut Session, line: &str) -> Option<Outcome> {
+pub fn handle_line(session: &mut Session, line: &str, recv_us: u64) -> Option<Outcome> {
     let line = line.trim();
     if line.is_empty() {
         return None;
@@ -96,14 +113,14 @@ pub fn handle_line(session: &mut Session, line: &str) -> Option<Outcome> {
         });
     }
     let shutdown = request.method == "shutdown";
-    let frame = match dispatch(session, &request) {
+    let frame = match dispatch(session, &request, recv_us) {
         Ok(result) => ok_frame(request.id, result),
         Err(error) => err_frame(request.id, &error),
     };
     Some(Outcome { frame, shutdown })
 }
 
-fn dispatch(session: &mut Session, request: &Request) -> Result<Value, ProtoError> {
+fn dispatch(session: &mut Session, request: &Request, recv_us: u64) -> Result<Value, ProtoError> {
     match request.method.as_str() {
         "hello" => {
             if let Some(wanted) = request.params.get("protocol").and_then(Value::as_u64)
@@ -125,14 +142,137 @@ fn dispatch(session: &mut Session, request: &Request) -> Result<Value, ProtoErro
                 "features": features(),
             }))
         }
-        "ping" => Ok(json!({ "pong": true })),
+        "ping" => Ok(json!({ "pong": true, "nowUs": audio::now_us() })),
         "list_devices" => require_greeted(session).and_then(|_| devices::list()),
+        "audio_start" => {
+            require_greeted(session).and_then(|_| audio_start(session, &request.params))
+        }
+        "audio_stop" => require_greeted(session).map(|_| {
+            session.audio = None;
+            json!({ "stopped": true })
+        }),
+        "audio_status" => require_greeted(session).map(|_| match &session.audio {
+            Some(handle) => handle.status(),
+            None => json!({ "running": false }),
+        }),
+        "click" => require_greeted(session).and_then(|_| {
+            let handle = running_audio(session)?;
+            let id = handle.shared.trigger(recv_us);
+            Ok(json!({ "id": id, "engineRecvUs": recv_us }))
+        }),
+        "loopback_measure" => require_greeted(session).and_then(|_| {
+            let handle = running_audio(session)?;
+            loopback::measure(
+                handle,
+                &loopback::Probe {
+                    input_device: text(&request.params, "inputDevice"),
+                    host: text(&request.params, "host"),
+                    count: request
+                        .params
+                        .get("count")
+                        .and_then(Value::as_u64)
+                        .unwrap_or(8)
+                        .clamp(1, 20) as usize,
+                    volume: request
+                        .params
+                        .get("volume")
+                        .and_then(Value::as_f64)
+                        .unwrap_or(0.8)
+                        .clamp(0.0, 1.0) as f32,
+                },
+            )
+        }),
+        "metronome_set" => {
+            require_greeted(session).and_then(|_| metronome_set(session, &request.params))
+        }
         "shutdown" => Ok(json!({ "bye": true })),
         other => Err(ProtoError::new(
             "unknown_method",
             format!("unknown method {other}"),
         )),
     }
+}
+
+fn running_audio(session: &Session) -> Result<&AudioHandle, ProtoError> {
+    session
+        .audio
+        .as_ref()
+        .ok_or_else(|| ProtoError::new("audio_not_started", "start audio before using the click"))
+}
+
+fn text(params: &Value, key: &str) -> String {
+    params
+        .get(key)
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string()
+}
+
+fn audio_start(session: &mut Session, params: &Value) -> Result<Value, ProtoError> {
+    let events = session
+        .events
+        .clone()
+        .ok_or_else(|| ProtoError::new("audio_unavailable", "this session has no event channel"))?;
+    session.audio = None;
+    let handle = audio::start(
+        &audio::Params {
+            host: text(params, "host"),
+            output_device: text(params, "outputDevice"),
+            sample_rate: params
+                .get("sampleRate")
+                .and_then(Value::as_u64)
+                .unwrap_or(0) as u32,
+            buffer_frames: params
+                .get("bufferFrames")
+                .and_then(Value::as_u64)
+                .unwrap_or(0) as u32,
+        },
+        events,
+    )?;
+    let info = handle.info.clone();
+    session.audio = Some(handle);
+    Ok(info)
+}
+
+fn metronome_set(session: &Session, params: &Value) -> Result<Value, ProtoError> {
+    let handle = running_audio(session)?;
+    let controls = &handle.shared.controls;
+    if let Some(bpm) = params.get("bpm").and_then(Value::as_f64) {
+        if !(MIN_BPM..=MAX_BPM).contains(&bpm) {
+            return Err(ProtoError::new(
+                "bad_params",
+                format!("bpm must be between {MIN_BPM} and {MAX_BPM}"),
+            ));
+        }
+        controls.set_bpm(bpm);
+    }
+    if let Some(volume) = params.get("volume").and_then(Value::as_f64) {
+        if !(0.0..=1.0).contains(&volume) {
+            return Err(ProtoError::new(
+                "bad_params",
+                "volume must be between 0 and 1",
+            ));
+        }
+        controls.set_volume(volume as f32);
+    }
+    if let Some(beats) = params.get("beatsPerBar").and_then(Value::as_u64) {
+        if !(1..=32).contains(&beats) {
+            return Err(ProtoError::new(
+                "bad_params",
+                "beatsPerBar must be between 1 and 32",
+            ));
+        }
+        controls.set_beats_per_bar(beats as u32);
+    }
+    if let Some(running) = params.get("running").and_then(Value::as_bool) {
+        controls.set_running(running);
+    }
+    Ok(json!({
+        "bpm": controls.bpm(),
+        "volume": controls.volume(),
+        "beatsPerBar": controls.beats_per_bar(),
+        "running": controls.running(),
+    }))
 }
 
 fn require_greeted(session: &Session) -> Result<(), ProtoError> {
@@ -162,7 +302,7 @@ mod tests {
     use super::*;
 
     fn run(session: &mut Session, line: &str) -> Value {
-        let outcome = handle_line(session, line).expect("frame expected");
+        let outcome = handle_line(session, line, 0).expect("frame expected");
         serde_json::from_str(&outcome.frame).expect("valid json frame")
     }
 
@@ -234,14 +374,45 @@ mod tests {
     #[test]
     fn shutdown_sets_the_flag() {
         let mut session = Session::default();
-        let outcome = handle_line(&mut session, r#"{"v":1,"id":6,"method":"shutdown"}"#).unwrap();
+        let outcome =
+            handle_line(&mut session, r#"{"v":1,"id":6,"method":"shutdown"}"#, 0).unwrap();
         assert!(outcome.shutdown);
+    }
+
+    #[test]
+    fn click_and_metronome_need_running_audio() {
+        let mut session = Session::default();
+        run(&mut session, r#"{"v":1,"id":1,"method":"hello"}"#);
+        for method in ["click", "metronome_set"] {
+            let line = format!(r#"{{"v":1,"id":2,"method":"{method}","params":{{"bpm":120}}}}"#);
+            let reply = run(&mut session, &line);
+            assert_eq!(reply["error"]["code"], "audio_not_started", "{method}");
+        }
+    }
+
+    #[test]
+    fn audio_start_without_an_event_channel_is_refused() {
+        let mut session = Session::default();
+        run(&mut session, r#"{"v":1,"id":1,"method":"hello"}"#);
+        let reply = run(
+            &mut session,
+            r#"{"v":1,"id":2,"method":"audio_start","params":{}}"#,
+        );
+        assert_eq!(reply["error"]["code"], "audio_unavailable");
+    }
+
+    #[test]
+    fn audio_status_reports_not_running_before_start() {
+        let mut session = Session::default();
+        run(&mut session, r#"{"v":1,"id":1,"method":"hello"}"#);
+        let reply = run(&mut session, r#"{"v":1,"id":2,"method":"audio_status"}"#);
+        assert_eq!(reply["result"]["running"], false);
     }
 
     #[test]
     fn blank_lines_are_ignored() {
         let mut session = Session::default();
-        assert!(handle_line(&mut session, "   ").is_none());
+        assert!(handle_line(&mut session, "   ", 0).is_none());
     }
 
     #[test]
