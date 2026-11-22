@@ -364,6 +364,13 @@ export default function SettingsPage() {
               checked={!!draft()?.library.normalizeOnImport}
               onChange={(v) => edit((s) => (s.library.normalizeOnImport = v))}
             />
+            <Toggle
+              id="library-tool-updates"
+              label="Update yt-dlp automatically"
+              hint="Checks for a newer release when the app starts. Only applies to the copy PracticeMusic manages."
+              checked={!draft()?.library.disableToolUpdates}
+              onChange={(v) => edit((s) => (s.library.disableToolUpdates = !v))}
+            />
             </PanelBody>
           </Panel>
 

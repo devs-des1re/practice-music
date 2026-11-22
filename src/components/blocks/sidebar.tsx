@@ -40,6 +40,18 @@ export function Sidebar(props: SidebarProps) {
           <Icon name="lucide:activity" />
           <span class="nav-text">Overview</span>
         </Link>
+        <Link class="nav-link" href="/library" onClick={props.onNavigate}>
+          <Icon name="lucide:library" />
+          <span class="nav-text">Library</span>
+        </Link>
+        <Link class="nav-link" href="/downloads" onClick={props.onNavigate}>
+          <Icon name="lucide:download" />
+          <span class="nav-text">Downloads</span>
+        </Link>
+        <Link class="nav-link" href="/browser" onClick={props.onNavigate}>
+          <Icon name="lucide:globe" />
+          <span class="nav-text">Browser</span>
+        </Link>
         <Link class="nav-link" href="/latency" onClick={props.onNavigate}>
           <Icon name="lucide:timer" />
           <span class="nav-text">Latency</span>

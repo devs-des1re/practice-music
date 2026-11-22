@@ -4,18 +4,23 @@ import path from "node:path";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
+const toolchain = process.env.PM_GO_TOOLCHAIN || "go1.26.1";
+
 function goroot() {
-  if (process.env.GOROOT) return process.env.GOROOT;
   try {
-    return execFileSync("go", ["env", "GOROOT"], { encoding: "utf8" }).trim();
+    return execFileSync("go", ["env", "GOROOT"], {
+      encoding: "utf8",
+      env: { ...process.env, GOTOOLCHAIN: toolchain },
+    }).trim();
   } catch {
     return "";
   }
 }
 
-const env = { ...process.env };
+const env = { ...process.env, GOTOOLCHAIN: toolchain };
 const resolved = goroot();
 if (resolved) env.GOROOT = resolved;
+else delete env.GOROOT;
 
 const result = spawnSync("krate", process.argv.slice(2), {
   cwd: root,

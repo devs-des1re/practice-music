@@ -59,3 +59,38 @@ export function formatMs(value: number | undefined, available: boolean): string 
   if (!available || value === undefined || Number.isNaN(value)) return "-";
   return value.toFixed(1) + " ms";
 }
+
+export function formatDurationMs(ms: number): string {
+  if (!ms || ms < 0) return "-";
+  const total = Math.round(ms / 1000);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
+}
+
+export function jobTone(state: string): Tone {
+  switch (state) {
+    case "done":
+      return "ok";
+    case "running":
+      return "warn";
+    case "failed":
+      return "bad";
+    default:
+      return "idle";
+  }
+}
+
+export function formatPercent(value: number): string {
+  return Math.round(value) + "%";
+}
+
+export function normaliseAddress(input: string): string {
+  const text = input.trim();
+  if (!text) return "";
+  if (/^https?:\/\//i.test(text)) return text;
+  if (/^[^\s/]+\.[^\s/]{2,}([/?#].*)?$/.test(text)) return "https://" + text;
+  return "https://duckduckgo.com/?q=" + encodeURIComponent(text);
+}

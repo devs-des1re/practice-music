@@ -18,8 +18,9 @@ const Version = 1
 const FileName = "settings.json"
 
 type Library struct {
-	Folders           []string `json:"folders"`
-	NormalizeOnImport bool     `json:"normalizeOnImport"`
+	Folders            []string `json:"folders"`
+	NormalizeOnImport  bool     `json:"normalizeOnImport"`
+	DisableToolUpdates bool     `json:"disableToolUpdates"`
 }
 
 type Audio struct {
