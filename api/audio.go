@@ -36,6 +36,8 @@ type AudioState struct {
 	Notice                string                `json:"notice"`
 	Error                 string                `json:"error"`
 	Metronome             engine.MetronomeState `json:"metronome"`
+	Capture               *engine.LinkInfo      `json:"capture"`
+	Monitor               *engine.LinkInfo      `json:"monitor"`
 }
 
 type LatencyState struct {
@@ -57,7 +59,6 @@ var (
 	audioMu     sync.Mutex
 	wantAudio   bool
 	audioParams engine.AudioParams
-	metro       = engine.MetronomeState{Bpm: 120, Volume: 0.5, BeatsPerBar: 4}
 	tracker     = latency.NewTracker()
 	eventsOnce  sync.Once
 )
@@ -68,11 +69,13 @@ func paramsFrom(s settings.Settings) engine.AudioParams {
 		mode = "shared"
 	}
 	return engine.AudioParams{
-		Mode:         mode,
-		Host:         s.Audio.Host,
-		OutputDevice: s.Audio.OutputDevice,
-		SampleRate:   s.Audio.SampleRate,
-		BufferFrames: s.Audio.BufferFrames,
+		Mode:          mode,
+		Host:          s.Audio.Host,
+		OutputDevice:  s.Audio.OutputDevice,
+		MonitorDevice: s.Audio.MonitorDevice,
+		InputDevice:   s.Audio.InputDevice,
+		SampleRate:    s.Audio.SampleRate,
+		BufferFrames:  s.Audio.BufferFrames,
 	}
 }
 
@@ -128,6 +131,14 @@ func handleEvent(ev engine.Event) {
 		if pev, err := engine.DecodePlayerEvent(ev.Data); err == nil {
 			handlePlayerEvent(pev)
 		}
+	case "meters":
+		if frame, err := engine.DecodeMeters(ev.Data); err == nil {
+			MeterStream.Set(frame)
+		}
+	case "beat":
+		if frame, err := engine.DecodeBeat(ev.Data); err == nil {
+			BeatStream.Set(frame)
+		}
 	case "audio_error":
 		var data struct {
 			Message string `json:"message"`
@@ -166,7 +177,6 @@ func onEngineStatus(st engine.Status) {
 func startAudioNow() (AudioState, error) {
 	audioMu.Lock()
 	params := audioParams
-	m := metro
 	audioMu.Unlock()
 	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 	defer cancel()
@@ -182,9 +192,9 @@ func startAudioNow() (AudioState, error) {
 		setAudio(func(a *AudioState) { a.Running = false; a.Error = err.Error(); a.Notice = "" })
 		return AudioStream.Get(), err
 	}
-	running := false
-	if _, err := sup.MetronomeSet(ctx, engine.MetronomeParams{Bpm: &m.Bpm, Volume: &m.Volume, BeatsPerBar: &m.BeatsPerBar, Running: &running}); err != nil {
-		logger.Warnf("metronome settings were not applied: %v", err)
+	engineMetro, err := pushSession(ctx, false)
+	if err != nil {
+		logger.Warnf("mixer and metronome settings were not applied: %v", err)
 	}
 	setAudio(func(a *AudioState) {
 		a.Running = true
@@ -202,7 +212,9 @@ func startAudioNow() (AudioState, error) {
 		a.StreamLatencyMs = deref(info.StreamLatencyMs)
 		a.Format = info.Format
 		a.Notice = notice
-		a.Metronome = engine.MetronomeState{Running: false, Bpm: m.Bpm, Volume: m.Volume, BeatsPerBar: m.BeatsPerBar}
+		a.Metronome = engineMetro
+		a.Capture = info.Capture
+		a.Monitor = info.Monitor
 	})
 	tracker.Reset()
 	publishLatency()
@@ -279,17 +291,17 @@ func ResetLatency() LatencyState {
 
 func SetMetronome(bpm float64, volume float64, beatsPerBar int, running bool) (engine.MetronomeState, error) {
 	boot()
-	audioMu.Lock()
-	metro = engine.MetronomeState{Running: running, Bpm: bpm, Volume: volume, BeatsPerBar: beatsPerBar}
-	audioMu.Unlock()
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-	state, err := sup.MetronomeSet(ctx, engine.MetronomeParams{Bpm: &bpm, Volume: &volume, BeatsPerBar: &beatsPerBar, Running: &running})
-	if err != nil {
+	st := GetMetronome()
+	st.Bpm = bpm
+	st.Volume = volume
+	st.BeatsPerBar = beatsPerBar
+	if _, err := SetMetronomeState(st); err != nil {
 		return engine.MetronomeState{}, err
 	}
-	setAudio(func(a *AudioState) { a.Metronome = state })
-	return state, nil
+	if running {
+		return startMetronome()
+	}
+	return stopMetronome()
 }
 
 func MeasureLoopback(inputDevice string, count int) (engine.LoopbackResult, error) {

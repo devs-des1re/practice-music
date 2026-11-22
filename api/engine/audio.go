@@ -13,11 +13,23 @@ import (
 const syncRounds = 12
 
 type AudioParams struct {
+	Mode          string `json:"mode"`
+	Host          string `json:"host"`
+	OutputDevice  string `json:"outputDevice"`
+	MonitorDevice string `json:"monitorDevice"`
+	InputDevice   string `json:"inputDevice"`
+	SampleRate    int    `json:"sampleRate"`
+	BufferFrames  int    `json:"bufferFrames"`
+}
+
+type LinkInfo struct {
 	Mode         string `json:"mode"`
-	Host         string `json:"host"`
-	OutputDevice string `json:"outputDevice"`
+	Running      bool   `json:"running"`
+	Device       string `json:"device"`
+	Channels     int    `json:"channels"`
 	SampleRate   int    `json:"sampleRate"`
-	BufferFrames int    `json:"bufferFrames"`
+	RateMismatch bool   `json:"rateMismatch"`
+	Error        string `json:"error"`
 }
 
 type AudioInfo struct {
@@ -33,6 +45,8 @@ type AudioInfo struct {
 	PeriodMs              *float64     `json:"periodMs"`
 	StreamLatencyMs       *float64     `json:"streamLatencyMs"`
 	Format                string       `json:"format"`
+	Capture               *LinkInfo    `json:"capture"`
+	Monitor               *LinkInfo    `json:"monitor"`
 }
 
 type MetronomeState struct {
@@ -40,12 +54,27 @@ type MetronomeState struct {
 	Bpm         float64 `json:"bpm"`
 	Volume      float64 `json:"volume"`
 	BeatsPerBar int     `json:"beatsPerBar"`
+	Subdivision int     `json:"subdivision"`
+	SubLevel    float64 `json:"subLevel"`
+	Accents     []int   `json:"accents"`
+	PolyBeats   int     `json:"polyBeats"`
+	PolyLevel   float64 `json:"polyLevel"`
+	PlayBars    int     `json:"playBars"`
+	SilentBars  int     `json:"silentBars"`
 }
 
 type MetronomeParams struct {
 	Bpm         *float64 `json:"bpm,omitempty"`
 	Volume      *float64 `json:"volume,omitempty"`
 	BeatsPerBar *int     `json:"beatsPerBar,omitempty"`
+	Subdivision *int     `json:"subdivision,omitempty"`
+	SubLevel    *float64 `json:"subLevel,omitempty"`
+	Accents     []int    `json:"accents,omitempty"`
+	PolyBeats   *int     `json:"polyBeats,omitempty"`
+	PolyLevel   *float64 `json:"polyLevel,omitempty"`
+	PlayBars    *int     `json:"playBars,omitempty"`
+	SilentBars  *int     `json:"silentBars,omitempty"`
+	Sound       *string  `json:"sound,omitempty"`
 	Running     *bool    `json:"running,omitempty"`
 }
 
