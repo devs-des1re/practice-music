@@ -10,5 +10,6 @@ export default defineConfig({
     version: '0.1.0',
     window: { width: 1280, height: 800 },
     permissions: ['dialog'],
+    lean: { ignore: ['KR7272'] },
   },
 });
