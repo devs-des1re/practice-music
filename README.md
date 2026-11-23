@@ -32,6 +32,7 @@ In place so far:
 - Mixer with song, click and input channels, EQ, compressor, meters, a master limiter, and separate main and monitor mixes
 - Metronome with accents, subdivisions, polyrhythms, silent bars, custom sounds and a large beat display
 - Scenes that restore routing, levels and metronome settings, and settings export and import
+- One workspace where every panel can be dragged by its header, docked against another panel's edge and resized with the dividers; the layout is remembered
 
 ## Requirements
 
@@ -40,6 +41,10 @@ In place so far:
 - ffmpeg and ffprobe on your PATH
 - Rust stable
 - Windows with the WebView2 runtime, or Linux with WebKitGTK 4.1 and the ALSA development headers
+
+## Install
+
+Every tagged release has a Windows installer attached. It contains the app and the audio engine in one executable. Downloading songs also needs ffmpeg and ffprobe on your PATH.
 
 ## Getting started
 
@@ -61,6 +66,12 @@ Build the app:
 
 ```sh
 npm run build
+```
+
+Build the installer (on Windows this needs NSIS on your PATH):
+
+```sh
+npm run package
 ```
 
 ## Configuration
