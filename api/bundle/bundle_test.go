@@ -3,6 +3,8 @@ package bundle
 import (
 	"bytes"
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -12,9 +14,11 @@ import (
 	"practice-music/api/settings"
 )
 
+var home = filepath.Join(os.TempDir(), "drummer")
+
 func sample(t *testing.T) Bundle {
 	t.Helper()
-	s := settings.Defaults("C:\\Users\\drummer")
+	s := settings.Defaults(home)
 	s.Audio.OutputDevice = "wasapi:{out-1}"
 	s.Audio.MonitorDevice = "wasapi:{phones}"
 	s.Audio.InputDevice = "wasapi:{kit}"
@@ -45,7 +49,7 @@ func encode(t *testing.T, b Bundle) []byte {
 
 func TestAnExportDecodesBackToTheSameThing(t *testing.T) {
 	b := sample(t)
-	got, err := Decode(bytes.NewReader(encode(t, b)), "C:\\Users\\drummer")
+	got, err := Decode(bytes.NewReader(encode(t, b)), home)
 	if err != nil {
 		t.Fatal(err)
 	}
