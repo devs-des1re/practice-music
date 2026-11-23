@@ -48,7 +48,7 @@ func OpenBrowser(url string) (BrowserInfo, error) {
 			Blocked:       "external",
 		},
 		Side:     "right",
-		Size:     0.62,
+		Size:     0.5,
 		MinWidth: 360,
 	})
 	if err != nil {

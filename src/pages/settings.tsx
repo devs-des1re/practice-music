@@ -1,18 +1,22 @@
 import { createSignal, createEffect, createMemo, onMount } from "@krate/runtime";
 import { openFile, openFolder, saveFile } from "@krate/app/dialog";
 import { LowLatencyDevices } from "../../api/audio.go";
-import { Engine, GetSettings, SaveSettings } from "../../api/host.go";
+import { Engine, GetSettings, RestartEngine, SaveSettings } from "../../api/host.go";
 import { ExportSettings, ImportSettings } from "../../api/transfer.go";
 import { Panel, PanelHead, PanelBody } from "../components/ui/panel";
 import { Field } from "../components/ui/field";
 import { Select } from "../components/ui/select";
 import { Toggle } from "../components/ui/toggle";
 import { Notice } from "../components/ui/notice";
+import { Readout } from "../components/ui/readout";
+import { StatusDot } from "../components/ui/status-dot";
+import { LiveText } from "../components/ui/live-text";
+import { Topbar } from "../components/blocks/topbar";
 import { applyScale } from "../lib/appearance";
 import { emptyDevices, loadDevices } from "../lib/devices";
 import { emptyEngine } from "../lib/engine";
 import type { AppSettings, DeviceList, EngineStatus } from "../lib/types";
-import { bufferLatencyMs, formatRate } from "../lib/format";
+import { bufferLatencyMs, formatRate, formatRates, stateLabel, stateTone } from "../lib/format";
 import { logger } from "../lib/logger";
 
 interface LowDevice {
@@ -68,6 +72,10 @@ export default function SettingsPage() {
   const [path, setPath] = createSignal("");
   const [busy, setBusy] = createSignal(false);
   const [section, setSection] = createSignal("audio");
+  const [stateText, setStateText] = createSignal("Connecting");
+  createEffect(() => {
+    setStateText(stateLabel(engine().state));
+  });
   const [done, setDone] = createSignal(false);
   const [transferInfo, setTransferInfo] = createSignal("");
   const [transferNotes, setTransferNotes] = createSignal("");
@@ -252,6 +260,9 @@ export default function SettingsPage() {
   }
 
   return (
+    <div class="screen">
+      <Topbar />
+      <div class="viewport">
     <main class="page">
       <header class="page-head">
         <h1 class="page-title">
@@ -289,6 +300,12 @@ export default function SettingsPage() {
             <span class="rail-label">
               <Icon name="lucide:monitor-speaker" />
               Audio
+            </span>
+          </button>
+          <button class="rail-item" type="button" data-active={section() === "engine" ? "true" : "false"} onClick={() => setSection("engine")}>
+            <span class="rail-label">
+              <Icon name="lucide:cpu" />
+              Engine
             </span>
           </button>
           <button class="rail-item" type="button" data-active={section() === "library" ? "true" : "false"} onClick={() => setSection("library")}>
@@ -401,6 +418,64 @@ export default function SettingsPage() {
             </Panel>
           </div>
 
+          <div class="pane" showIf={section() === "engine"}>
+            <Panel>
+              <PanelHead title="Audio engine">
+                <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={() => RestartEngine()}>
+                  <Icon name="lucide:rotate-cw" />
+                  Restart
+                </button>
+              </PanelHead>
+              <div class="panel-body fixed">
+                <div class="status-line">
+                  <StatusDot tone={stateTone(engine().state)} label={stateText()} />
+                  <LiveText class="state-text" text={stateText()} />
+                </div>
+                <div class="readout-grid">
+                  <Readout label="Version" value={engine().engineVersion || "-"} />
+                  <Readout label="Protocol" value={engine().protocol ? "v" + engine().protocol : "-"} />
+                  <Readout label="Process" value={engine().pid ? String(engine().pid) : "-"} />
+                  <Readout label="Restarts" value={String(engine().restarts || 0)} />
+                </div>
+                <div showIf={!!engine().lastError}>
+                  <Notice tone={engine().state === "failed" ? "bad" : "warn"} title="Last engine error" text={engine().lastError || ""} />
+                </div>
+              </div>
+              <div class="scroll" showIf={devicesLoaded() && deviceList().devices.length > 0}>
+                <table class="device-table">
+                  <thead>
+                    <tr>
+                      <th>Device</th>
+                      <th>Driver</th>
+                      <th>Direction</th>
+                      <th>Channels</th>
+                      <th>Sample rates</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {deviceList().devices.map((d) => (
+                      <tr key={d.id + d.direction}>
+                        <td>
+                          <div class="device-name">
+                            <span>{d.name}</span>
+                            <span class="device-id">{d.id}</span>
+                          </div>
+                        </td>
+                        <td class="num">{d.host}</td>
+                        <td>
+                          <span class="tag">{d.direction}</span>
+                          {d.isDefault && <span class="tag" data-tone="accent">default</span>}
+                        </td>
+                        <td class="num">{d.maxChannels}</td>
+                        <td class="num rates">{formatRates(d.sampleRates)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Panel>
+          </div>
+
           <div class="pane" showIf={section() === "library"}>
             <Panel hue="library">
               <PanelHead title="Library">
@@ -509,5 +584,7 @@ export default function SettingsPage() {
         </div>
       </div>
     </main>
+      </div>
+    </div>
   );
 }

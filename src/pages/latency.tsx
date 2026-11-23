@@ -1,4 +1,5 @@
 import { createSignal, createEffect, createMemo, onMount, onCleanup } from "@krate/runtime";
+import { Topbar } from "../components/blocks/topbar";
 import { Devices, GetSettings, SaveSettings } from "../../api/host.go";
 import {
   AudioStream,
@@ -244,6 +245,9 @@ export default function LatencyPage() {
   });
 
   return (
+    <div class="screen">
+      <Topbar />
+      <div class="viewport">
     <main class="page">
       <header class="page-head">
         <h1 class="page-title">
@@ -461,5 +465,7 @@ export default function LatencyPage() {
         </div>
       </div>
     </main>
+      </div>
+    </div>
   );
 }
