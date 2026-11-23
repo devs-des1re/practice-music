@@ -6,3 +6,6 @@ engine/target
 *.log
 .env
 .DS_Store
+
+api/engine/payload/*
+!api/engine/payload/.gitkeep

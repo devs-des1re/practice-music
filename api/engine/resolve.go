@@ -71,5 +71,10 @@ func Resolve(env func(string) string, exe string, cwd string) (string, error) {
 func ResolveDefault() (string, error) {
 	exe, _ := os.Executable()
 	cwd, _ := os.Getwd()
+	if os.Getenv(EnvPath) == "" {
+		if path, ok := extractEmbedded(); ok {
+			return path, nil
+		}
+	}
 	return Resolve(os.Getenv, exe, cwd)
 }
