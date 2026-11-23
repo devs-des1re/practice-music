@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { copyFileSync, existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { delimiter } from "node:path";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -30,10 +31,37 @@ function platform() {
   return process.platform === "darwin" ? "darwin" : "linux";
 }
 
+function onPath(name) {
+  const dirs = (process.env.PATH || process.env.Path || "").split(delimiter);
+  return dirs.some((d) => d && existsSync(path.join(d, name)));
+}
+
+function ensureNsis() {
+  if (!windows || format !== "nsis") return;
+  const exe = "makensis.exe";
+  if (onPath(exe)) return;
+  const bases = [process.env["ProgramFiles(x86)"], process.env.ProgramFiles, process.env.ChocolateyInstall && path.join(process.env.ChocolateyInstall, "bin")];
+  for (const base of bases) {
+    if (!base) continue;
+    for (const dir of [path.join(base, "NSIS"), base]) {
+      if (existsSync(path.join(dir, exe))) {
+        process.env.PATH = dir + delimiter + (process.env.PATH || process.env.Path || "");
+        console.log("Using NSIS from " + dir);
+        return;
+      }
+    }
+  }
+  console.error("makensis was not found. Install NSIS (choco install nsis, or winget install NSIS.NSIS), open a new terminal and run this again.");
+  console.error("To build without an installer, run: node scripts/package.mjs zip");
+  process.exit(1);
+}
+
 if (!existsSync(engineBuilt)) {
   console.error("The audio engine is not built. Run npm run build:engine first.");
   process.exit(1);
 }
+
+ensureNsis();
 
 const originalConfig = readFileSync(configPath, "utf8");
 let status = 0;
