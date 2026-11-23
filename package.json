@@ -9,7 +9,7 @@
     "build": "npm run build:engine && node scripts/krate.mjs native build",
     "build:engine": "cargo build --release --manifest-path engine/Cargo.toml",
     "package": "npm run build:engine && node scripts/package.mjs",
-    "typecheck": "node scripts/krate.mjs native check && tsc --noEmit",
+    "typecheck": "node scripts/typecheck.mjs",
     "lint": "eslint src scripts && go vet ./api/... && cargo clippy --manifest-path engine/Cargo.toml --all-targets -- -D warnings",
     "test": "npm run test:unit && go test ./api/... && cargo test --manifest-path engine/Cargo.toml",
     "test:unit": "node --test \"tests/unit/*.test.ts\"",
