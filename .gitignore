@@ -1,7 +1,10 @@
 node_modules
 dist
 dist-native
-.krate
+.krate/*
+!.krate/cache
+.krate/cache/*
+!.krate/cache/icons
 engine/target
 *.log
 .env
