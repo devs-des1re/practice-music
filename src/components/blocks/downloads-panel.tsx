@@ -118,7 +118,7 @@ export function DownloadsPanel() {
 
   return (
     <section class="panel ws-panel" data-hue="downloads" data-panel="downloads" aria-label="Downloads">
-      <header class="panel-head">
+      <header class="panel-head" data-drag="true">
         <h2 class="panel-title">
           <Icon name="lucide:download" />
           Downloads

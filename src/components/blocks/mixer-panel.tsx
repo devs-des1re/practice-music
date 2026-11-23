@@ -255,7 +255,7 @@ export function MixerPanel() {
 
   return (
     <section class="panel ws-panel" data-hue="mixer" data-panel="mixer" aria-label="Mixer">
-      <header class="panel-head">
+      <header class="panel-head" data-drag="true">
         <h2 class="panel-title">
           <Icon name="lucide:sliders-vertical" />
           Mixer

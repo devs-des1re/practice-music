@@ -94,7 +94,7 @@ export function BrowserPanel(props: BrowserPanelProps) {
 
   return (
     <section class="panel ws-panel" data-hue="browser" data-panel="browser" aria-label="Browser">
-      <header class="panel-head">
+      <header class="panel-head" data-drag="true">
         <h2 class="panel-title">
           <Icon name="lucide:globe" />
           Browser

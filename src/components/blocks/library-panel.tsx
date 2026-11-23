@@ -261,7 +261,7 @@ export function LibraryPanel() {
 
   return (
     <section class="panel ws-panel" data-hue="library" data-panel="library" aria-label="Library">
-      <header class="panel-head">
+      <header class="panel-head" data-drag="true">
         <h2 class="panel-title">
           <Icon name="lucide:library-big" />
           Library

@@ -235,7 +235,7 @@ export function MetronomeDeck() {
 
   return (
     <section class="deck metro-deck" data-hue="metronome" aria-label="Metronome">
-      <header class="deck-head">
+      <header class="deck-head" data-drag="true">
         <span class="deck-icon">
           <Icon name="lucide:metronome" />
         </span>

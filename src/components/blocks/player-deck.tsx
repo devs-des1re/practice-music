@@ -208,7 +208,7 @@ export function PlayerDeck(props: PlayerDeckProps) {
 
   return (
     <section class="deck player-deck" data-hue="player" aria-label="Player">
-      <header class="deck-head">
+      <header class="deck-head" data-drag="true">
         <span class="deck-icon">
           <Icon name="lucide:audio-waveform" />
         </span>

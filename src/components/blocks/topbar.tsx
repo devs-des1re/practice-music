@@ -1,32 +1,22 @@
-import { createSignal, createEffect } from "@krate/runtime";
-import { Engine } from "../../../api/host.go";
-import { emptyEngine } from "../../lib/engine";
-import type { EngineStatus } from "../../lib/types";
+import { createSignal } from "@krate/runtime";
 import type { PanelKey, PanelSet } from "../../lib/workspace";
-import { StatusDot } from "../ui/status-dot";
-import { LiveText } from "../ui/live-text";
-import { stateLabel, stateTone } from "../../lib/format";
 
 export interface TopbarProps {
   panels?: PanelSet;
   onToggle?: (key: PanelKey) => void;
+  onReset?: () => void;
 }
 
 export function Topbar(props: TopbarProps) {
-  const [engine, setEngine] = createSignal<EngineStatus>(emptyEngine);
-  const [label, setLabel] = createSignal("Connecting");
   const [menu, setMenu] = createSignal(false);
-  createEffect(() => {
-    const next = Engine();
-    if (next) setEngine(next);
-  });
-  createEffect(() => {
-    setLabel(stateLabel(engine().state));
-  });
 
   const on = (key: PanelKey) => (props.panels ? props.panels[key] : false);
   const toggle = (key: PanelKey) => {
     if (props.onToggle) props.onToggle(key);
+    setMenu(false);
+  };
+  const reset = () => {
+    if (props.onReset) props.onReset();
     setMenu(false);
   };
 
@@ -56,6 +46,10 @@ export function Topbar(props: TopbarProps) {
           <Icon name="lucide:globe" />
           <span>Browser</span>
         </button>
+        <button class="panel-toggle reset-toggle" type="button" title="Put the panels back where they started" onClick={reset}>
+          <Icon name="lucide:layout-template" />
+          <span>Reset layout</span>
+        </button>
       </nav>
 
       <Link class="krate-button krate-button-secondary krate-button-sm back-link" href="/" showIf={!props.panels}>
@@ -64,10 +58,6 @@ export function Topbar(props: TopbarProps) {
       </Link>
 
       <div class="topbar-tools">
-        <Link class="engine-chip" href="/settings" aria-label="Audio engine status">
-          <StatusDot tone={stateTone(engine().state)} label={label()} />
-          <LiveText class="engine-label" text={label()} />
-        </Link>
         <Link class="krate-button krate-button-ghost krate-button-icon" href="/latency" aria-label="Latency" title="Latency">
           <Icon name="lucide:timer" />
         </Link>
