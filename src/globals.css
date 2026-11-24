@@ -48,21 +48,21 @@
 
 
 :root {
-  --color-bg: #0a0a0c;
-  --color-surface: #121215;
-  --color-surface-raised: #19191d;
-  --color-surface-hover: #212126;
-  --color-surface-inset: #0d0d0f;
-  --color-border: #2a2a30;
-  --color-border-strong: #3b3b44;
-  --color-text: #e7e7ea;
-  --color-text-muted: #a8a8b2;
-  --color-text-dim: #80808b;
-  --color-accent: #e8a33d;
-  --color-accent-hover: #f1b457;
-  --color-accent-text: #15100a;
-  --color-accent-soft: #2a2114;
-  --color-accent-line: #7a5a26;
+  --color-bg: #0e1013;
+  --color-surface: #14171c;
+  --color-surface-raised: #1a1e24;
+  --color-surface-hover: #222730;
+  --color-surface-inset: #0b0d10;
+  --color-border: #262b34;
+  --color-border-strong: #3a414d;
+  --color-text: #e8eaee;
+  --color-text-muted: #a9b0bc;
+  --color-text-dim: #818998;
+  --color-accent: #f59e0b;
+  --color-accent-hover: #fbb22e;
+  --color-accent-text: #14100a;
+  --color-accent-soft: #2b2110;
+  --color-accent-line: #7f5510;
   --color-danger: #e5484d;
   --color-danger-hover: #ee6a6e;
   --color-danger-soft: #2b1517;
@@ -73,18 +73,18 @@
   --color-info: #5b9bd5;
   --color-info-soft: #14202b;
   --color-wave-rest: #4b5870;
-  --color-wave-grid: #1c1c21;
+  --color-wave-grid: #1b1f26;
   --color-meter-green: #3fb866;
-  --color-meter-amber: #e0b13a;
+  --color-meter-amber: #f59e0b;
   --color-meter-red: #e5484d;
-  --color-meter-off: #17171b;
+  --color-meter-off: #161a20;
   --color-channel-1: #d09a3f;
   --color-channel-2: #5a92c4;
   --color-channel-3: #4aa56a;
   --color-channel-4: #9a82d6;
   --color-channel-5: #cc6d66;
   --color-channel-6: #3fa8a0;
-  --color-channel-ink: #0b0b0d;
+  --color-channel-ink: #0b0d10;
   --color-scrim: #000000a6;
 
   --space-0: 0.125rem;
@@ -2078,9 +2078,12 @@ input[type="number"].krate-input {
   padding: 0;
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius);
-  background: var(--color-surface-inset);
+  background: var(--color-surface);
   color: var(--color-text-muted);
   font-size: 1.15rem;
+  box-shadow:
+    inset 0 1px 0 var(--color-surface-hover),
+    inset 0 -3px 0 var(--color-surface-inset);
   cursor: pointer;
   transition:
     background-color var(--ease),
@@ -2093,10 +2096,17 @@ input[type="number"].krate-input {
   color: var(--color-text);
 }
 
+.tp-btn:active:not(:disabled) {
+  box-shadow: inset 0 1px 0 var(--color-surface-inset);
+}
+
 .tp-btn[data-on="true"] {
   background: var(--color-accent-soft);
   border-color: var(--color-accent-line);
   color: var(--color-accent);
+  box-shadow:
+    inset 0 1px 0 var(--color-accent-line),
+    inset 0 -3px 0 var(--color-accent);
 }
 
 .tp-btn:disabled {
@@ -2110,6 +2120,9 @@ input[type="number"].krate-input {
   background: var(--color-accent);
   color: var(--color-accent-text);
   font-size: 1.35rem;
+  box-shadow:
+    inset 0 1px 0 var(--color-accent-hover),
+    inset 0 -3px 0 var(--color-accent-line);
 }
 
 .tp-play:hover:not(:disabled),
@@ -2137,6 +2150,7 @@ input[type="number"].krate-input {
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius);
   background: var(--color-surface-inset);
+  box-shadow: inset 0 1px 0 var(--color-bg);
 }
 
 .lcd-cell {
@@ -3402,10 +3416,10 @@ input[type="number"].krate-input {
   position: absolute;
   left: 100%;
   top: 50%;
-  width: 3px;
+  width: 4px;
   height: 1px;
   margin-left: 1px;
-  background: var(--color-border-strong);
+  background: var(--color-text-dim);
 }
 
 .fader-input {
@@ -3435,10 +3449,11 @@ input[type="number"].krate-input {
   border: 1px solid var(--color-text-dim);
   border-radius: var(--radius-sm);
   background-color: var(--color-surface-hover);
-  background-image: linear-gradient(var(--color-text-muted), var(--color-text-muted));
+  background-image: repeating-linear-gradient(to bottom, var(--color-text-dim) 0 1px, transparent 1px 4px);
   background-position: center;
   background-repeat: no-repeat;
-  background-size: calc(100% - 8px) 2px;
+  background-size: calc(100% - 10px) 9px;
+  box-shadow: inset 0 1px 0 var(--color-border-strong);
 }
 
 .fader-input:hover::-webkit-slider-thumb {
@@ -3449,7 +3464,7 @@ input[type="number"].krate-input {
 .fader-input:focus-visible::-webkit-slider-thumb {
   border-color: var(--color-accent);
   background-color: var(--color-accent-soft);
-  background-image: linear-gradient(var(--color-accent), var(--color-accent));
+  background-image: repeating-linear-gradient(to bottom, var(--color-accent) 0 1px, transparent 1px 4px);
 }
 
 .fader-input:disabled {
@@ -3520,9 +3535,9 @@ input[type="number"].krate-input {
 }
 
 .strip-toggle[data-on="true"][data-kind="solo"] {
-  background: var(--color-warning-soft);
-  border-color: var(--color-warning);
-  color: var(--color-warning);
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 
 .strip-foot {
@@ -3609,6 +3624,59 @@ input.strip-name:focus {
   width: 100%;
   min-height: var(--control-height);
   font-size: var(--text-sm);
+}
+
+.gr-readout {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-inset);
+  color: var(--color-text-dim);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+.gr-value {
+  margin-left: auto;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+
+.gr-readout[data-active="true"] {
+  border-color: var(--color-accent-line);
+}
+
+.gr-readout[data-active="true"] .gr-value {
+  color: var(--color-accent);
+}
+
+.info-row {
+  display: grid;
+  grid-template-columns: 5rem minmax(0, 1fr);
+  align-items: baseline;
+  gap: var(--space-2);
+  min-height: 1.75rem;
+}
+
+.info-label {
+  color: var(--color-text-dim);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.info-value {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .limiter-button .limiter-ceiling {

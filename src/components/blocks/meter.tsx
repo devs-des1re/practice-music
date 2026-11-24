@@ -1,6 +1,7 @@
 import { createSignal, createEffect, onMount, onCleanup } from "@krate/runtime";
 import { AudioStream } from "../../../api/audio.go";
 import { MeterStream, ResetMeters } from "../../../api/session.go";
+import { LiveText } from "../ui/live-text";
 import { dbFraction, peakText, scaleFraction, toDb } from "../../lib/mixer";
 
 export interface MeterProps {
@@ -184,5 +185,26 @@ export function PeakReadout(props: PeakReadoutProps) {
     >
       {text()}
     </button>
+  );
+}
+
+export function GainReduction() {
+  const [text, setText] = createSignal("0.0");
+  const [active, setActive] = createSignal(false);
+
+  createEffect(() => {
+    const running = AudioStream()?.running;
+    const frame = MeterStream();
+    const gr = running && frame ? frame.main.gr : 0;
+    setText(gr.toFixed(1));
+    setActive(gr >= 0.1);
+  });
+
+  return (
+    <div class="gr-readout" data-active={active() ? "true" : "false"} data-tip="Limiter gain reduction in dB">
+      <span class="gr-label">GR</span>
+      <LiveText class="gr-value mono" text={text()} />
+      <span class="gr-unit">dB</span>
+    </div>
   );
 }

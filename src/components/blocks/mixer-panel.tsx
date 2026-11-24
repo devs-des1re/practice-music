@@ -10,8 +10,9 @@ import {
   SessionEpoch,
   ActiveScene,
 } from "../../../api/session.go";
+import { PlayerStream } from "../../../api/player.go";
 import { Scenes, SaveScene, RecallScene, DeleteScene, SceneRevision } from "../../../api/scenes.go";
-import { Meter, PeakReadout } from "./meter";
+import { GainReduction, Meter, PeakReadout } from "./meter";
 import { Fader } from "../ui/fader";
 import { Field } from "../ui/field";
 import { ParamRow } from "../ui/param-row";
@@ -21,6 +22,7 @@ import { FoldButton } from "../ui/fold-button";
 import { Notice } from "../ui/notice";
 import { LiveText } from "../ui/live-text";
 import { channelPairs, formatDb, sourceOptions } from "../../lib/mixer";
+import { formatClock } from "../../lib/waveform";
 import { handleError, onRefresh, logFailure } from "../../lib/service";
 import type { AudioState, MixerBoard, MixerMaster, MixerStrip, SceneInfo, SceneStatus } from "../../lib/types";
 
@@ -112,6 +114,7 @@ export function MixerPanel() {
   const [selected, setSelected] = createSignal(0);
   const [tab, setTab] = createSignal("channel");
   const [inspectorTitle, setInspectorTitle] = createSignal("Channel");
+  const [songRows, setSongRows] = createSignal<string[]>(["No song loaded", "-", "-", "-", "-", "-", "-"]);
   const [inspect, setInspect] = createSignal(false);
   const [ceilingText, setCeilingText] = createSignal("-0.3 dB");
   const [inspectorWidth, setInspectorWidth] = createSignal(INSPECTOR_DEFAULT);
@@ -125,6 +128,20 @@ export function MixerPanel() {
   createEffect(() => {
     const next = AudioStream();
     if (next) setAudio(next);
+  });
+
+  createEffect(() => {
+    const p = PlayerStream();
+    if (!p || !p.loaded) {
+      setSongRows(["No song loaded", "-", "-", "-", "-", "-", "-"]);
+      return;
+    }
+    const grid = p.grid;
+    const tempo = grid && grid.bpm > 0 ? grid.bpm.toFixed(1) + " BPM" : "Not detected";
+    const meter = grid && grid.bpm > 0 ? grid.beatsPerBar + " beats per bar" : "-";
+    const pitch = (p.pitch > 0 ? "+" : "") + p.pitch.toFixed(1) + " st";
+    const loop = p.loop.enabled ? formatClock(p.loop.startMs) + " to " + formatClock(p.loop.endMs) : "Off";
+    setSongRows([p.title || "Untitled", p.artist || "-", formatClock(p.durationMs), tempo, meter, Math.round(p.speed * 100) + "% speed, " + pitch, loop]);
   });
 
   createEffect(() => {
@@ -607,6 +624,7 @@ export function MixerPanel() {
                 Limiter
                 <LiveText class="limiter-ceiling mono" text={ceilingText()} />
               </button>
+              <GainReduction />
             </div>
           </div>
           <div class="strip-foot">
@@ -617,8 +635,11 @@ export function MixerPanel() {
         <aside class="mixer-inspector" aria-label="Channel settings">
           <div class="inspector-grip" role="separator" aria-label="Drag to resize the inspector" data-tip="Drag to resize" onPointerDown={startInspectorResize} />
           <header class="inspector-head">
-            <LiveText class="inspector-title" text={inspectorTitle()} />
+            <LiveText class="inspector-title" text={tab() === "song" ? "Song" : inspectorTitle()} />
             <div class="segmented">
+              <button class="segment" type="button" data-active={tab() === "song" ? "true" : "false"} onClick={() => setTab("song")}>
+                Song
+              </button>
               <button class="segment" type="button" data-active={tab() === "channel" ? "true" : "false"} onClick={() => setTab("channel")}>
                 Channel
               </button>
@@ -630,6 +651,41 @@ export function MixerPanel() {
               <Icon name="lucide:x" />
             </button>
           </header>
+
+          <div class="inspector-body" showIf={tab() === "song"}>
+            <Section title="Loaded song" open={isOpen("song")} onToggle={() => toggleSection("song")}>
+              <div class="info-row">
+                <span class="info-label">Title</span>
+                <LiveText class="info-value" text={songRows()[0]} />
+              </div>
+              <div class="info-row">
+                <span class="info-label">Artist</span>
+                <LiveText class="info-value" text={songRows()[1]} />
+              </div>
+              <div class="info-row">
+                <span class="info-label">Length</span>
+                <LiveText class="info-value mono" text={songRows()[2]} />
+              </div>
+            </Section>
+            <Section title="Practice" open={isOpen("practice")} onToggle={() => toggleSection("practice")}>
+              <div class="info-row">
+                <span class="info-label">Tempo</span>
+                <LiveText class="info-value mono" text={songRows()[3]} />
+              </div>
+              <div class="info-row">
+                <span class="info-label">Meter</span>
+                <LiveText class="info-value mono" text={songRows()[4]} />
+              </div>
+              <div class="info-row">
+                <span class="info-label">Playback</span>
+                <LiveText class="info-value mono" text={songRows()[5]} />
+              </div>
+              <div class="info-row">
+                <span class="info-label">Loop</span>
+                <LiveText class="info-value mono" text={songRows()[6]} />
+              </div>
+            </Section>
+          </div>
 
           <div class="inspector-body" showIf={tab() === "channel"}>
             <div showIf={strip().kind === "input"}>
