@@ -22,18 +22,13 @@ import {
 } from "../../../api/library.go";
 import { PlayerOpen, PlayerStream } from "../../../api/player.go";
 import { Field } from "../ui/field";
+import { Menu, type MenuItem } from "../ui/menu";
 import { Select } from "../ui/select";
 import { Notice } from "../ui/notice";
 import { formatDurationMs } from "../../lib/format";
+import { setQueue } from "../../lib/queue";
 import { logger } from "../../lib/logger";
 import type { ImportProgress, Playlist, Song, TagCount } from "../../lib/types";
-
-const SORTS = [
-  { value: "added", label: "Newest first" },
-  { value: "title", label: "Title" },
-  { value: "artist", label: "Artist" },
-  { value: "duration", label: "Longest first" },
-];
 
 const emptyImport: ImportProgress = { running: false, total: 0, done: 0, current: "", errors: [] };
 
@@ -64,6 +59,11 @@ export function LibraryPanel() {
   const [newTag, setNewTag] = createSignal("");
   const [newList, setNewList] = createSignal("");
   const [renameTo, setRenameTo] = createSignal("");
+  const [ready, setReady] = createSignal(false);
+  const [menuOpen, setMenuOpen] = createSignal(false);
+  const [menuX, setMenuX] = createSignal(0);
+  const [menuY, setMenuY] = createSignal(0);
+  const [menuList, setMenuList] = createSignal<MenuItem[]>([]);
   const requested: Record<number, boolean> = {};
 
   createEffect(() => {
@@ -82,7 +82,10 @@ export function LibraryPanel() {
   async function load() {
     try {
       const query = { text: text(), tag: tag(), playlistId: playlistId(), sort: sort() };
-      setSongs(await Songs(query));
+      const list = await Songs(query);
+      setSongs(list);
+      setQueue(list.map((x) => x.id));
+      setReady(true);
       setTags(await AllTags());
       setPlaylists(await Playlists());
     } catch (e) {
@@ -128,8 +131,51 @@ export function LibraryPanel() {
     load();
   });
 
+  createEffect(() => {
+    const song = selectedSong();
+    const lists = playlists();
+    const inList = playlistId() !== 0;
+    const items: MenuItem[] = [
+      { label: "Load into the player", keys: "Enter", disabled: !song, onSelect: () => (song ? loadSong(song.id) : undefined) },
+      { label: "Edit details", disabled: !song, onSelect: () => (song ? edit(song.id) : undefined) },
+      { label: "", separator: true },
+    ];
+    for (const p of lists) {
+      items.push({ label: "Add to " + p.name, disabled: !song, onSelect: () => addToList(String(p.id)) });
+    }
+    if (lists.length > 0) items.push({ label: "", separator: true });
+    if (inList) items.push({ label: "Remove from this playlist", disabled: !song, onSelect: () => removeFromList() });
+    items.push({ label: "Remove from library", disabled: !song, onSelect: () => forget() });
+    items.push({ label: "Delete file from disk", tone: "danger", disabled: !song, onSelect: () => removeSong() });
+    setMenuList(items);
+  });
+
   function selectedSong(): Song | undefined {
     return songs().find((s) => s.id === selected());
+  }
+
+  function openMenu(e: MouseEvent, id: number) {
+    e.preventDefault();
+    setSelected(id);
+    setMenuX(e.clientX);
+    setMenuY(e.clientY);
+    setMenuOpen(true);
+  }
+
+  function onListKey(e: KeyboardEvent) {
+    const list = songs();
+    if (list.length === 0) return;
+    const at = list.findIndex((x) => x.id === selected());
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const to = Math.min(list.length - 1, Math.max(0, at < 0 ? 0 : at + (e.key === "ArrowDown" ? 1 : -1)));
+      setSelected(list[to].id);
+      const row = document.querySelector('[data-song="' + list[to].id + '"]');
+      if (row) row.scrollIntoView({ block: "nearest" });
+    } else if (e.key === "Enter" && at >= 0) {
+      e.preventDefault();
+      loadSong(list[at].id);
+    }
   }
 
   async function guard(action: () => Promise<unknown>) {
@@ -260,7 +306,7 @@ export function LibraryPanel() {
   }
 
   return (
-    <section class="panel ws-panel" data-hue="library" data-panel="library" aria-label="Library">
+    <section class="panel ws-panel library-panel" data-panel="library" aria-label="Library">
       <header class="panel-head" data-drag="true">
         <h2 class="panel-title">
           <Icon name="lucide:library-big" />
@@ -270,7 +316,7 @@ export function LibraryPanel() {
         <div class="panel-tools">
           <div class="search-box">
             <Icon name="lucide:search" />
-            <input class="krate-input" type="search" placeholder="Search" aria-label="Search the library" value={text()} onInput={(e: Event) => setText((e.target as HTMLInputElement).value)} />
+            <input class="krate-input" type="search" placeholder="Search songs, artists, tags" aria-label="Search the library" value={text()} onInput={(e: Event) => setText((e.target as HTMLInputElement).value)} />
           </div>
           <div class="narrow-only">
             <Select
@@ -281,18 +327,17 @@ export function LibraryPanel() {
               onChange={(v) => setPlaylistId(Number(v))}
             />
           </div>
-          <Select id="sort" label="Sort" value={sort()} options={SORTS} onChange={(v) => setSort(v)} />
-          <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Rescan the library folder" title="Rescan the library folder" onClick={rescan}>
+          <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Rescan the library folder" data-tip="Rescan the library folder" onClick={rescan}>
             <Icon name="lucide:refresh-cw" />
           </button>
-          <button class="krate-button krate-button-primary krate-button-sm" type="button" aria-label="Import songs" title="Import songs" disabled={importing().running} onClick={chooseFiles}>
+          <button class="krate-button krate-button-primary krate-button-sm" type="button" aria-label="Import songs" data-tip="Import songs from files" disabled={importing().running} onClick={chooseFiles}>
             <Icon name="lucide:file-plus" />
-            <span class="hide-narrow">Import</span>
+            Import
           </button>
         </div>
       </header>
 
-      <div class="panel-notices">
+      <div class="panel-notices" showIf={!!error() || !!info() || importing().running || importing().errors.length > 0}>
         <div showIf={!!error()}>
           <Notice tone="bad" text={error()} />
         </div>
@@ -337,7 +382,7 @@ export function LibraryPanel() {
                 if (e.key === "Enter") createList();
               }}
             />
-            <button class="krate-button krate-button-secondary krate-button-icon" type="button" aria-label="Create playlist" onClick={createList}>
+            <button class="krate-button krate-button-secondary krate-button-icon" type="button" aria-label="Create playlist" data-tip="Create playlist" onClick={createList}>
               <Icon name="lucide:plus" />
             </button>
           </div>
@@ -353,7 +398,7 @@ export function LibraryPanel() {
                 if (e.key === "Enter") renameList();
               }}
             />
-            <button class="krate-button krate-button-destructive krate-button-icon" type="button" aria-label="Delete playlist" onClick={deleteList}>
+            <button class="krate-button krate-button-destructive krate-button-icon" type="button" aria-label="Delete playlist" data-tip="Delete this playlist" onClick={deleteList}>
               <Icon name="lucide:trash-2" />
             </button>
           </div>
@@ -372,43 +417,78 @@ export function LibraryPanel() {
         </aside>
 
         <div class="lib-songs">
-          <div class="song-head" aria-hidden="true">
-            <span />
-            <span>Title</span>
-            <span class="hide-narrow">Artist</span>
-            <span class="num">Length</span>
+          <div class="song-head" role="row">
+            <button class="col-head num-head" type="button" data-sorted={sort() === "added" ? "true" : "false"} data-tip="Newest first" onClick={() => setSort("added")}>
+              #
+            </button>
+            <button class="col-head" type="button" data-sorted={sort() === "title" ? "true" : "false"} onClick={() => setSort("title")}>
+              Title
+              <Icon name="lucide:arrow-down" />
+            </button>
+            <button class="col-head col-artist" type="button" data-sorted={sort() === "artist" ? "true" : "false"} onClick={() => setSort("artist")}>
+              Artist
+              <Icon name="lucide:arrow-down" />
+            </button>
+            <span class="col-head col-album">Album</span>
+            <button class="col-head num" type="button" data-sorted={sort() === "duration" ? "true" : "false"} data-tip="Longest first" onClick={() => setSort("duration")}>
+              Time
+              <Icon name="lucide:arrow-down" />
+            </button>
             <span />
           </div>
-          <div class="empty-state" showIf={songs().length === 0}>
+
+          <div class="loading-state" data-on={!ready() ? "true" : "false"}>
+            <Icon name="lucide:loader" />
+            Loading the library
+          </div>
+          <div class="empty-state" showIf={ready() && songs().length === 0 && !text() && !tag() && !playlistId()}>
             <span class="empty-icon">
               <Icon name="lucide:list-music" />
             </span>
-            <span class="empty-title">No songs here</span>
-            <span>Import files or download a song.</span>
+            <span class="empty-title">Your library is empty</span>
+            <span>Import audio files or download a song to start practising.</span>
+            <button class="krate-button krate-button-primary krate-button-sm" type="button" disabled={importing().running} onClick={chooseFiles}>
+              <Icon name="lucide:file-plus" />
+              Import songs
+            </button>
           </div>
-          <div class="song-list">
-            {songs().map((s) => (
+          <div class="empty-state" showIf={ready() && songs().length === 0 && (!!text() || !!tag() || !!playlistId())}>
+            <span class="empty-icon">
+              <Icon name="lucide:search-x" />
+            </span>
+            <span class="empty-title">Nothing matches</span>
+            <span>Clear the search, tag or playlist to see more songs.</span>
+          </div>
+
+          <div class="song-list" tabindex={0} aria-label="Songs" onKeyDown={onListKey}>
+            {songs().map((s, i) => (
               <div
                 class="song-row"
                 key={s.id}
+                data-song={String(s.id)}
                 data-selected={selected() === s.id ? "true" : "false"}
                 data-loaded={loadedId() === s.id ? "true" : "false"}
                 data-loading={loadingId() === s.id ? "true" : "false"}
                 onClick={() => setSelected(s.id)}
                 onDoubleClick={() => loadSong(s.id)}
+                onContextMenu={(e: MouseEvent) => openMenu(e, s.id)}
               >
-                <span class="thumb">{thumbs()[s.id] ? <img alt="" src={thumbs()[s.id]} /> : <Icon name="lucide:music" />}</span>
-                <span class="song-main">
-                  <span class="song-title">{s.title}</span>
-                  <span class="song-sub">{(s.artist || "Unknown artist") + (s.tags.length > 0 ? ", " + s.tags.join(", ") : "")}</span>
+                <span class="song-state">
+                  <span class="song-index mono">{String(i + 1)}</span>
+                  <Icon name="lucide:audio-lines" />
                 </span>
-                <span class="song-artist hide-narrow">{s.artist || "Unknown artist"}</span>
+                <span class="song-cell song-title-cell">
+                  <span class="thumb">{thumbs()[s.id] ? <img alt="" src={thumbs()[s.id]} /> : <Icon name="lucide:music" />}</span>
+                  <span class="song-title">{s.title}</span>
+                </span>
+                <span class="song-cell song-artist">{s.artist || "Unknown artist"}</span>
+                <span class="song-cell song-album">{s.album || ""}</span>
                 <span class="song-meta">{formatDurationMs(s.durationMs)}</span>
                 <span class="song-actions">
-                  <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label={"Edit " + s.title} title="Edit details" onClick={() => edit(s.id)}>
+                  <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label={"Edit " + s.title} data-tip="Edit details" onClick={() => edit(s.id)}>
                     <Icon name="lucide:pencil" />
                   </button>
-                  <button class="krate-button krate-button-secondary krate-button-icon krate-button-sm load-button" type="button" aria-label={"Load " + s.title} title="Load into the player" onClick={() => loadSong(s.id)}>
+                  <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label={"Load " + s.title} data-tip="Load into the player" data-keys="Enter" onClick={() => loadSong(s.id)}>
                     <Icon name="lucide:play" />
                   </button>
                 </span>
@@ -493,6 +573,8 @@ export function LibraryPanel() {
           </div>
         </aside>
       </div>
+
+      <Menu id="song-menu" open={menuOpen()} x={menuX()} y={menuY()} items={menuList()} onClose={() => setMenuOpen(false)} />
     </section>
   );
 }

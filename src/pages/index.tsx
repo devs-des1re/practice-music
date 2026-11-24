@@ -1,5 +1,6 @@
 import { createSignal, createEffect, onMount, onCleanup } from "@krate/runtime";
 import { Topbar } from "../components/blocks/topbar";
+import { ShortcutsDialog } from "../components/blocks/shortcuts-dialog";
 import { PlayerDeck } from "../components/blocks/player-deck";
 import { MetronomeDeck } from "../components/blocks/metronome-deck";
 import { LibraryPanel } from "../components/blocks/library-panel";
@@ -17,15 +18,17 @@ import {
   move,
   normalise,
   parseTree,
+  presetTree,
   remove,
   withRatio,
   zoneAt,
   type GutterGeo,
   type Node,
   type PanelId,
+  type PresetName,
   type Zone,
 } from "../lib/layout";
-import { defaultPanels, loadPanels, savePanels, type PanelKey, type PanelSet } from "../lib/workspace";
+import { defaultPanels, isTyping, loadPanels, savePanels, type PanelKey, type PanelSet } from "../lib/workspace";
 
 const LAYOUT_KEY = "pm.workspace.layout";
 const MIN_WIDTH = 240;
@@ -84,6 +87,7 @@ export default function Workspace() {
   const [chipTitle, setChipTitle] = createSignal("");
   const [hintOn, setHintOn] = createSignal(false);
   const [resizePath, setResizePath] = createSignal("");
+  const [shortcuts, setShortcuts] = createSignal(false);
 
   let drag: DragState | null = null;
   let resizing: GutterGeo | null = null;
@@ -143,6 +147,13 @@ export default function Workspace() {
 
   function resetLayout() {
     setLayout(defaultTree(visibleIn(panels())));
+  }
+
+  function applyPreset(name: string) {
+    const next = { ...panels(), library: true, mixer: true };
+    setPanels(next);
+    savePanels(next);
+    setLayout(presetTree(name as PresetName, visibleIn(next)));
   }
 
   function startResize(e: PointerEvent, g: GutterGeo) {
@@ -239,6 +250,19 @@ export default function Workspace() {
     const cancel = () => finish(false);
     const key = (e: KeyboardEvent) => {
       if (e.key === "Escape") finish(false);
+      if (e.altKey && !e.ctrlKey && !e.metaKey) {
+        const panel: Record<string, PanelKey> = { "1": "library", "2": "mixer", "3": "downloads", "4": "browser" };
+        const target = panel[e.key];
+        if (target) {
+          e.preventDefault();
+          setPanel(target, !panels()[target]);
+        }
+        return;
+      }
+      if (e.key === "?" && !isTyping(e)) {
+        e.preventDefault();
+        setShortcuts(!shortcuts());
+      }
     };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", up);
@@ -254,7 +278,7 @@ export default function Workspace() {
 
   return (
     <div class="screen">
-      <Topbar panels={panels()} onToggle={(key) => setPanel(key, !panels()[key])} onReset={resetLayout} />
+      <Topbar panels={panels()} onToggle={(key) => setPanel(key, !panels()[key])} onPreset={applyPreset} onReset={resetLayout} onShortcuts={() => setShortcuts(true)} />
       <main class="ws">
         <div class="ws-stage" data-dragging={dragId() ? "true" : "false"} data-resizing={resizePath() ? "true" : "false"} onPointerDown={onStageDown}>
           <div class="cell" data-tile="player">
@@ -289,6 +313,7 @@ export default function Workspace() {
           ))}
         </div>
       </main>
+      <ShortcutsDialog open={shortcuts()} onClose={() => setShortcuts(false)} />
       <div class="drop-hint" data-on={hintOn() ? "true" : "false"} />
       <div class="drag-chip" data-on={dragId() ? "true" : "false"}>
         {chipTitle()}

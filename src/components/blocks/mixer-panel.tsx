@@ -13,6 +13,7 @@ import {
 } from "../../../api/session.go";
 import { Scenes, SaveScene, RecallScene, DeleteScene, SceneRevision } from "../../../api/scenes.go";
 import { Meter } from "./meter";
+import { Fader } from "../ui/fader";
 import { Field } from "../ui/field";
 import { Select } from "../ui/select";
 import { Notice } from "../ui/notice";
@@ -67,10 +68,18 @@ const noStrip = {
   comp: { on: false, threshold: 0, ratio: 1, attack: 10, release: 100, makeup: 0 },
 } as unknown as MixerStrip;
 
-function hueOf(kind: string): string {
-  if (kind === "song") return "player";
-  if (kind === "click") return "metronome";
-  return "mixer";
+const FADER_MARKS = [12, 0, -12, -24, -36, -60];
+
+function toneOf(s: MixerStrip): string {
+  if (s.kind === "song") return "1";
+  if (s.kind === "click") return "2";
+  return String(3 + (s.index % 4));
+}
+
+function sourceText(s: MixerStrip): string {
+  if (s.kind === "song") return "Song player";
+  if (s.kind === "click") return "Metronome";
+  return s.stereo ? "In " + (s.source + 1) + "-" + (s.source + 2) : "In " + (s.source + 1);
 }
 
 function panText(pan: number): string {
@@ -100,6 +109,7 @@ export function MixerPanel() {
   const [tab, setTab] = createSignal("channel");
   const [inspectorTitle, setInspectorTitle] = createSignal("Channel");
   const [inspect, setInspect] = createSignal(false);
+  const [ceilingText, setCeilingText] = createSignal("-0.3 dB");
   const strip = () => board().strips[selected()] || noStrip;
   const cap = () => audio().capture ?? noLink;
   const mon = () => audio().monitor ?? noLink;
@@ -143,6 +153,10 @@ export function MixerPanel() {
 
   createEffect(() => {
     setInspectorTitle(strip().name || "Channel");
+  });
+
+  createEffect(() => {
+    setCeilingText(board().master.ceiling.toFixed(1) + " dB");
   });
 
   createEffect(() => {
@@ -254,7 +268,7 @@ export function MixerPanel() {
   }
 
   return (
-    <section class="panel ws-panel" data-hue="mixer" data-panel="mixer" aria-label="Mixer">
+    <section class="panel ws-panel mixer-panel" data-panel="mixer" aria-label="Mixer">
       <header class="panel-head" data-drag="true">
         <h2 class="panel-title">
           <Icon name="lucide:sliders-vertical" />
@@ -282,25 +296,26 @@ export function MixerPanel() {
               if (e.key === "Enter") saveAs();
             }}
           />
-          <button class="krate-button krate-button-secondary krate-button-icon krate-button-sm" type="button" aria-label="Save as a new scene" title="Save as a new scene" onClick={saveAs}>
+          <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Save as a new scene" data-tip="Save as a new scene" onClick={saveAs}>
             <Icon name="lucide:save" />
           </button>
-          <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Update the current scene" title="Update the current scene" disabled={active().id === 0 || !active().modified} onClick={updateActive}>
+          <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Update the current scene" data-tip="Update the current scene" disabled={active().id === 0 || !active().modified} onClick={updateActive}>
             <Icon name="lucide:refresh-cw" />
           </button>
-          <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Delete the current scene" title="Delete the current scene" disabled={active().id === 0} onClick={removeActive}>
+          <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Delete the current scene" data-tip="Delete the current scene" disabled={active().id === 0} onClick={removeActive}>
             <Icon name="lucide:trash-2" />
           </button>
-          <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Clear clip lights" title="Clear clip lights" onClick={() => guard(() => ResetMeters())}>
+          <span class="tool-divider" />
+          <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Clear clip lights" data-tip="Clear clip lights" onClick={() => guard(() => ResetMeters())}>
             <Icon name="lucide:eraser" />
           </button>
-          <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Reset the mixer" title="Reset the mixer" onClick={resetAll}>
+          <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Reset the mixer" data-tip="Reset every channel" onClick={resetAll}>
             <Icon name="lucide:rotate-ccw" />
           </button>
         </div>
       </header>
 
-      <div class="panel-notices">
+      <div class="panel-notices" showIf={!!error() || !!info()}>
         <div showIf={!!error()}>
           <Notice tone="bad" text={error()} />
         </div>
@@ -309,20 +324,23 @@ export function MixerPanel() {
         </div>
       </div>
 
-      <div class="mixer" data-inspect={inspect() ? "true" : "false"}>
-        <div class="strips">
+      <div class="console" data-inspect={inspect() ? "true" : "false"}>
+        <div class="channels">
+          <div class="loading-state" data-on={board().strips.length === 0 ? "true" : "false"}>
+            <Icon name="lucide:loader" />
+            Waiting for the audio engine
+          </div>
           {board().strips.map((s) => (
             <section
               class="strip"
               key={s.index}
-              data-kind={s.kind}
-              data-hue={hueOf(s.kind)}
+              data-tone={toneOf(s)}
               data-selected={selected() === s.index ? "true" : "false"}
               data-muted={s.mute ? "true" : "false"}
               aria-label={s.name + " channel"}
               onClick={() => setSelected(s.index)}
             >
-              <header class="strip-head">
+              <div class="strip-top">
                 {s.kind === "input" ? (
                   <input
                     class="strip-name"
@@ -335,33 +353,36 @@ export function MixerPanel() {
                 ) : (
                   <span class="strip-title">{s.name}</span>
                 )}
-                <button
-                  class="strip-inspect"
-                  type="button"
-                  aria-label={"EQ and routing for " + s.name}
-                  title="EQ, compressor and routing"
-                  onClick={() => {
-                    setSelected(s.index);
-                    setInspect(true);
-                  }}
-                >
-                  <Icon name="lucide:sliders-horizontal" />
-                </button>
-              </header>
+                <span class="strip-source">{sourceText(s)}</span>
+              </div>
 
-              <div class="strip-body">
-                <Meter which={String(s.index)} label={s.name} />
+              <label class="strip-pan" data-tip="Pan. Double-click to centre.">
+                <span class="strip-label">{panText(s.pan)}</span>
                 <input
-                  class="fader"
+                  class="range"
                   type="range"
-                  min="-60"
-                  max="12"
-                  step="0.5"
-                  aria-label={s.name + " level"}
-                  value={String(s.gain)}
-                  onInput={(e: Event) => patchStrip(s.index, (x) => ({ ...x, gain: numberOf(e) }))}
-                  onDoubleClick={() => patchStrip(s.index, (x) => ({ ...x, gain: 0 }))}
+                  min="-1"
+                  max="1"
+                  step="0.01"
+                  aria-label={s.name + " pan"}
+                  value={String(s.pan)}
+                  onInput={(e: Event) => patchStrip(s.index, (x) => ({ ...x, pan: numberOf(e) }))}
+                  onDoubleClick={() => patchStrip(s.index, (x) => ({ ...x, pan: 0 }))}
                 />
+              </label>
+
+              <div class="strip-main">
+                <Fader
+                  label={s.name + " level"}
+                  value={s.gain}
+                  min={-60}
+                  max={12}
+                  step={0.5}
+                  marks={FADER_MARKS}
+                  onInput={(v) => patchStrip(s.index, (x) => ({ ...x, gain: v }))}
+                  onReset={() => patchStrip(s.index, (x) => ({ ...x, gain: 0 }))}
+                />
+                <Meter which={String(s.index)} label={s.name} />
               </div>
               <div class="strip-db mono">{formatDb(s.gain)}</div>
 
@@ -373,9 +394,10 @@ export function MixerPanel() {
                   data-kind="mute"
                   aria-pressed={s.mute}
                   aria-label={"Mute " + s.name}
+                  data-tip="Mute"
                   onClick={() => patchStrip(s.index, (x) => ({ ...x, mute: !x.mute }))}
                 >
-                  <Icon name="lucide:volume-x" />
+                  M
                 </button>
                 <button
                   class="strip-toggle"
@@ -384,56 +406,115 @@ export function MixerPanel() {
                   data-kind="solo"
                   aria-pressed={s.solo}
                   aria-label={"Solo " + s.name}
+                  data-tip="Solo"
                   onClick={() => patchStrip(s.index, (x) => ({ ...x, solo: !x.solo }))}
                 >
-                  <Icon name="lucide:headphones" />
+                  S
                 </button>
               </div>
+
+              <label class="strip-send" data-tip="Send to the headphone monitor mix. Double-click to reset.">
+                <span class="strip-label">Mon</span>
+                <input
+                  class="range"
+                  type="range"
+                  min="-60"
+                  max="12"
+                  step="0.5"
+                  aria-label={s.name + " monitor send"}
+                  value={String(s.monitor)}
+                  onInput={(e: Event) => patchStrip(s.index, (x) => ({ ...x, monitor: numberOf(e) }))}
+                  onDoubleClick={() => patchStrip(s.index, (x) => ({ ...x, monitor: 0 }))}
+                />
+              </label>
+
+              <button
+                class="strip-edit"
+                type="button"
+                data-on={selected() === s.index && inspect() ? "true" : "false"}
+                aria-label={"EQ and routing for " + s.name}
+                data-tip="EQ, compressor and routing"
+                onClick={() => {
+                  setSelected(s.index);
+                  setTab("channel");
+                  setInspect(true);
+                }}
+              >
+                <Icon name="lucide:sliders-horizontal" />
+                Edit
+              </button>
             </section>
           ))}
         </div>
 
-        <aside class="strip master" data-hue="home" aria-label="Master section">
-          <header class="strip-head">
+        <aside class="strip master" aria-label="Master section">
+          <div class="strip-top">
             <span class="strip-title">Master</span>
-          </header>
+            <span class="strip-source">Stereo output</span>
+          </div>
           <div class="master-buses">
             <div class="master-bus">
-              <span class="strip-row-label">Main</span>
-              <div class="strip-body">
-                <Meter which="main" label="Main mix" />
-                <input
-                  class="fader"
-                  type="range"
-                  min="-60"
-                  max="12"
-                  step="0.5"
-                  aria-label="Main mix level"
-                  value={String(board().master.main)}
-                  onInput={(e: Event) => patchMaster((m) => ({ ...m, main: numberOf(e) }))}
-                  onDoubleClick={() => patchMaster((m) => ({ ...m, main: 0 }))}
+              <span class="strip-label">Main</span>
+              <div class="strip-main">
+                <Fader
+                  label="Main mix level"
+                  value={board().master.main}
+                  min={-60}
+                  max={12}
+                  step={0.5}
+                  marks={FADER_MARKS}
+                  onInput={(v) => patchMaster((m) => ({ ...m, main: v }))}
+                  onReset={() => patchMaster((m) => ({ ...m, main: 0 }))}
                 />
+                <Meter which="main" label="Main mix" />
               </div>
               <div class="strip-db mono">{formatDb(board().master.main)}</div>
             </div>
             <div class="master-bus">
-              <span class="strip-row-label">Monitor</span>
-              <div class="strip-body">
-                <Meter which="monitor" label="Monitor mix" />
-                <input
-                  class="fader"
-                  type="range"
-                  min="-60"
-                  max="12"
-                  step="0.5"
-                  aria-label="Monitor mix level"
-                  value={String(board().master.monitor)}
-                  onInput={(e: Event) => patchMaster((m) => ({ ...m, monitor: numberOf(e) }))}
-                  onDoubleClick={() => patchMaster((m) => ({ ...m, monitor: 0 }))}
+              <span class="strip-label">Monitor</span>
+              <div class="strip-main">
+                <Fader
+                  label="Monitor mix level"
+                  value={board().master.monitor}
+                  min={-60}
+                  max={12}
+                  step={0.5}
+                  marks={FADER_MARKS}
+                  onInput={(v) => patchMaster((m) => ({ ...m, monitor: v }))}
+                  onReset={() => patchMaster((m) => ({ ...m, monitor: 0 }))}
                 />
+                <Meter which="monitor" label="Monitor mix" />
               </div>
               <div class="strip-db mono">{formatDb(board().master.monitor)}</div>
             </div>
+          </div>
+          <div class="master-bottom">
+            <div class="limiter-row">
+              <button
+                class="krate-button krate-button-secondary"
+                type="button"
+                data-on={board().master.limiter ? "true" : "false"}
+                aria-pressed={board().master.limiter}
+                data-tip="Master limiter"
+                onClick={() => patchMaster((m) => ({ ...m, limiter: !m.limiter }))}
+              >
+                Limiter
+              </button>
+              <LiveText class="strip-label" text={ceilingText()} />
+            </div>
+            <button
+              class="strip-edit"
+              type="button"
+              data-on={inspect() && tab() === "routing" ? "true" : "false"}
+              data-tip="Outputs, limiter and latency"
+              onClick={() => {
+                setTab("routing");
+                setInspect(true);
+              }}
+            >
+              <Icon name="lucide:route" />
+              Routing
+            </button>
           </div>
         </aside>
 

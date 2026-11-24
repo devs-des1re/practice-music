@@ -117,7 +117,7 @@ export function DownloadsPanel() {
   const installLabel = createMemo(() => (tools().ytDlp.source === "managed" ? "Update yt-dlp" : "Install yt-dlp"));
 
   return (
-    <section class="panel ws-panel" data-hue="downloads" data-panel="downloads" aria-label="Downloads">
+    <section class="panel ws-panel" data-panel="downloads" aria-label="Downloads">
       <header class="panel-head" data-drag="true">
         <h2 class="panel-title">
           <Icon name="lucide:download" />

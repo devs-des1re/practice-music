@@ -1,6 +1,7 @@
 import "../globals.css";
 import { onMount } from "@krate/runtime";
 import { Health, GetSettings } from "../../api/host.go";
+import { TooltipHost } from "../components/ui/tooltip";
 import { applyScale } from "../lib/appearance";
 import { logger } from "../lib/logger";
 
@@ -12,5 +13,10 @@ export default function Layout({ children }: { children?: any }) {
       .catch((e) => logger.error("could not read settings", e));
   });
 
-  return <div class="shell">{children}</div>;
+  return (
+    <div class="shell">
+      {children}
+      <TooltipHost />
+    </div>
+  );
 }

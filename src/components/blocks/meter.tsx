@@ -15,10 +15,12 @@ interface Level {
   gr: number;
 }
 
-const WIDTH = 34;
-const BAR = 10;
-const GAP = 3;
-const CLIP_HEIGHT = 5;
+const WIDTH = 28;
+const BAR = 8;
+const GAP = 2;
+const MARGIN = 2;
+const CLIP_HEIGHT = 4;
+const SEGMENT = 3;
 const HOLD_MS = 1200;
 const GREEN_TOP = 0.8;
 const AMBER_TOP = 0.95;
@@ -65,12 +67,12 @@ export function Meter(props: MeterProps) {
     const amber = token("--color-meter-amber");
     const red = token("--color-meter-red");
     const bars = [
-      { value: lv.l, x: 3, key: "l" },
-      { value: lv.r, x: 3 + BAR + GAP, key: "r" },
+      { value: lv.l, x: MARGIN, key: "l" },
+      { value: lv.r, x: MARGIN + BAR + GAP, key: "r" },
     ];
     ctx.clearRect(0, 0, WIDTH, height);
     ctx.fillStyle = lv.clip ? red : off;
-    ctx.fillRect(3, 0, BAR * 2 + GAP, CLIP_HEIGHT);
+    ctx.fillRect(MARGIN, 0, BAR * 2 + GAP, CLIP_HEIGHT);
     const top = CLIP_HEIGHT + 2;
     const span = height - top;
     ctx.fillStyle = off;
@@ -113,6 +115,10 @@ export function Meter(props: MeterProps) {
         ctx.fillRect(bar.x, top + span * (1 - held) - 1, BAR, 2);
       }
     }
+    ctx.fillStyle = token("--color-bg");
+    for (let y = top + SEGMENT; y < height; y += SEGMENT + 1) {
+      ctx.fillRect(MARGIN, y, BAR * 2 + GAP, 1);
+    }
   });
 
   onMount(() => {
@@ -131,7 +137,7 @@ export function Meter(props: MeterProps) {
         class="meter"
         role="img"
         aria-label={props.label + " level. Click to clear the clip light."}
-        title="Click to clear the clip light"
+        data-tip="Click to clear the clip light"
         onClick={() => ResetMeters().catch(() => undefined)}
       />
     </div>
