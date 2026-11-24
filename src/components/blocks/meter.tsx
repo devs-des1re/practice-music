@@ -1,7 +1,7 @@
 import { createSignal, createEffect, onMount, onCleanup } from "@krate/runtime";
 import { AudioStream } from "../../../api/audio.go";
 import { MeterStream, ResetMeters } from "../../../api/session.go";
-import { meterFraction } from "../../lib/mixer";
+import { dbFraction, peakText, scaleFraction, toDb } from "../../lib/mixer";
 
 export interface MeterProps {
   which: string;
@@ -15,15 +15,16 @@ interface Level {
   gr: number;
 }
 
-const WIDTH = 28;
-const BAR = 8;
+const WIDTH = 32;
+const BAR = 10;
 const GAP = 2;
 const MARGIN = 2;
 const CLIP_HEIGHT = 4;
 const SEGMENT = 3;
 const HOLD_MS = 1200;
-const GREEN_TOP = 0.8;
-const AMBER_TOP = 0.95;
+const GREEN_TOP = dbFraction(-12);
+const AMBER_TOP = dbFraction(-3);
+const UNITY = dbFraction(0);
 const quiet: Level = { l: 0, r: 0, clip: false, gr: 0 };
 
 function token(name: string): string {
@@ -82,7 +83,7 @@ export function Meter(props: MeterProps) {
       ctx.fillRect(WIDTH - 5, top, 3, span * Math.min(1, lv.gr / 24));
     }
     for (const bar of bars) {
-      const frac = meterFraction(bar.value);
+      const frac = scaleFraction(bar.value);
       const heldValue = bar.key === "l" ? hold.l : hold.r;
       const heldAt = bar.key === "l" ? hold.lAt : hold.rAt;
       let held = heldValue;
@@ -119,6 +120,8 @@ export function Meter(props: MeterProps) {
     for (let y = top + SEGMENT; y < height; y += SEGMENT + 1) {
       ctx.fillRect(MARGIN, y, BAR * 2 + GAP, 1);
     }
+    ctx.fillStyle = token("--color-text-dim");
+    ctx.fillRect(0, Math.round(top + span * (1 - UNITY)), WIDTH - 6, 1);
   });
 
   onMount(() => {
@@ -141,5 +144,45 @@ export function Meter(props: MeterProps) {
         onClick={() => ResetMeters().catch(() => undefined)}
       />
     </div>
+  );
+}
+
+export interface PeakReadoutProps {
+  which: string;
+}
+
+export function PeakReadout(props: PeakReadoutProps) {
+  const [text, setText] = createSignal("-inf");
+  const [hot, setHot] = createSignal(false);
+  const state = { peak: 0, clip: false };
+
+  createEffect(() => {
+    const running = AudioStream()?.running;
+    const frame = MeterStream();
+    if (!running || !frame) return;
+    const lv: Level = props.which === "main" ? frame.main : props.which === "monitor" ? frame.monitor : frame.strips[Number(props.which)] || quiet;
+    if (state.clip && !lv.clip) state.peak = 0;
+    state.clip = lv.clip;
+    state.peak = Math.max(state.peak, lv.l, lv.r);
+    setText(peakText(state.peak));
+    setHot(toDb(state.peak) > 0);
+  });
+
+  return (
+    <button
+      class="strip-peak mono"
+      type="button"
+      data-hot={hot() ? "true" : "false"}
+      aria-label="Peak level. Click to reset."
+      data-tip="Peak hold. Click to reset."
+      onClick={() => {
+        state.peak = 0;
+        setText("-inf");
+        setHot(false);
+        ResetMeters().catch(() => undefined);
+      }}
+    >
+      {text()}
+    </button>
   );
 }

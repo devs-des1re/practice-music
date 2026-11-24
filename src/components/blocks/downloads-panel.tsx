@@ -12,6 +12,7 @@ import {
   ToolsInfo,
 } from "../../../api/downloads.go";
 import { Select } from "../ui/select";
+import { FoldButton } from "../ui/fold-button";
 import { Notice } from "../ui/notice";
 import { StatusDot } from "../ui/status-dot";
 import { jobTone } from "../../lib/format";
@@ -128,6 +129,7 @@ export function DownloadsPanel() {
             <Icon name="lucide:eraser" />
             Clear finished
           </button>
+          <FoldButton />
         </div>
       </header>
 

@@ -2,6 +2,7 @@ import { createSignal, createEffect, onCleanup } from "@krate/runtime";
 import { EnqueueDownload } from "../../../api/downloads.go";
 import { OpenBrowser, BrowserGo, CloseBrowser, BrowserState } from "../../../api/browser.go";
 import { Select } from "../ui/select";
+import { FoldButton } from "../ui/fold-button";
 import { Notice } from "../ui/notice";
 import { normaliseAddress } from "../../lib/format";
 import { logger } from "../../lib/logger";
@@ -99,6 +100,9 @@ export function BrowserPanel(props: BrowserPanelProps) {
           <Icon name="lucide:globe" />
           Browser
         </h2>
+        <div class="panel-tools">
+          <FoldButton />
+        </div>
       </header>
 
       <div class="browser-body">

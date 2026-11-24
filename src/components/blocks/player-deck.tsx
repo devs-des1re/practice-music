@@ -18,6 +18,7 @@ import {
   PlayerStream,
 } from "../../../api/player.go";
 import { Waveform } from "./waveform";
+import { FoldButton } from "../ui/fold-button";
 import { Select } from "../ui/select";
 import { Notice } from "../ui/notice";
 import { LiveText } from "../ui/live-text";
@@ -360,11 +361,6 @@ export function PlayerDeck(props: PlayerDeckProps) {
           </div>
         </div>
 
-        <div class="tp-song">
-          <LiveText class="tp-title" text={titleText()} />
-          <LiveText class="tp-artist" text={subText()} />
-        </div>
-
         <div class="tp-params">
           <div class="param">
             <span class="param-label">Speed</span>
@@ -424,6 +420,7 @@ export function PlayerDeck(props: PlayerDeckProps) {
             <LiveText class="param-value" text={volumeText()} />
           </div>
         </div>
+        <FoldButton />
       </header>
 
       <div class="panel-notices" showIf={!!error() || !!info()}>
@@ -432,6 +429,17 @@ export function PlayerDeck(props: PlayerDeckProps) {
         </div>
         <div showIf={!!info() && !error()}>
           <Notice tone="ok" text={info()} />
+        </div>
+      </div>
+
+      <div class="timeline-bar">
+        <div class="tp-song">
+          <LiveText class="tp-title" text={titleText()} />
+          <LiveText class="tp-artist" text={subText()} />
+        </div>
+        <div class="timeline-options">
+          <Select id="count-in" label="Count-in" value={String(st().countIn)} options={COUNT_INS} onChange={(v) => guard(() => PlayerSetCountIn(Number(v)))} />
+          <Select id="snap" label="Snapping" value={snap()} options={SNAPS} onChange={(v) => setSnap(v as SnapMode)} />
         </div>
       </div>
 
@@ -482,7 +490,7 @@ export function PlayerDeck(props: PlayerDeckProps) {
             Beat grid
           </button>
           <button class="tab" type="button" data-active={side() === "practice" ? "true" : "false"} onClick={() => setSide("practice")}>
-            Practice
+            Tempo
           </button>
         </div>
 
@@ -574,8 +582,7 @@ export function PlayerDeck(props: PlayerDeckProps) {
         </div>
 
         <div class="foot-body" showIf={side() === "practice"}>
-          <Select id="count-in" label="Count-in" value={String(st().countIn)} options={COUNT_INS} onChange={(v) => guard(() => PlayerSetCountIn(Number(v)))} />
-          <Select id="snap" label="Snapping" value={snap()} options={SNAPS} onChange={(v) => setSnap(v as SnapMode)} />
+          <span class="field-hint">Play at</span>
           <div class="segmented">
             {PRESETS.map((p) => (
               <button class="segment" type="button" key={p} data-active={speedShown() === p ? "true" : "false"} data-tip={"Play at " + p + " percent"} onClick={() => guard(() => PlayerSetSpeed(p / 100))}>

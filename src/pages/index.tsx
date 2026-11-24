@@ -31,6 +31,7 @@ import {
 import { defaultPanels, isTyping, loadPanels, savePanels, type PanelKey, type PanelSet } from "../lib/workspace";
 
 const LAYOUT_KEY = "pm.workspace.layout";
+const FOLD_KEY = "pm.workspace.collapsed";
 const MIN_WIDTH = 240;
 const MIN_HEIGHT = 150;
 const STACK_WIDTH = 1000;
@@ -74,6 +75,15 @@ function readSaved(): Node | null {
   }
 }
 
+function readFolds(): PanelId[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem(FOLD_KEY) || "[]");
+    return Array.isArray(raw) ? raw.filter((id): id is PanelId => (ALL_PANELS as string[]).includes(id)) : [];
+  } catch {
+    return [];
+  }
+}
+
 function cellOf(id: string): HTMLElement | null {
   return document.querySelector('[data-tile="' + id + '"]');
 }
@@ -88,6 +98,8 @@ export default function Workspace() {
   const [hintOn, setHintOn] = createSignal(false);
   const [resizePath, setResizePath] = createSignal("");
   const [shortcuts, setShortcuts] = createSignal(false);
+  const [folds, setFolds] = createSignal<PanelId[]>([]);
+  const [stage, setStage] = createSignal({ w: 0, h: 0 });
 
   let drag: DragState | null = null;
   let resizing: GutterGeo | null = null;
@@ -96,13 +108,21 @@ export default function Workspace() {
     const set = loadPanels();
     setPanels(set);
     setLayout(normalise(readSaved(), visibleIn(set)));
+    setFolds(readFolds());
     setReady(true);
+    const el = document.querySelector(".ws-stage");
+    if (!el) return;
+    const observer = new ResizeObserver(() => setStage({ w: el.clientWidth, h: el.clientHeight }));
+    observer.observe(el);
+    setStage({ w: el.clientWidth, h: el.clientHeight });
+    onCleanup(() => observer.disconnect());
   });
 
   createEffect(() => {
     const tree = layout();
     if (typeof document === "undefined") return;
-    const geo = geometry(tree);
+    const folded = folds();
+    const geo = geometry(tree, { collapsed: new Set(folded), stage: stage() });
     for (const id of ALL_PANELS) {
       const el = cellOf(id);
       const r = geo.rects[id];
@@ -111,9 +131,13 @@ export default function Workspace() {
       el.style.top = pct(r.y);
       el.style.width = pct(r.w);
       el.style.height = pct(r.h);
+      el.dataset.collapsed = geo.folds[id] || "";
+      el.dataset.folded = folded.includes(id) ? "true" : "false";
     }
     setGutters(
-      geo.gutters.map((g) => {
+      geo.gutters
+        .filter((g) => !g.locked)
+        .map((g) => {
         const style =
           g.dir === "row"
             ? "left:calc(" + pct(g.area.x + g.area.w * g.ratio) + " - " + GUTTER / 2 + "px);top:" + pct(g.area.y) + ";width:" + GUTTER + "px;height:" + pct(g.area.h)
@@ -124,6 +148,7 @@ export default function Workspace() {
     if (!ready()) return;
     try {
       localStorage.setItem(LAYOUT_KEY, JSON.stringify(tree));
+      localStorage.setItem(FOLD_KEY, JSON.stringify(folded));
     } catch {
       return;
     }
@@ -146,13 +171,27 @@ export default function Workspace() {
   }
 
   function resetLayout() {
+    setFolds([]);
     setLayout(defaultTree(visibleIn(panels())));
+  }
+
+  function toggleFold(id: PanelId) {
+    setFolds(folds().includes(id) ? folds().filter((x) => x !== id) : [...folds(), id]);
+  }
+
+  function onStageClick(e: MouseEvent) {
+    const target = e.target as HTMLElement | null;
+    const button = target ? target.closest("[data-fold]") : null;
+    if (!button) return;
+    const cell = button.closest("[data-tile]") as HTMLElement | null;
+    if (cell && cell.dataset.tile) toggleFold(cell.dataset.tile as PanelId);
   }
 
   function applyPreset(name: string) {
     const next = { ...panels(), library: true, mixer: true };
     setPanels(next);
     savePanels(next);
+    setFolds([]);
     setLayout(presetTree(name as PresetName, visibleIn(next)));
   }
 
@@ -280,7 +319,7 @@ export default function Workspace() {
     <div class="screen">
       <Topbar panels={panels()} onToggle={(key) => setPanel(key, !panels()[key])} onPreset={applyPreset} onReset={resetLayout} onShortcuts={() => setShortcuts(true)} />
       <main class="ws">
-        <div class="ws-stage" data-dragging={dragId() ? "true" : "false"} data-resizing={resizePath() ? "true" : "false"} onPointerDown={onStageDown}>
+        <div class="ws-stage" data-dragging={dragId() ? "true" : "false"} data-resizing={resizePath() ? "true" : "false"} onPointerDown={onStageDown} onClick={onStageClick}>
           <div class="cell" data-tile="player">
             <PlayerDeck onShowLibrary={() => setPanel("library", true)} />
           </div>

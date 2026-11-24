@@ -14,6 +14,7 @@ import {
   BeatStream,
 } from "../../../api/session.go";
 import { Field } from "../ui/field";
+import { FoldButton } from "../ui/fold-button";
 import { Select } from "../ui/select";
 import { RunGlyph } from "../ui/glyphs";
 import { Notice } from "../ui/notice";
@@ -65,6 +66,8 @@ const ROLES = [
   { role: "poly", label: "Polyrhythm" },
 ];
 
+const LARGE_KEY = "pm.metronome.large";
+
 const AUDIO_PATTERNS = ["*.wav", "*.mp3", "*.flac", "*.ogg", "*.m4a", "*.opus"];
 
 function describe(e: unknown): string {
@@ -87,6 +90,7 @@ export function MetronomeDeck() {
   const [polyShown, setPolyShown] = createSignal(80);
   const [captionText, setCaptionText] = createSignal("Stopped");
   const [view, setView] = createSignal("play");
+  const [large, setLarge] = createSignal(false);
   const [engineState, setEngineState] = createSignal("");
 
   createEffect(() => {
@@ -167,6 +171,16 @@ export function MetronomeDeck() {
     setTempo(cfg().bpm + delta);
   }
 
+  function toggleLarge() {
+    const next = !large();
+    setLarge(next);
+    try {
+      localStorage.setItem(LARGE_KEY, next ? "1" : "0");
+    } catch {
+      return;
+    }
+  }
+
   async function ensureAudio() {
     if (audio().running) return;
     await StartAudio();
@@ -213,6 +227,7 @@ export function MetronomeDeck() {
   }
 
   onMount(() => {
+    setLarge(localStorage.getItem(LARGE_KEY) === "1");
     const onKey = (e: KeyboardEvent) => {
       if (isTyping(e)) return;
       if (e.key === "m" || e.key === "M") {
@@ -232,14 +247,25 @@ export function MetronomeDeck() {
   });
 
   return (
-    <section class="panel ws-panel metro-panel" data-panel="metronome" aria-label="Metronome">
+    <section class="panel ws-panel metro-panel" data-panel="metronome" data-size={large() ? "large" : "standard"} aria-label="Metronome">
       <header class="panel-head" data-drag="true">
         <h2 class="panel-title">
           <Icon name="lucide:metronome" />
           Metronome
         </h2>
+        <div class="metro-mini">
+          <button class="tp-btn mini-run" type="button" aria-label="Start or stop the click" data-tip="Start or stop the click" data-keys="M" data-on={audio().metronome.running ? "true" : "false"} onClick={toggleRun}>
+            <RunGlyph on={audio().metronome.running} />
+          </button>
+          <LiveText class="mini-bpm mono" text={bpmText() + " BPM"} />
+          <div class="mini-leds" aria-hidden="true">
+            {cfg().accents.map((level, i) => (
+              <span class="mini-led" key={i} data-level={String(level)} data-on={shown().beat === i ? "true" : "false"} />
+            ))}
+          </div>
+        </div>
         <div class="panel-tools">
-          <div class="segmented">
+          <div class="segmented metro-tabs">
             <button class="segment" type="button" data-active={view() === "play" ? "true" : "false"} onClick={() => setView("play")}>
               Click
             </button>
@@ -247,6 +273,10 @@ export function MetronomeDeck() {
               Setup
             </button>
           </div>
+          <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm size-button" type="button" aria-label="Large display" data-tip="Large display for playing along" data-on={large() ? "true" : "false"} onClick={toggleLarge}>
+            <Icon name="lucide:maximize-2" />
+          </button>
+          <FoldButton />
         </div>
       </header>
 
@@ -299,48 +329,53 @@ export function MetronomeDeck() {
           </button>
         </div>
 
-        <div class="metro-fields">
-          <div class="field">
-            <label class="field-label" for="beats">
-              Beats per bar
-            </label>
-            <Select id="beats" label="Beats per bar" value={String(cfg().beatsPerBar)} options={BEATS} onChange={(v) => update({ beatsPerBar: Number(v) })} />
-          </div>
-          <div class="field">
-            <label class="field-label" for="subdivision">
-              Subdivision
-            </label>
-            <Select id="subdivision" label="Subdivision" value={String(cfg().subdivision)} options={SUBDIVISIONS} onChange={(v) => update({ subdivision: Number(v) })} />
-          </div>
-        </div>
+        <div class="metro-extra">
+          <section class="metro-group">
+            <h3 class="section-title">Time</h3>
+            <div class="metro-fields">
+              <div class="field">
+                <label class="field-label" for="beats">
+                  Beats per bar
+                </label>
+                <Select id="beats" label="Beats per bar" value={String(cfg().beatsPerBar)} options={BEATS} onChange={(v) => update({ beatsPerBar: Number(v) })} />
+              </div>
+              <div class="field">
+                <label class="field-label" for="subdivision">
+                  Subdivision
+                </label>
+                <Select id="subdivision" label="Subdivision" value={String(cfg().subdivision)} options={SUBDIVISIONS} onChange={(v) => update({ subdivision: Number(v) })} />
+              </div>
+            </div>
+          </section>
 
-        <div class="field">
-          <span class="field-label">Accents. Click a beat to cycle accent, normal, soft and silent.</span>
-          <div class="accent-row">
-            {cfg().accents.map((level, i) => (
-              <button class="accent-button" type="button" key={i} data-level={String(level)} aria-label={"Beat " + (i + 1) + ": " + accentLabel(level)} data-tip={accentLabel(level)} onClick={() => cycle(i)}>
-                <span class="accent-bar" />
-                <span class="accent-index">{String(i + 1)}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+          <section class="metro-group">
+            <h3 class="section-title">Accents</h3>
+            <div class="accent-row">
+              {cfg().accents.map((level, i) => (
+                <button class="accent-button" type="button" key={i} data-level={String(level)} aria-label={"Beat " + (i + 1) + ": " + accentLabel(level)} data-tip={accentLabel(level) + ". Click to change."} onClick={() => cycle(i)}>
+                  <span class="accent-bar" />
+                  <span class="accent-index">{String(i + 1)}</span>
+                </button>
+              ))}
+            </div>
+          </section>
 
-        <div class="param param-wide">
-          <span class="param-label">Volume</span>
-          <input
-            class="range"
-            type="range"
-            min="0"
-            max="100"
-            step="1"
-            aria-label="Metronome volume"
-            data-tip="Click volume"
-            value={String(volumeShown())}
-            onInput={(e: Event) => setVolumeShown(Number((e.target as HTMLInputElement).value))}
-            onChange={(e: Event) => update({ volume: Number((e.target as HTMLInputElement).value) / 100 })}
-          />
-          <LiveText class="param-value" text={volumeShown() + "%"} />
+          <div class="param param-wide">
+            <span class="param-label">Volume</span>
+            <input
+              class="range"
+              type="range"
+              min="0"
+              max="100"
+              step="1"
+              aria-label="Metronome volume"
+              data-tip="Click volume"
+              value={String(volumeShown())}
+              onInput={(e: Event) => setVolumeShown(Number((e.target as HTMLInputElement).value))}
+              onChange={(e: Event) => update({ volume: Number((e.target as HTMLInputElement).value) / 100 })}
+            />
+            <LiveText class="param-value" text={volumeShown() + "%"} />
+          </div>
         </div>
       </div>
 

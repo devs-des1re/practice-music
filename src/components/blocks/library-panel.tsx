@@ -24,6 +24,7 @@ import { PlayerOpen, PlayerStream } from "../../../api/player.go";
 import { Field } from "../ui/field";
 import { Menu, type MenuItem } from "../ui/menu";
 import { Select } from "../ui/select";
+import { FoldButton } from "../ui/fold-button";
 import { Notice } from "../ui/notice";
 import { formatDurationMs } from "../../lib/format";
 import { setQueue } from "../../lib/queue";
@@ -314,19 +315,6 @@ export function LibraryPanel() {
           <span class="panel-count">{String(songs().length)}</span>
         </h2>
         <div class="panel-tools">
-          <div class="search-box">
-            <Icon name="lucide:search" />
-            <input class="krate-input" type="search" placeholder="Search songs, artists, tags" aria-label="Search the library" value={text()} onInput={(e: Event) => setText((e.target as HTMLInputElement).value)} />
-          </div>
-          <div class="narrow-only">
-            <Select
-              id="lib-playlist"
-              label="Playlist"
-              value={String(playlistId())}
-              options={[{ value: "0", label: "All songs" }].concat(playlists().map((p) => ({ value: String(p.id), label: p.name })))}
-              onChange={(v) => setPlaylistId(Number(v))}
-            />
-          </div>
           <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Rescan the library folder" data-tip="Rescan the library folder" onClick={rescan}>
             <Icon name="lucide:refresh-cw" />
           </button>
@@ -334,6 +322,7 @@ export function LibraryPanel() {
             <Icon name="lucide:file-plus" />
             Import
           </button>
+          <FoldButton />
         </div>
       </header>
 
@@ -349,6 +338,22 @@ export function LibraryPanel() {
         </div>
         <div showIf={!importing().running && importing().errors.length > 0}>
           <Notice tone="warn" title="Some files were not imported" text={importing().errors.join("; ")} />
+        </div>
+      </div>
+
+      <div class="lib-toolbar">
+        <div class="search-box">
+          <Icon name="lucide:search" />
+          <input class="krate-input" type="search" placeholder="Search songs, artists, tags" aria-label="Search the library" value={text()} onInput={(e: Event) => setText((e.target as HTMLInputElement).value)} />
+        </div>
+        <div class="narrow-only">
+          <Select
+            id="lib-playlist"
+            label="Playlist"
+            value={String(playlistId())}
+            options={[{ value: "0", label: "All songs" }].concat(playlists().map((p) => ({ value: String(p.id), label: p.name })))}
+            onChange={(v) => setPlaylistId(Number(v))}
+          />
         </div>
       </div>
 
