@@ -32,7 +32,11 @@ In place so far:
 - Mixer with song, click and input channels, EQ, compressor, meters, a master limiter, and separate main and monitor mixes
 - Metronome with accents, subdivisions, polyrhythms, silent bars, custom sounds and a large beat display
 - Scenes that restore routing, levels and metronome settings, and settings export and import
-- One workspace where every panel can be dragged by its header, docked against another panel's edge and resized with the dividers; the layout is remembered
+- One workstation workspace where every panel can be dragged by its header, docked against another panel's edge and resized with the dividers; the layout is remembered, and the Layout menu switches between a practice and a mixing arrangement
+- Transport bar with play, stop, previous and next song, loop, a time and bar display, and speed, pitch and volume sliders, above a waveform timeline with a time ruler and clickable section flags
+- Console style mixer with a colour coded channel strip per source, segmented level meters, faders with a dB scale, pan, mute, solo, a headphone monitor send and a master section with its own limiter
+- Library table with sortable columns, a playlist and tag rail, keyboard browsing and a right click menu for song actions
+- Keyboard shortcuts for the transport, metronome and panels (press ? in the app for the full list) and tooltips on every control
 
 ## Requirements
 
