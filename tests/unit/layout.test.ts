@@ -11,6 +11,7 @@ import {
   move,
   normalise,
   parseTree,
+  presetTree,
   remove,
   swap,
   withRatio,
@@ -27,7 +28,8 @@ test("the default layout puts the decks on top and lower panels in a row below",
   const geo = geometry(tree);
   assert.ok(geo.rects.player && geo.rects.library);
   assert.ok(geo.rects.library.y > geo.rects.player.y);
-  assert.ok(Math.abs(geo.rects.library.w - geo.rects.mixer!.w) < 1e-9);
+  assert.ok(geo.rects.library.w < geo.rects.mixer!.w);
+  assert.ok(Math.abs(geo.rects.library.w - 0.3) < 1e-9);
 });
 
 test("without lower panels only the two decks are laid out", () => {
@@ -138,4 +140,21 @@ test("normalise drops hidden panels, adds missing ones and rejects duplicates", 
   const dupes: Node = { kind: "split", dir: "row", ratio: 0.5, a: { kind: "leaf", id: "player" }, b: { kind: "leaf", id: "player" } };
   assert.deepEqual([...leaves(normalise(dupes, only("player", "metronome")))].sort(), ["metronome", "player"]);
   assert.deepEqual([...leaves(normalise(null, only("player", "metronome")))].sort(), ["metronome", "player"]);
+});
+
+test("the mixing layout gives the mixer the top and the decks the bottom", () => {
+  const tree = presetTree("mixing", only("player", "metronome", "library", "mixer"));
+  assert.deepEqual(new Set(leaves(tree)), new Set(["player", "metronome", "library", "mixer"]));
+  const geo = geometry(tree);
+  assert.ok(geo.rects.mixer!.y < geo.rects.player!.y);
+  assert.ok(geo.rects.mixer!.w > geo.rects.library!.w);
+  const total = Object.values(geo.rects).reduce((sum, r) => sum + r!.w * r!.h, 0);
+  assert.ok(Math.abs(total - 1) < 1e-9);
+});
+
+test("the practice layout is the default layout and presets cope with no lower panels", () => {
+  const visible = only("player", "metronome", "library", "mixer");
+  assert.deepEqual(presetTree("practice", visible), defaultTree(visible));
+  const bare = only("player", "metronome");
+  assert.deepEqual(leaves(presetTree("mixing", bare)), ["player", "metronome"]);
 });

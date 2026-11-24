@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { snapTime, gridLines, barAndBeat, formatClock, hitHandle, orderRegion, beatLengthMs } from "../../src/lib/waveform.ts";
+import { snapTime, gridLines, barAndBeat, formatClock, hitHandle, orderRegion, beatLengthMs, rulerStepMs, rulerLabel } from "../../src/lib/waveform.ts";
 
 const grid = { bpm: 120, offsetMs: 100, beatsPerBar: 4, downbeat: 1 };
 
@@ -65,4 +65,17 @@ test("handles are only grabbable when the loop is on and near", () => {
 test("regions are ordered whichever way they were dragged", () => {
   assert.deepEqual(orderRegion(5, 2), { start: 2, end: 5 });
   assert.deepEqual(orderRegion(2, 5), { start: 2, end: 5 });
+});
+
+test("the ruler picks the smallest step that keeps the labels apart", () => {
+  assert.equal(rulerStepMs(240000, 1200, 64), 15000);
+  assert.equal(rulerStepMs(60000, 1200, 64), 5000);
+  assert.equal(rulerStepMs(0, 1200, 64), 1000);
+  assert.equal(rulerStepMs(3600000, 200, 64), 600000);
+});
+
+test("ruler labels are minutes and seconds", () => {
+  assert.equal(rulerLabel(0), "0:00");
+  assert.equal(rulerLabel(65000), "1:05");
+  assert.equal(rulerLabel(600000), "10:00");
 });

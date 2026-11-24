@@ -73,11 +73,28 @@ function chain(ids: PanelId[]): Node {
   return split("row", 1 / ids.length, leaf(ids[0]), chain(ids.slice(1)));
 }
 
+function withLead(lead: PanelId, ratio: number, ids: PanelId[]): Node {
+  const rest = ids.filter((id) => id !== lead);
+  if (!ids.includes(lead) || rest.length === 0) return chain(ids);
+  return split("row", ratio, leaf(lead), chain(rest));
+}
+
 export function defaultTree(visible: (id: PanelId) => boolean): Node {
-  const top = split("row", 0.72, leaf("player"), leaf("metronome"));
+  const top = split("row", 0.76, leaf("player"), leaf("metronome"));
   const lower = LOWER_PANELS.filter(visible);
   if (lower.length === 0) return top;
-  return split("col", 0.58, top, chain(lower));
+  return split("col", 0.44, top, withLead("library", 0.3, lower));
+}
+
+export const PRESETS = ["practice", "mixing"] as const;
+
+export type PresetName = (typeof PRESETS)[number];
+
+export function presetTree(name: PresetName, visible: (id: PanelId) => boolean): Node {
+  const lower = LOWER_PANELS.filter(visible);
+  if (name === "practice" || lower.length === 0) return defaultTree(visible);
+  const decks = split("row", 0.62, leaf("player"), leaf("metronome"));
+  return split("col", 0.62, withLead("mixer", 0.74, lower), decks);
 }
 
 export function geometry(node: Node): Geometry {

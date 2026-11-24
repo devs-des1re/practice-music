@@ -4,7 +4,7 @@ export type PanelSet = Record<PanelKey, boolean>;
 
 export const defaultPanels: PanelSet = {
   library: true,
-  mixer: false,
+  mixer: true,
   downloads: false,
   browser: false,
 };
