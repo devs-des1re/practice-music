@@ -31,11 +31,22 @@ export interface GutterGeo {
   dir: Dir;
   ratio: number;
   area: Rect;
+  locked: boolean;
+}
+
+export type Fold = "bar" | "rail";
+
+export interface GeoOptions {
+  collapsed?: ReadonlySet<PanelId>;
+  stage?: { w: number; h: number };
+  bar?: number;
+  rail?: number;
 }
 
 export interface Geometry {
   rects: Partial<Record<PanelId, Rect>>;
   gutters: GutterGeo[];
+  folds: Partial<Record<PanelId, Fold>>;
 }
 
 export const ALL_PANELS: PanelId[] = ["player", "metronome", "library", "mixer", "downloads", "browser"];
@@ -79,11 +90,22 @@ function withLead(lead: PanelId, ratio: number, ids: PanelId[]): Node {
   return split("row", ratio, leaf(lead), chain(rest));
 }
 
+const SIDE_PANELS: PanelId[] = ["mixer", "downloads", "browser"];
+
+function framed(decks: Node, below: PanelId[], visible: (id: PanelId) => boolean, ratio: number, lead?: PanelId): Node {
+  const others = below.filter(visible);
+  const center: Node =
+    others.length === 0
+      ? decks
+      : lead
+        ? split("col", ratio, withLead(lead, 0.8, others), decks)
+        : split("col", ratio, decks, chain(others));
+  return visible("library") ? split("row", 0.2, leaf("library"), center) : center;
+}
+
 export function defaultTree(visible: (id: PanelId) => boolean): Node {
-  const top = split("row", 0.76, leaf("player"), leaf("metronome"));
-  const lower = LOWER_PANELS.filter(visible);
-  if (lower.length === 0) return top;
-  return split("col", 0.44, top, withLead("library", 0.3, lower));
+  const decks = split("row", 0.74, leaf("player"), leaf("metronome"));
+  return framed(decks, SIDE_PANELS, visible, 0.5);
 }
 
 export const PRESETS = ["practice", "mixing"] as const;
@@ -91,33 +113,55 @@ export const PRESETS = ["practice", "mixing"] as const;
 export type PresetName = (typeof PRESETS)[number];
 
 export function presetTree(name: PresetName, visible: (id: PanelId) => boolean): Node {
-  const lower = LOWER_PANELS.filter(visible);
-  if (name === "practice" || lower.length === 0) return defaultTree(visible);
-  const decks = split("row", 0.62, leaf("player"), leaf("metronome"));
-  return split("col", 0.62, withLead("mixer", 0.74, lower), decks);
+  if (name === "practice") return defaultTree(visible);
+  const decks = split("row", 0.64, leaf("player"), leaf("metronome"));
+  return framed(decks, SIDE_PANELS, visible, 0.64, "mixer");
 }
 
-export function geometry(node: Node): Geometry {
+function folded(node: Node, collapsed: ReadonlySet<PanelId>): boolean {
+  return leaves(node).every((id) => collapsed.has(id));
+}
+
+export function geometry(node: Node, opts: GeoOptions = {}): Geometry {
   const rects: Partial<Record<PanelId, Rect>> = {};
   const gutters: GutterGeo[] = [];
+  const folds: Partial<Record<PanelId, Fold>> = {};
+  const collapsed = opts.collapsed;
+  const stage = opts.stage;
+  const measured = collapsed !== undefined && collapsed.size > 0 && stage !== undefined && stage.w > 0 && stage.h > 0;
   const walk = (n: Node, area: Rect, path: string) => {
     if (n.kind === "leaf") {
       rects[n.id] = area;
       return;
     }
-    gutters.push({ path, dir: n.dir, ratio: n.ratio, area });
+    let ratio = n.ratio;
+    let locked = false;
+    if (measured && collapsed && stage) {
+      const aFolded = folded(n.a, collapsed);
+      const bFolded = folded(n.b, collapsed);
+      if (aFolded !== bFolded) {
+        const row = n.dir === "row";
+        const size = row ? area.w * stage.w : area.h * stage.h;
+        const px = row ? (opts.rail ?? 36) : (opts.bar ?? 38);
+        const frac = size > 0 ? Math.min(0.5, px / size) : 0.5;
+        ratio = aFolded ? frac : 1 - frac;
+        locked = true;
+        for (const id of leaves(aFolded ? n.a : n.b)) folds[id] = row ? "rail" : "bar";
+      }
+    }
+    gutters.push({ path, dir: n.dir, ratio, area, locked });
     if (n.dir === "row") {
-      const wa = area.w * n.ratio;
+      const wa = area.w * ratio;
       walk(n.a, { x: area.x, y: area.y, w: wa, h: area.h }, path + "a");
       walk(n.b, { x: area.x + wa, y: area.y, w: area.w - wa, h: area.h }, path + "b");
     } else {
-      const ha = area.h * n.ratio;
+      const ha = area.h * ratio;
       walk(n.a, { x: area.x, y: area.y, w: area.w, h: ha }, path + "a");
       walk(n.b, { x: area.x, y: area.y + ha, w: area.w, h: area.h - ha }, path + "b");
     }
   };
   walk(node, { x: 0, y: 0, w: 1, h: 1 }, "");
-  return { rects, gutters };
+  return { rects, gutters, folds };
 }
 
 export function clampRatio(ratio: number, sizePx: number, minPx: number): number {
@@ -174,11 +218,28 @@ export function move(node: Node, id: PanelId, target: PanelId, zone: Zone): Node
   return insertAt(rest, target, id, zone);
 }
 
+function findDecks(node: Node): Node | null {
+  if (node.kind === "leaf") return null;
+  const ids = leaves(node);
+  if (ids.length === 2 && ids.includes("player") && ids.includes("metronome")) return node;
+  return findDecks(node.a) ?? findDecks(node.b);
+}
+
+function replaceNode(node: Node, target: Node, next: Node): Node {
+  if (node === target) return next;
+  if (node.kind === "leaf") return node;
+  return { ...node, a: replaceNode(node.a, target, next), b: replaceNode(node.b, target, next) };
+}
+
 export function add(node: Node | null, id: PanelId): Node {
   if (node === null) return leaf(id);
   if (has(node, id)) return node;
-  const anchor = LOWER_PANELS.find((p) => has(node, p));
+  if (id === "library") return split("row", 0.2, leaf(id), node);
+  const anchor = SIDE_PANELS.find((p) => has(node, p));
   if (anchor) return insertAt(node, anchor, id, "right");
+  const decks = findDecks(node);
+  if (decks) return replaceNode(node, decks, split("col", 0.52, decks, leaf(id)));
+  if (has(node, "player")) return insertAt(node, "player", id, "bottom");
   return split("col", 0.58, node, leaf(id));
 }
 

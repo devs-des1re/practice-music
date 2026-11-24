@@ -22,14 +22,16 @@ import {
 
 const only = (...ids: PanelId[]) => (id: PanelId) => ids.includes(id);
 
-test("the default layout puts the decks on top and lower panels in a row below", () => {
+test("the default layout puts the library beside the decks with the mixer below them", () => {
   const tree = defaultTree(only("player", "metronome", "library", "mixer"));
-  assert.deepEqual(leaves(tree), ["player", "metronome", "library", "mixer"]);
+  assert.deepEqual(leaves(tree), ["library", "player", "metronome", "mixer"]);
   const geo = geometry(tree);
-  assert.ok(geo.rects.player && geo.rects.library);
-  assert.ok(geo.rects.library.y > geo.rects.player.y);
-  assert.ok(geo.rects.library.w < geo.rects.mixer!.w);
-  assert.ok(Math.abs(geo.rects.library.w - 0.3) < 1e-9);
+  assert.ok(geo.rects.player && geo.rects.library && geo.rects.mixer);
+  assert.ok(geo.rects.library.x < geo.rects.player.x);
+  assert.equal(geo.rects.library.h, 1);
+  assert.ok(geo.rects.mixer.y > geo.rects.player.y);
+  assert.ok(Math.abs(geo.rects.library.w - 0.2) < 1e-9);
+  assert.ok(Math.abs(geo.rects.mixer.w - 0.8) < 1e-9);
 });
 
 test("without lower panels only the two decks are laid out", () => {
@@ -53,16 +55,25 @@ test("removing a panel hands its space to its neighbour", () => {
   assert.equal(remove({ kind: "leaf", id: "player" }, "player"), null);
 });
 
-test("adding a lower panel splits the area below the decks first", () => {
+test("a new side panel goes below the decks and the next one beside it", () => {
   const base = defaultTree(only("player", "metronome"));
-  const one = add(base, "library");
+  const one = add(base, "mixer");
   const geo = geometry(one);
-  assert.ok(geo.rects.library!.y > geo.rects.player!.y);
-  assert.equal(geo.rects.library!.w, 1);
-  const two = add(one, "mixer");
+  assert.ok(geo.rects.mixer!.y > geo.rects.player!.y);
+  assert.equal(geo.rects.mixer!.w, 1);
+  const two = add(one, "downloads");
   const geo2 = geometry(two);
-  assert.equal(geo2.rects.library!.y, geo2.rects.mixer!.y);
+  assert.equal(geo2.rects.downloads!.y, geo2.rects.mixer!.y);
+  assert.ok(geo2.rects.downloads!.x > geo2.rects.mixer!.x);
   assert.equal(add(two, "mixer"), two);
+});
+
+test("the library is added as a column on the left", () => {
+  const base = defaultTree(only("player", "metronome", "mixer"));
+  const geo = geometry(add(base, "library"));
+  assert.equal(geo.rects.library!.x, 0);
+  assert.equal(geo.rects.library!.h, 1);
+  assert.ok(geo.rects.player!.x > 0);
 });
 
 test("dropping on an edge puts the panel beside the target", () => {
@@ -99,11 +110,11 @@ test("insertAt wraps the target in a split of the right direction", () => {
 });
 
 test("a divider moves only the split it belongs to", () => {
-  const tree = defaultTree(only("player", "metronome", "library"));
+  const tree = defaultTree(only("player", "metronome", "mixer"));
   const resized = withRatio(tree, "a", 0.4);
   const geo = geometry(resized);
   assert.ok(Math.abs(geo.rects.player!.w - 0.4) < 1e-9);
-  assert.ok(Math.abs(geo.rects.library!.w - 1) < 1e-9);
+  assert.ok(Math.abs(geo.rects.mixer!.w - 1) < 1e-9);
 });
 
 test("ratios are kept clear of the minimum panel size", () => {
@@ -147,7 +158,7 @@ test("the mixing layout gives the mixer the top and the decks the bottom", () =>
   assert.deepEqual(new Set(leaves(tree)), new Set(["player", "metronome", "library", "mixer"]));
   const geo = geometry(tree);
   assert.ok(geo.rects.mixer!.y < geo.rects.player!.y);
-  assert.ok(geo.rects.mixer!.w > geo.rects.library!.w);
+  assert.ok(geo.rects.mixer!.w > geo.rects.metronome!.w);
   const total = Object.values(geo.rects).reduce((sum, r) => sum + r!.w * r!.h, 0);
   assert.ok(Math.abs(total - 1) < 1e-9);
 });
@@ -157,4 +168,26 @@ test("the practice layout is the default layout and presets cope with no lower p
   assert.deepEqual(presetTree("practice", visible), defaultTree(visible));
   const bare = only("player", "metronome");
   assert.deepEqual(leaves(presetTree("mixing", bare)), ["player", "metronome"]);
+});
+
+test("a collapsed panel shrinks to a header bar below or a rail beside its neighbour", () => {
+  const tree = defaultTree(only("player", "metronome", "mixer"));
+  const stage = { w: 1600, h: 900 };
+  const plain = geometry(tree, { stage });
+  assert.equal(Object.keys(plain.folds).length, 0);
+  const folded = geometry(tree, { stage, collapsed: new Set<PanelId>(["mixer", "metronome"]) });
+  assert.equal(folded.folds.mixer, "bar");
+  assert.equal(folded.folds.metronome, "rail");
+  assert.ok(Math.abs(folded.rects.mixer!.h * stage.h - 38) < 1e-6);
+  assert.ok(Math.abs(folded.rects.metronome!.w * stage.w - 36) < 1e-6);
+  const total = Object.values(folded.rects).reduce((sum, r) => sum + r!.w * r!.h, 0);
+  assert.ok(Math.abs(total - 1) < 1e-9);
+  assert.ok(folded.gutters.some((g) => g.locked));
+});
+
+test("collapsing needs a visible neighbour and a measured stage", () => {
+  const tree = defaultTree(only("player", "metronome"));
+  const everything = new Set<PanelId>(["player", "metronome"]);
+  assert.equal(Object.keys(geometry(tree, { stage: { w: 1000, h: 600 }, collapsed: everything }).folds).length, 0);
+  assert.equal(Object.keys(geometry(tree, { collapsed: new Set<PanelId>(["metronome"]) }).folds).length, 0);
 });

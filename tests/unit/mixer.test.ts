@@ -4,6 +4,9 @@ import {
   formatDb,
   toDb,
   meterFraction,
+  scaleFraction,
+  dbFraction,
+  peakText,
   meterTone,
   channelPairs,
   sourceOptions,
@@ -94,4 +97,19 @@ test("strip summaries prefer mute and solo over the level", () => {
   assert.equal(stripSummary(-3, true, true), "muted");
   assert.equal(stripSummary(-3, false, true), "solo");
   assert.equal(stripSummary(-3, false, false), "-3.0");
+});
+
+test("the shared scale puts zero decibels at five sixths of the way up", () => {
+  assert.equal(scaleFraction(0), 0);
+  assert.equal(scaleFraction(1), dbFraction(0));
+  assert.ok(Math.abs(dbFraction(0) - 60 / 72) < 1e-12);
+  assert.equal(dbFraction(12), 1);
+  assert.equal(dbFraction(-80), 0);
+  assert.equal(scaleFraction(100), 1);
+});
+
+test("peak readouts show minus infinity until there is a signal", () => {
+  assert.equal(peakText(0), "-inf");
+  assert.equal(peakText(1), "0.0");
+  assert.equal(peakText(2), "+6.0");
 });
