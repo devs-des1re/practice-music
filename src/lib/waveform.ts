@@ -74,21 +74,3 @@ export function hitHandle(x: number, startX: number, endX: number, loopOn: boole
 export function orderRegion(a: number, b: number): { start: number; end: number } {
   return a <= b ? { start: a, end: b } : { start: b, end: a };
 }
-
-const RULER_STEPS_MS = [1000, 2000, 5000, 10000, 15000, 30000, 60000, 120000, 300000, 600000];
-
-export function rulerStepMs(durationMs: number, widthPx: number, minSpacingPx: number): number {
-  if (durationMs <= 0 || widthPx <= 0) return RULER_STEPS_MS[0];
-  const perPx = durationMs / widthPx;
-  for (const step of RULER_STEPS_MS) {
-    if (step / perPx >= minSpacingPx) return step;
-  }
-  return RULER_STEPS_MS[RULER_STEPS_MS.length - 1];
-}
-
-export function rulerLabel(ms: number): string {
-  const total = Math.max(0, Math.round(ms / 1000));
-  const m = Math.floor(total / 60);
-  const s = total % 60;
-  return m + ":" + (s < 10 ? "0" : "") + s;
-}

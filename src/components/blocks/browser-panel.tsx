@@ -5,7 +5,7 @@ import { Select } from "../ui/select";
 import { FoldButton } from "../ui/fold-button";
 import { Notice } from "../ui/notice";
 import { normaliseAddress } from "../../lib/format";
-import { logger } from "../../lib/logger";
+import { handleError, logFailure } from "../../lib/service";
 import type { BrowserInfo } from "../../lib/types";
 
 const HOME = "https://duckduckgo.com/";
@@ -23,10 +23,6 @@ const MP4 = [
   { value: "720", label: "720p" },
   { value: "480", label: "480p" },
 ];
-
-function describe(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
-}
 
 export interface BrowserPanelProps {
   open: boolean;
@@ -58,8 +54,8 @@ export function BrowserPanel(props: BrowserPanelProps) {
     if (props.open) {
       setError("");
       OpenBrowser(HOME).catch((e) => {
-        logger.error("browser pane failed", e);
-        setError(describe(e));
+        logFailure("browser pane failed", e);
+        handleError(e, setError);
       });
     } else {
       CloseBrowser().catch(() => undefined);
@@ -78,7 +74,7 @@ export function BrowserPanel(props: BrowserPanelProps) {
       await BrowserGo(next);
       setAddress(next);
     } catch (e) {
-      setError(describe(e));
+      handleError(e, setError);
     }
   }
 
@@ -89,7 +85,7 @@ export function BrowserPanel(props: BrowserPanelProps) {
       await EnqueueDownload(page(), format(), quality());
       setInfo("Added to the download queue.");
     } catch (e) {
-      setError(describe(e));
+      handleError(e, setError);
     }
   }
 

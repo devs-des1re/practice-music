@@ -16,7 +16,7 @@ import { FoldButton } from "../ui/fold-button";
 import { Notice } from "../ui/notice";
 import { StatusDot } from "../ui/status-dot";
 import { jobTone } from "../../lib/format";
-import { logger } from "../../lib/logger";
+import { handleError, logFailure } from "../../lib/service";
 import type { Job, ToolsState } from "../../lib/types";
 
 const FORMATS = [
@@ -47,10 +47,6 @@ const emptyTools: ToolsState = {
   libraryDir: "",
 };
 
-function describe(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
-}
-
 export function DownloadsPanel() {
   const [jobs, setJobs] = createSignal<Job[]>([]);
   const [tools, setTools] = createSignal<ToolsState>(emptyTools);
@@ -72,7 +68,7 @@ export function DownloadsPanel() {
   onMount(() => {
     ToolStatus()
       .then((st) => setTools(st))
-      .catch((e) => logger.error("tool status failed", e));
+      .catch((e) => logFailure("tool status failed", e));
     const savedFormat = localStorage.getItem("pm.download.format");
     const savedQuality = localStorage.getItem("pm.download.quality");
     if (savedFormat) setFormat(savedFormat);
@@ -86,8 +82,8 @@ export function DownloadsPanel() {
     try {
       await action();
     } catch (e) {
-      logger.error("download action failed", e);
-      setError(describe(e));
+      logFailure("download action failed", e);
+      handleError(e, setError);
     }
   }
 

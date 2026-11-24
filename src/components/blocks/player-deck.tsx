@@ -27,7 +27,7 @@ import { barAndBeat, formatClock, type SnapMode } from "../../lib/waveform";
 import { emptyPlayer } from "../../lib/player";
 import { neighbour } from "../../lib/queue";
 import { isTyping } from "../../lib/workspace";
-import { logger } from "../../lib/logger";
+import { handleError, logFailure } from "../../lib/service";
 import type { PlayerState, Section } from "../../lib/types";
 
 const SNAPS = [
@@ -46,10 +46,6 @@ const COUNT_INS = [
 const PRESETS = [50, 60, 70, 80, 90, 100];
 const SECTION_NAMES = ["Intro", "Verse", "Pre-chorus", "Chorus", "Bridge", "Fill", "Solo", "Outro"];
 const RESTART_AFTER_MS = 3000;
-
-function describe(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
-}
 
 export interface PlayerDeckProps {
   onShowLibrary: () => void;
@@ -72,8 +68,8 @@ export function PlayerDeck(props: PlayerDeckProps) {
   const [downbeatEdit, setDownbeatEdit] = createSignal(0);
   const [side, setSide] = createSignal("sections");
   const [reading, setReading] = createSignal(false);
-  const [titleText, setTitleText] = createSignal("No song loaded");
-  const [subText, setSubText] = createSignal("Pick a song in the library");
+  const [titleText, setTitleText] = createSignal("");
+  const [subText, setSubText] = createSignal("");
   const [timeText, setTimeText] = createSignal("0:00.0");
   const [barText, setBarText] = createSignal("-");
   const [tempoText, setTempoText] = createSignal("-");
@@ -93,8 +89,8 @@ export function PlayerDeck(props: PlayerDeckProps) {
     setSpeedShown(Math.round(s.speed * 100));
     setPitchShown(s.pitch);
     setVolumeShown(Math.round(s.volume * 100));
-    setTitleText(s.loaded ? s.title || "Untitled" : "No song loaded");
-    setSubText(s.loaded ? s.artist || "Unknown artist" : "Pick a song in the library");
+    setTitleText(s.loaded ? s.title || "Untitled" : "");
+    setSubText(s.loaded ? s.artist || "Unknown artist" : "");
   });
 
   createEffect(() => {
@@ -132,8 +128,8 @@ export function PlayerDeck(props: PlayerDeckProps) {
         await loadSections();
       })
       .catch((e) => {
-        logger.error("could not read the loaded song", e);
-        setError(describe(e));
+        logFailure("could not read the loaded song", e);
+        handleError(e, setError);
       })
       .finally(() => setReading(false));
   });
@@ -143,8 +139,8 @@ export function PlayerDeck(props: PlayerDeckProps) {
     try {
       await action();
     } catch (e) {
-      logger.error("player action failed", e);
-      setError(describe(e));
+      logFailure("player action failed", e);
+      handleError(e, setError);
     }
   }
 
@@ -152,7 +148,7 @@ export function PlayerDeck(props: PlayerDeckProps) {
     try {
       setSections(await PlayerSections());
     } catch (e) {
-      logger.error("sections failed", e);
+      logFailure("sections failed", e);
     }
   }
 
@@ -445,17 +441,21 @@ export function PlayerDeck(props: PlayerDeckProps) {
 
       <div class="timeline">
         <div class="timeline-empty" data-on={!st().loaded ? "true" : "false"}>
-          <Icon name="lucide:audio-waveform" />
-          <span class="timeline-title">No song loaded</span>
-          <span>Double-click a song in the library, or open it from here.</span>
-          <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={props.onShowLibrary}>
+          <span class="timeline-title">
+            <Icon name="lucide:audio-waveform" />
+            No song loaded
+          </span>
+          <span class="timeline-hint">Double-click a song in the library to load it.</span>
+          <button class="krate-button krate-button-ghost krate-button-sm" type="button" onClick={props.onShowLibrary}>
             <Icon name="lucide:library-big" />
-            Open the library
+            Show library
           </button>
         </div>
         <div class="timeline-empty" data-on={st().loaded && reading() ? "true" : "false"}>
-          <Icon name="lucide:loader" />
-          <span>Reading the waveform</span>
+          <span class="timeline-title">
+            <Icon name="lucide:loader" />
+            Reading the waveform
+          </span>
         </div>
         <div class="timeline-inner" showIf={st().loaded}>
           <Waveform

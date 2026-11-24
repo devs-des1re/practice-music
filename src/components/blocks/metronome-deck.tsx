@@ -1,7 +1,6 @@
 import { createSignal, createEffect, onMount, onCleanup } from "@krate/runtime";
 import { openFile } from "@krate/app/dialog";
-import { AudioStream, StartAudio } from "../../../api/audio.go";
-import { Engine } from "../../../api/host.go";
+import { AudioStream } from "../../../api/audio.go";
 import {
   GetMetronome,
   SetMetronomeState,
@@ -21,7 +20,7 @@ import { Notice } from "../ui/notice";
 import { LiveText } from "../ui/live-text";
 import { SUBDIVISIONS, accentLabel, barCaption, cleanBpm, cycleAccent, polyLabel } from "../../lib/mixer";
 import { isTyping } from "../../lib/workspace";
-import { logger } from "../../lib/logger";
+import { handleError, onRefresh, startAudioForUser, logFailure } from "../../lib/service";
 import type { AudioState, MetronomeSetup } from "../../lib/types";
 
 const emptyCfg: MetronomeSetup = {
@@ -70,10 +69,6 @@ const LARGE_KEY = "pm.metronome.large";
 
 const AUDIO_PATTERNS = ["*.wav", "*.mp3", "*.flac", "*.ogg", "*.m4a", "*.opus"];
 
-function describe(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
-}
-
 function baseName(path: string): string {
   const parts = path.split(/[\\/]/);
   return parts[parts.length - 1] || path;
@@ -91,24 +86,9 @@ export function MetronomeDeck() {
   const [captionText, setCaptionText] = createSignal("Stopped");
   const [view, setView] = createSignal("play");
   const [large, setLarge] = createSignal(false);
-  const [engineState, setEngineState] = createSignal("");
-
   createEffect(() => {
     const next = AudioStream();
     if (next) setAudio(next);
-  });
-
-  createEffect(() => {
-    const next = Engine();
-    if (next) setEngineState(next.state);
-  });
-
-  createEffect(() => {
-    if (engineState() === "running" && !audio().running) {
-      StartAudio()
-        .then(() => setError(""))
-        .catch((e) => setError(describe(e)));
-    }
   });
 
   createEffect(() => {
@@ -123,7 +103,7 @@ export function MetronomeDeck() {
     SessionEpoch();
     GetMetronome()
       .then((next) => setCfg(next))
-      .catch((e) => logger.error("metronome settings failed", e));
+      .catch((e) => logFailure("metronome settings failed", e));
   });
 
   createEffect(() => {
@@ -149,8 +129,8 @@ export function MetronomeDeck() {
     try {
       await action();
     } catch (e) {
-      logger.error("metronome action failed", e);
-      setError(describe(e));
+      logFailure("metronome action failed", e);
+      handleError(e, setError);
     }
   }
 
@@ -183,7 +163,7 @@ export function MetronomeDeck() {
 
   async function ensureAudio() {
     if (audio().running) return;
-    await StartAudio();
+    await startAudioForUser();
   }
 
   function toggleRun() {
@@ -228,6 +208,12 @@ export function MetronomeDeck() {
 
   onMount(() => {
     setLarge(localStorage.getItem(LARGE_KEY) === "1");
+    const off = onRefresh(() => {
+      GetMetronome()
+        .then((next) => setCfg(next))
+        .catch((e) => handleError(e, setError));
+    });
+    onCleanup(off);
     const onKey = (e: KeyboardEvent) => {
       if (isTyping(e)) return;
       if (e.key === "m" || e.key === "M") {

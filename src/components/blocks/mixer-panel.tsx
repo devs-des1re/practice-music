@@ -1,7 +1,6 @@
-import { createSignal, createEffect, onMount } from "@krate/runtime";
+import { createSignal, createEffect, onMount, onCleanup } from "@krate/runtime";
 import { confirm } from "@krate/app/dialog";
-import { AudioStream, StartAudio } from "../../../api/audio.go";
-import { Engine } from "../../../api/host.go";
+import { AudioStream } from "../../../api/audio.go";
 import {
   GetMixer,
   SetMixerStrip,
@@ -16,12 +15,13 @@ import { Meter, PeakReadout } from "./meter";
 import { Fader } from "../ui/fader";
 import { Field } from "../ui/field";
 import { ParamRow } from "../ui/param-row";
+import { Section } from "../ui/section";
 import { Select } from "../ui/select";
 import { FoldButton } from "../ui/fold-button";
 import { Notice } from "../ui/notice";
 import { LiveText } from "../ui/live-text";
 import { channelPairs, formatDb, sourceOptions } from "../../lib/mixer";
-import { logger } from "../../lib/logger";
+import { handleError, onRefresh, logFailure } from "../../lib/service";
 import type { AudioState, MixerBoard, MixerMaster, MixerStrip, SceneInfo, SceneStatus } from "../../lib/types";
 
 const emptyMaster: MixerMaster = {
@@ -50,10 +50,6 @@ const emptyAudio = {
 
 const noLink = { mode: "", running: false, device: "", channels: 0, sampleRate: 0, rateMismatch: false, error: "" };
 
-function describe(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
-}
-
 const noStrip = {
   index: 0,
   kind: "song",
@@ -72,6 +68,8 @@ const noStrip = {
 
 const FADER_MARKS = [12, 0, -12, -24, -36, -48, -60];
 const INSPECTOR_KEY = "pm.mixer.inspector";
+const INSPECTOR_OPEN_KEY = "pm.mixer.inspector.open";
+const SECTIONS_KEY = "pm.inspector.sections";
 const INSPECTOR_DEFAULT = 288;
 const INSPECTOR_MIN = 232;
 const INSPECTOR_MAX = 520;
@@ -117,6 +115,7 @@ export function MixerPanel() {
   const [inspect, setInspect] = createSignal(false);
   const [ceilingText, setCeilingText] = createSignal("-0.3 dB");
   const [inspectorWidth, setInspectorWidth] = createSignal(INSPECTOR_DEFAULT);
+  const [closedSections, setClosedSections] = createSignal<Record<string, boolean>>({});
   const strip = () => board().strips[selected()] || noStrip;
   const cap = () => audio().capture ?? noLink;
   const mon = () => audio().monitor ?? noLink;
@@ -126,21 +125,6 @@ export function MixerPanel() {
   createEffect(() => {
     const next = AudioStream();
     if (next) setAudio(next);
-  });
-
-  const [engineState, setEngineState] = createSignal("");
-
-  createEffect(() => {
-    const next = Engine();
-    if (next) setEngineState(next.state);
-  });
-
-  createEffect(() => {
-    if (engineState() === "running" && !audio().running) {
-      StartAudio()
-        .then(() => setError(""))
-        .catch((e) => setError(describe(e)));
-    }
   });
 
   createEffect(() => {
@@ -169,8 +153,25 @@ export function MixerPanel() {
   onMount(() => {
     const saved = Number(localStorage.getItem(INSPECTOR_KEY));
     if (saved >= INSPECTOR_MIN && saved <= INSPECTOR_MAX) setInspectorWidth(saved);
+    try {
+      const raw = JSON.parse(localStorage.getItem(SECTIONS_KEY) || "{}");
+      if (raw && typeof raw === "object") setClosedSections(raw);
+    } catch {
+      setClosedSections({});
+    }
+    const remembered = localStorage.getItem(INSPECTOR_OPEN_KEY);
     const box = document.getElementById("console");
-    if (box && box.clientWidth >= 73.75 * parseFloat(getComputedStyle(document.documentElement).fontSize)) setInspect(true);
+    if (remembered === "1" || remembered === "0") setInspect(remembered === "1");
+    else if (box && box.clientWidth >= 73.75 * parseFloat(getComputedStyle(document.documentElement).fontSize)) setInspect(true);
+    const off = onRefresh(() => {
+      GetMixer()
+        .then((next) => setBoard(next))
+        .catch((e) => handleError(e, setError));
+      Scenes()
+        .then((list) => setScenes(list))
+        .catch((e) => handleError(e, setError));
+    });
+    onCleanup(off);
   });
 
   createEffect(() => {
@@ -179,6 +180,29 @@ export function MixerPanel() {
     const el = document.getElementById("console");
     if (el) el.style.setProperty("--inspector-width", width + "px");
   });
+
+  function isOpen(key: string): boolean {
+    return !closedSections()[key];
+  }
+
+  function toggleSection(key: string) {
+    const next = { ...closedSections(), [key]: !closedSections()[key] };
+    setClosedSections(next);
+    try {
+      localStorage.setItem(SECTIONS_KEY, JSON.stringify(next));
+    } catch {
+      return;
+    }
+  }
+
+  function showInspector(open: boolean) {
+    setInspect(open);
+    try {
+      localStorage.setItem(INSPECTOR_OPEN_KEY, open ? "1" : "0");
+    } catch {
+      return;
+    }
+  }
 
   function startInspectorResize(e: PointerEvent) {
     if (e.button !== 0) return;
@@ -208,14 +232,14 @@ export function MixerPanel() {
     SessionEpoch();
     GetMixer()
       .then((next) => setBoard(next))
-      .catch((e) => logger.error("mixer state failed", e));
+      .catch((e) => logFailure("mixer state failed", e));
   });
 
   createEffect(() => {
     SceneRevision();
     Scenes()
       .then((list) => setScenes(list))
-      .catch((e) => logger.error("scene list failed", e));
+      .catch((e) => logFailure("scene list failed", e));
   });
 
   async function guard(action: () => Promise<unknown>) {
@@ -223,8 +247,8 @@ export function MixerPanel() {
     try {
       await action();
     } catch (e) {
-      logger.error("mixer action failed", e);
-      setError(describe(e));
+      logFailure("mixer action failed", e);
+      handleError(e, setError);
     }
   }
 
@@ -240,8 +264,8 @@ export function MixerPanel() {
         await send();
       } while (dirty[key]);
     } catch (e) {
-      logger.error("mixer update failed", e);
-      setError(describe(e));
+      logFailure("mixer update failed", e);
+      handleError(e, setError);
     } finally {
       sending[key] = false;
     }
@@ -357,7 +381,7 @@ export function MixerPanel() {
           <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Reset the mixer" data-tip="Reset every channel" onClick={resetAll}>
             <Icon name="lucide:rotate-ccw" />
           </button>
-          <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Channel settings" data-tip="Show or hide the inspector" data-on={inspect() ? "true" : "false"} onClick={() => setInspect(!inspect())}>
+          <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Channel settings" data-tip="Show or hide the inspector" data-on={inspect() ? "true" : "false"} onClick={() => showInspector(!inspect())}>
             <Icon name="lucide:panel-right" />
           </button>
           <FoldButton />
@@ -401,7 +425,7 @@ export function MixerPanel() {
                     onClick={() => {
                       setSelected(s.index);
                       setTab("channel");
-                      setInspect(true);
+                      showInspector(true);
                     }}
                   >
                     <Icon name="lucide:sliders-horizontal" />
@@ -518,7 +542,7 @@ export function MixerPanel() {
                 data-tip="Outputs, limiter and latency"
                 onClick={() => {
                   setTab("routing");
-                  setInspect(true);
+                  showInspector(true);
                 }}
               >
                 <Icon name="lucide:route" />
@@ -602,14 +626,14 @@ export function MixerPanel() {
                 Routing
               </button>
             </div>
-            <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm inspector-close" type="button" aria-label="Close channel settings" onClick={() => setInspect(false)}>
+            <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm inspector-close" type="button" aria-label="Close channel settings" onClick={() => showInspector(false)}>
               <Icon name="lucide:x" />
             </button>
           </header>
 
           <div class="inspector-body" showIf={tab() === "channel"}>
-            <section class="inspector-section" showIf={strip().kind === "input"}>
-              <h3 class="section-title">Input</h3>
+            <div showIf={strip().kind === "input"}>
+              <Section title="Input" open={isOpen("input")} onToggle={() => toggleSection("input")}>
               <Select
                 id="strip-source"
                 label="Input source"
@@ -621,49 +645,47 @@ export function MixerPanel() {
                 <input type="checkbox" checked={strip().stereo} onChange={(e: Event) => patchStrip(selected(), (x) => ({ ...x, stereo: (e.target as HTMLInputElement).checked }))} />
                 Stereo pair
               </label>
-            </section>
+              </Section>
+            </div>
 
-            <section class="inspector-section">
-              <h3 class="section-title">Levels</h3>
+            <Section title="Levels" open={isOpen("levels")} onToggle={() => toggleSection("levels")}>
               <ParamRow label="Pan" ariaLabel="Pan" min={-1} max={1} step={0.01} value={strip().pan} text={panText(strip().pan)} onInput={(v) => patchStrip(selected(), (x) => ({ ...x, pan: v }))} onReset={() => patchStrip(selected(), (x) => ({ ...x, pan: 0 }))} />
               <ParamRow label="Main" ariaLabel="Send to main" min={-60} max={12} step={0.5} value={strip().main} text={formatDb(strip().main)} onInput={(v) => patchStrip(selected(), (x) => ({ ...x, main: v }))} onReset={() => patchStrip(selected(), (x) => ({ ...x, main: 0 }))} />
               <ParamRow label="Monitor" ariaLabel="Send to monitor" min={-60} max={12} step={0.5} value={strip().monitor} text={formatDb(strip().monitor)} onInput={(v) => patchStrip(selected(), (x) => ({ ...x, monitor: v }))} onReset={() => patchStrip(selected(), (x) => ({ ...x, monitor: 0 }))} />
-            </section>
+            </Section>
 
-            <section class="inspector-section">
-              <h3 class="section-title">Equaliser</h3>
+            <Section title="Equaliser" open={isOpen("eq")} onToggle={() => toggleSection("eq")}>
               <ParamRow label="Low" ariaLabel="Low shelf" min={-15} max={15} step={0.5} value={strip().eq.low} text={strip().eq.low.toFixed(1)} onInput={(v) => patchStrip(selected(), (x) => ({ ...x, eq: { ...x.eq, low: v } }))} onReset={() => patchStrip(selected(), (x) => ({ ...x, eq: { ...x.eq, low: 0 } }))} />
               <ParamRow label="Mid" ariaLabel="Mid band" min={-15} max={15} step={0.5} value={strip().eq.mid} text={strip().eq.mid.toFixed(1)} onInput={(v) => patchStrip(selected(), (x) => ({ ...x, eq: { ...x.eq, mid: v } }))} onReset={() => patchStrip(selected(), (x) => ({ ...x, eq: { ...x.eq, mid: 0 } }))} />
               <ParamRow label="High" ariaLabel="High shelf" min={-15} max={15} step={0.5} value={strip().eq.high} text={strip().eq.high.toFixed(1)} onInput={(v) => patchStrip(selected(), (x) => ({ ...x, eq: { ...x.eq, high: v } }))} onReset={() => patchStrip(selected(), (x) => ({ ...x, eq: { ...x.eq, high: 0 } }))} />
-            </section>
+            </Section>
 
-            <section class="inspector-section">
-              <h3 class="section-title section-switch">
-                <label class="check-row">
-                  <input type="checkbox" checked={strip().comp.on} onChange={(e: Event) => patchStrip(selected(), (x) => ({ ...x, comp: { ...x.comp, on: (e.target as HTMLInputElement).checked } }))} />
-                  Compressor
-                </label>
-              </h3>
+            <Section
+              title="Compressor"
+              open={isOpen("comp")}
+              onToggle={() => toggleSection("comp")}
+              switchLabel="On"
+              switchOn={strip().comp.on}
+              onSwitch={(on) => patchStrip(selected(), (x) => ({ ...x, comp: { ...x.comp, on } }))}
+            >
               <ParamRow label="Threshold" ariaLabel="Compressor threshold" min={-60} max={0} step={1} value={strip().comp.threshold} text={strip().comp.threshold.toFixed(0) + " dB"} onInput={(v) => patchStrip(selected(), (x) => ({ ...x, comp: { ...x.comp, threshold: v } }))} />
               <ParamRow label="Ratio" ariaLabel="Compressor ratio" min={1} max={20} step={0.5} value={strip().comp.ratio} text={strip().comp.ratio.toFixed(1) + " : 1"} onInput={(v) => patchStrip(selected(), (x) => ({ ...x, comp: { ...x.comp, ratio: v } }))} />
               <ParamRow label="Attack" ariaLabel="Compressor attack" min={1} max={100} step={1} value={strip().comp.attack} text={strip().comp.attack.toFixed(0) + " ms"} onInput={(v) => patchStrip(selected(), (x) => ({ ...x, comp: { ...x.comp, attack: v } }))} />
               <ParamRow label="Release" ariaLabel="Compressor release" min={20} max={1000} step={10} value={strip().comp.release} text={strip().comp.release.toFixed(0) + " ms"} onInput={(v) => patchStrip(selected(), (x) => ({ ...x, comp: { ...x.comp, release: v } }))} />
               <ParamRow label="Makeup" ariaLabel="Compressor makeup gain" min={0} max={24} step={0.5} value={strip().comp.makeup} text={strip().comp.makeup.toFixed(1) + " dB"} onInput={(v) => patchStrip(selected(), (x) => ({ ...x, comp: { ...x.comp, makeup: v } }))} />
-            </section>
+            </Section>
           </div>
 
           <div class="inspector-body" showIf={tab() === "routing"}>
-            <section class="inspector-section">
-              <h3 class="section-title">Master limiter</h3>
+            <Section title="Master limiter" open={isOpen("limiter")} onToggle={() => toggleSection("limiter")}>
               <label class="check-row">
                 <input type="checkbox" checked={board().master.limiter} onChange={(e: Event) => patchMaster((m) => ({ ...m, limiter: (e.target as HTMLInputElement).checked }))} />
                 Limiter on
               </label>
               <ParamRow label="Ceiling" ariaLabel="Limiter ceiling" min={-12} max={0} step={0.1} value={board().master.ceiling} text={board().master.ceiling.toFixed(1) + " dB"} onInput={(v) => patchMaster((m) => ({ ...m, ceiling: v }))} />
-            </section>
+            </Section>
 
-            <section class="inspector-section">
-              <h3 class="section-title">Outputs</h3>
+            <Section title="Outputs" open={isOpen("outputs")} onToggle={() => toggleSection("outputs")}>
               <Field label="Main mix" htmlFor="main-pair" hint={audio().running ? "On " + (audio().device || "the output device") : "Waiting for the audio engine."}>
                 <Select
                   id="main-pair"
@@ -692,10 +714,9 @@ export function MixerPanel() {
               <p class="field-warn" showIf={!!mon() && mon().rateMismatch}>
                 The monitor device runs at a different sample rate. Set both devices to the same rate for the best quality.
               </p>
-            </section>
+            </Section>
 
-            <section class="inspector-section">
-              <h3 class="section-title">Latency</h3>
+            <Section title="Latency" open={isOpen("latency")} onToggle={() => toggleSection("latency")}>
               <div class="latency-lines">
                 <div class="latency-line">
                   <span class="strip-row-label">Main output</span>
@@ -718,7 +739,7 @@ export function MixerPanel() {
                 <Icon name="lucide:timer" />
                 Latency tools
               </Link>
-            </section>
+            </Section>
           </div>
         </aside>
       </div>

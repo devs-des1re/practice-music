@@ -1,4 +1,4 @@
-import { createSignal, createEffect, onMount } from "@krate/runtime";
+import { createSignal, createEffect, onMount, onCleanup } from "@krate/runtime";
 import { openFile, confirm } from "@krate/app/dialog";
 import {
   Songs,
@@ -28,14 +28,10 @@ import { FoldButton } from "../ui/fold-button";
 import { Notice } from "../ui/notice";
 import { formatDurationMs } from "../../lib/format";
 import { setQueue } from "../../lib/queue";
-import { logger } from "../../lib/logger";
+import { handleError, onRefresh, logFailure } from "../../lib/service";
 import type { ImportProgress, Playlist, Song, TagCount } from "../../lib/types";
 
 const emptyImport: ImportProgress = { running: false, total: 0, done: 0, current: "", errors: [] };
-
-function describe(e: unknown): string {
-  return e instanceof Error ? e.message : String(e);
-}
 
 export function LibraryPanel() {
   const [songs, setSongs] = createSignal<Song[]>([]);
@@ -90,8 +86,8 @@ export function LibraryPanel() {
       setTags(await AllTags());
       setPlaylists(await Playlists());
     } catch (e) {
-      logger.error("library load failed", e);
-      setError(describe(e));
+      logFailure("library load failed", e);
+      handleError(e, setError);
     }
   }
 
@@ -130,6 +126,10 @@ export function LibraryPanel() {
 
   onMount(() => {
     load();
+    const off = onRefresh(() => {
+      void load();
+    });
+    onCleanup(off);
   });
 
   createEffect(() => {
@@ -184,8 +184,8 @@ export function LibraryPanel() {
     try {
       await action();
     } catch (e) {
-      logger.error("library action failed", e);
-      setError(describe(e));
+      logFailure("library action failed", e);
+      handleError(e, setError);
     }
   }
 

@@ -118,7 +118,7 @@ export function presetTree(name: PresetName, visible: (id: PanelId) => boolean):
   return framed(decks, SIDE_PANELS, visible, 0.64, "mixer");
 }
 
-function folded(node: Node, collapsed: ReadonlySet<PanelId>): boolean {
+function allFolded(node: Node, collapsed: ReadonlySet<PanelId>): boolean {
   return leaves(node).every((id) => collapsed.has(id));
 }
 
@@ -137,8 +137,8 @@ export function geometry(node: Node, opts: GeoOptions = {}): Geometry {
     let ratio = n.ratio;
     let locked = false;
     if (measured && collapsed && stage) {
-      const aFolded = folded(n.a, collapsed);
-      const bFolded = folded(n.b, collapsed);
+      const aFolded = allFolded(n.a, collapsed);
+      const bFolded = allFolded(n.b, collapsed);
       if (aFolded !== bFolded) {
         const row = n.dir === "row";
         const size = row ? area.w * stage.w : area.h * stage.h;

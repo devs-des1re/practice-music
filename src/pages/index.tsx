@@ -1,6 +1,7 @@
 import { createSignal, createEffect, onMount, onCleanup } from "@krate/runtime";
 import { Topbar } from "../components/blocks/topbar";
 import { ShortcutsDialog } from "../components/blocks/shortcuts-dialog";
+import { ServiceNotice } from "../components/blocks/service-notice";
 import { PlayerDeck } from "../components/blocks/player-deck";
 import { MetronomeDeck } from "../components/blocks/metronome-deck";
 import { LibraryPanel } from "../components/blocks/library-panel";
@@ -318,6 +319,7 @@ export default function Workspace() {
   return (
     <div class="screen">
       <Topbar panels={panels()} onToggle={(key) => setPanel(key, !panels()[key])} onPreset={applyPreset} onReset={resetLayout} onShortcuts={() => setShortcuts(true)} />
+      <ServiceNotice />
       <main class="ws">
         <div class="ws-stage" data-dragging={dragId() ? "true" : "false"} data-resizing={resizePath() ? "true" : "false"} onPointerDown={onStageDown} onClick={onStageClick}>
           <div class="cell" data-tile="player">
@@ -347,6 +349,7 @@ export default function Workspace() {
               style={g.style}
               role="separator"
               aria-label="Drag to resize"
+              data-tip="Drag to resize"
               onPointerDown={(e: PointerEvent) => startResize(e, g.geo)}
             />
           ))}
