@@ -305,18 +305,20 @@ impl Loader {
             if generation.load(Ordering::Acquire) != mine {
                 return;
             }
-            if let Some(message) = failure.into_inner().ok().flatten() {
-                report("failed", done.load(Ordering::Acquire), total, 0, &message);
+            let problem = failure.into_inner().ok().flatten().unwrap_or_default();
+            let fresh = found.into_inner().unwrap_or_default();
+            if total > 0 && ready.is_empty() && fresh.is_empty() {
+                report("failed", done.load(Ordering::Acquire), total, 0, &problem);
                 return;
             }
-            ready.extend(found.into_inner().unwrap_or_default());
+            ready.extend(fresh);
             let kit = assemble(&request, rate, &ready);
             let bytes = kit.bytes();
             if let Ok(mut kept) = cache.lock() {
                 *kept = ready;
             }
             hub.set_kit(Arc::new(kit));
-            report("ready", total, total, bytes, "");
+            report("ready", total, total, bytes, &problem);
             thread::sleep(SWITCH_TIME);
             hub.release_retired_kit();
         });
@@ -458,7 +460,37 @@ mod tests {
     }
 
     #[test]
-    fn a_missing_file_fails_the_load_with_its_name() {
+    fn one_unreadable_file_is_skipped_and_named_while_the_rest_loads() {
+        let dir = folder("partial");
+        let path = dir.join("good.wav");
+        wav(&path, 48000, &[12000; 4800]);
+        let hub = Arc::new(Hub::default());
+        let (tx, rx) = std::sync::mpsc::channel();
+        let request = Request {
+            pads: vec![PadSource {
+                files: vec![
+                    path.to_string_lossy().into_owned(),
+                    "Z:/nope/gone.wav".to_string(),
+                ],
+                ..PadSource::default()
+            }],
+        };
+        Loader::default().start(request, 48000, 3, hub, tx);
+        let last = loop {
+            let frame = rx.recv_timeout(Duration::from_secs(10)).expect("a report");
+            let value: serde_json::Value = serde_json::from_str(&frame).unwrap();
+            if value["data"]["state"] != "loading" {
+                break value;
+            }
+        };
+        assert_eq!(last["data"]["state"], "ready", "{last}");
+        assert!(last["data"]["error"].as_str().unwrap().contains("gone.wav"));
+        assert!(last["data"]["bytes"].as_u64().unwrap() > 0);
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn when_nothing_can_be_read_the_load_fails_with_the_file_name() {
         let hub = Arc::new(Hub::default());
         let (tx, rx) = std::sync::mpsc::channel();
         let request = Request {
