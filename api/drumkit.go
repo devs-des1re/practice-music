@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -19,6 +18,7 @@ import (
 	"practice-music/api/kit"
 	"practice-music/api/logger"
 	"practice-music/api/persist"
+	"practice-music/api/refusal"
 )
 
 const (
@@ -342,7 +342,7 @@ func DrumsLearn(padID string, note int) (drums.Settings, error) {
 	return storeDrums(func(current drums.Settings) (drums.Settings, error) {
 		next, ok := drums.Learn(current, padID, note)
 		if !ok {
-			return current, errors.New("that note could not be given to the pad")
+			return current, refusal.New("that note could not be given to the pad")
 		}
 		return next, nil
 	})
@@ -357,7 +357,7 @@ func DrumsScan() DrumState {
 func DrumsPlay(padID string, velocity int) error {
 	boot()
 	if !audioRunning() {
-		return errors.New("start the audio engine first")
+		return refusal.New("start the audio engine first")
 	}
 	settings := drumSnapshot()
 	at := drums.PadIndex(settings, padID)
@@ -375,7 +375,7 @@ func DrumsKitDownload() error {
 	installer := kitInstaller
 	if installer == nil || drumStatus.Kit.Phase != "" {
 		drumMu.Unlock()
-		return errors.New("the kit is already being changed")
+		return refusal.New("the kit is already being changed")
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	kitCancel = cancel
@@ -419,7 +419,7 @@ func DrumsKitRemove() (drums.Settings, error) {
 	installer := kitInstaller
 	if installer == nil || drumStatus.Kit.Phase != "" {
 		drumMu.Unlock()
-		return drums.Settings{}, errors.New("the kit is already being changed")
+		return drums.Settings{}, refusal.New("the kit is already being changed")
 	}
 	drumStatus.Kit.Phase = kitRemoving
 	drumStatus.Kit.Error = ""

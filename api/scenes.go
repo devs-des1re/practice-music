@@ -12,6 +12,7 @@ import (
 	"practice-music/api/logger"
 	"practice-music/api/metronome"
 	"practice-music/api/mixer"
+	"practice-music/api/refusal"
 )
 
 type SceneInfo struct {
@@ -79,7 +80,7 @@ func RecallScene(id int64) (SceneInfo, error) {
 	sc, err := lib.Scene(id)
 	if err != nil {
 		if errors.Is(err, library.ErrNotFound) {
-			return SceneInfo{}, errors.New("that scene no longer exists")
+			return SceneInfo{}, refusal.New("that scene no longer exists")
 		}
 		return SceneInfo{}, err
 	}

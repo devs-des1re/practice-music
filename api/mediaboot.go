@@ -16,6 +16,7 @@ import (
 	"practice-music/api/library"
 	"practice-music/api/logger"
 	"practice-music/api/media"
+	"practice-music/api/refusal"
 	"practice-music/api/tools"
 )
 
@@ -69,7 +70,7 @@ func downloadDir() (string, error) {
 		return "", err
 	}
 	if len(folders) == 0 {
-		return "", errors.New("add a library folder in Settings first")
+		return "", refusal.New("add a library folder in Settings first")
 	}
 	return folders[0], nil
 }
@@ -89,7 +90,7 @@ func bootMedia(dir string) {
 		Binary: func() (string, error) {
 			path, _ := tm.Locate()
 			if path == "" {
-				return "", errors.New("yt-dlp is not installed. Install it from the Downloads page")
+				return "", refusal.New("yt-dlp is not installed. Install it from the Downloads page")
 			}
 			return path, nil
 		},

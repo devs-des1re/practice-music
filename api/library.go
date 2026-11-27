@@ -10,6 +10,7 @@ import (
 
 	"practice-music/api/library"
 	"practice-music/api/logger"
+	"practice-music/api/refusal"
 )
 
 type ImportProgress struct {
@@ -216,13 +217,13 @@ func ImportFiles(paths []string, playlistID int64) error {
 	}
 	if playlistID != 0 {
 		if err := lib.AddToPlaylist(playlistID, nil); err != nil {
-			return errors.New("that playlist no longer exists")
+			return refusal.New("that playlist no longer exists")
 		}
 	}
 	importMu.Lock()
 	if ImportState.Get().Running {
 		importMu.Unlock()
-		return errors.New("an import is already running")
+		return refusal.New("an import is already running")
 	}
 	ImportState.Set(ImportProgress{Running: true, Total: len(paths), Errors: []string{}})
 	importMu.Unlock()

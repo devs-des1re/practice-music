@@ -10,6 +10,10 @@ export function isOffline(e: unknown): boolean {
   return OFFLINE.test(message);
 }
 
+export function isRefusal(e: unknown): boolean {
+  return typeof e === "object" && e !== null && (e as { code?: unknown }).code === "refused";
+}
+
 export function describeError(e: unknown): string {
   if (isOffline(e)) return "The PracticeMusic host is not reachable.";
   const raw = e instanceof Error ? e.message : String(e);

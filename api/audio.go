@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"runtime"
 	"sync"
@@ -16,6 +15,7 @@ import (
 	"practice-music/api/engine"
 	"practice-music/api/latency"
 	"practice-music/api/logger"
+	"practice-music/api/refusal"
 	"practice-music/api/settings"
 )
 
@@ -276,7 +276,7 @@ func Click(uiPressUs float64, uiOffsetUs float64) (ClickResult, error) {
 	boot()
 	hostRecv := clock.MonoUs()
 	if _, ok := sup.ClockEstimate(); !ok {
-		return ClickResult{}, errors.New("engine clock is not synchronised yet")
+		return ClickResult{}, refusal.New("engine clock is not synchronised yet")
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()

@@ -10,6 +10,8 @@ import (
 	"time"
 
 	_ "modernc.org/sqlite"
+
+	"practice-music/api/refusal"
 )
 
 var ErrNotFound = errors.New("not found")
@@ -352,10 +354,10 @@ func (d *DB) RemoveIDs(ids []int64) error {
 func normaliseTag(name string) (string, error) {
 	name = strings.Join(strings.Fields(name), " ")
 	if name == "" {
-		return "", errors.New("a tag cannot be empty")
+		return "", refusal.New("a tag cannot be empty")
 	}
 	if len(name) > 40 {
-		return "", errors.New("a tag can be at most 40 characters")
+		return "", refusal.New("a tag can be at most 40 characters")
 	}
 	return name, nil
 }
@@ -403,12 +405,12 @@ func (d *DB) Tags() ([]TagCount, error) {
 func (d *DB) CreatePlaylist(name string) (Playlist, error) {
 	name = strings.Join(strings.Fields(name), " ")
 	if name == "" {
-		return Playlist{}, errors.New("a playlist needs a name")
+		return Playlist{}, refusal.New("a playlist needs a name")
 	}
 	res, err := d.db.Exec(`INSERT INTO playlists (name, created_at) VALUES (?, ?)`, name, d.now().UnixMilli())
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE") {
-			return Playlist{}, fmt.Errorf("a playlist named %q already exists", name)
+			return Playlist{}, refusal.Errorf("a playlist named %q already exists", name)
 		}
 		return Playlist{}, err
 	}
@@ -419,11 +421,11 @@ func (d *DB) CreatePlaylist(name string) (Playlist, error) {
 func (d *DB) RenamePlaylist(id int64, name string) error {
 	name = strings.Join(strings.Fields(name), " ")
 	if name == "" {
-		return errors.New("a playlist needs a name")
+		return refusal.New("a playlist needs a name")
 	}
 	res, err := d.db.Exec(`UPDATE playlists SET name = ? WHERE id = ?`, name, id)
 	if err != nil && strings.Contains(err.Error(), "UNIQUE") {
-		return fmt.Errorf("a playlist named %q already exists", name)
+		return refusal.Errorf("a playlist named %q already exists", name)
 	}
 	return affected(res, err)
 }

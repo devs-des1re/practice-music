@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"time"
 
@@ -11,6 +10,7 @@ import (
 	"practice-music/api/engine"
 	"practice-music/api/library"
 	"practice-music/api/logger"
+	"practice-music/api/refusal"
 )
 
 type LoopRegion struct {
@@ -121,10 +121,10 @@ func PlayerSetClick(on bool) error {
 	boot()
 	st := playerSnapshot()
 	if on && !st.Loaded {
-		return errors.New("open a song first")
+		return refusal.New("open a song first")
 	}
 	if on && st.Grid.Bpm <= 0 {
-		return errors.New("set or detect the tempo first")
+		return refusal.New("set or detect the tempo first")
 	}
 	playerUpdate(func(p *PlayerState) { p.Click = on })
 	return pushGuide()
@@ -255,7 +255,7 @@ func PlayerSeek(ms float64) error {
 
 func applySpeed(v float64) error {
 	if v < 0.25 || v > 2 {
-		return errors.New("speed must be between 25% and 200%")
+		return refusal.New("speed must be between 25% and 200%")
 	}
 	if err := playerControl(engine.PlayerControl{Speed: f(v)}); err != nil {
 		return err
@@ -273,7 +273,7 @@ func PlayerSetSpeed(v float64) error {
 func PlayerSetPitch(semitones float64) error {
 	boot()
 	if semitones < -12 || semitones > 12 {
-		return errors.New("pitch must be within 12 semitones")
+		return refusal.New("pitch must be within 12 semitones")
 	}
 	if err := playerControl(engine.PlayerControl{Pitch: f(semitones)}); err != nil {
 		return err
@@ -295,7 +295,7 @@ func PlayerSetLoop(startMs, endMs float64, enabled bool) error {
 	boot()
 	st := playerSnapshot()
 	if enabled && (endMs <= startMs || startMs < 0 || (st.DurationMs > 0 && endMs > st.DurationMs+1)) {
-		return errors.New("the loop must end after it starts and stay inside the song")
+		return refusal.New("the loop must end after it starts and stay inside the song")
 	}
 	if err := playerControl(engine.PlayerControl{Loop: &engine.LoopParams{StartMs: startMs, EndMs: endMs, Enabled: enabled}}); err != nil {
 		return err
@@ -307,7 +307,7 @@ func PlayerSetLoop(startMs, endMs float64, enabled bool) error {
 func PlayerSetCountIn(beats int) error {
 	boot()
 	if beats < 0 || beats > 16 {
-		return errors.New("the count-in can be 0 to 16 beats")
+		return refusal.New("the count-in can be 0 to 16 beats")
 	}
 	playerUpdate(func(p *PlayerState) { p.CountIn = beats })
 	pushCountIn()
@@ -318,7 +318,7 @@ func PlayerSetGrid(bpm, offsetMs float64, beatsPerBar, downbeat int) (library.Gr
 	boot()
 	st := playerSnapshot()
 	if !st.Loaded {
-		return library.Grid{}, errors.New("open a song first")
+		return library.Grid{}, refusal.New("open a song first")
 	}
 	g := library.Grid{Bpm: bpm, OffsetMs: offsetMs, BeatsPerBar: beatsPerBar, Downbeat: downbeat, Confidence: st.Grid.Confidence, UserEdited: true, Found: true}
 	if err := lib.SaveGrid(st.SongID, g); err != nil {
@@ -336,11 +336,11 @@ func PlayerDetectGrid() (library.Grid, error) {
 	boot()
 	st := playerSnapshot()
 	if !st.Loaded {
-		return library.Grid{}, errors.New("open a song first")
+		return library.Grid{}, refusal.New("open a song first")
 	}
 	g := analyseSong(st.SongID)
 	if !g.Found {
-		return library.Grid{}, errors.New("no steady beat was found in this song")
+		return library.Grid{}, refusal.New("no steady beat was found in this song")
 	}
 	playerUpdate(func(p *PlayerState) { p.Grid = g })
 	pushCountIn()
@@ -363,7 +363,7 @@ func PlayerSaveSection(name string, startMs, endMs float64) (library.Section, er
 	boot()
 	st := playerSnapshot()
 	if !st.Loaded {
-		return library.Section{}, errors.New("open a song first")
+		return library.Section{}, refusal.New("open a song first")
 	}
 	return lib.SaveSection(st.SongID, name, startMs, endMs)
 }

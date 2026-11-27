@@ -1,7 +1,6 @@
 package api
 
 import (
-	"errors"
 	"sync"
 
 	"github.com/kratejs/krate/packages/native/krate"
@@ -9,6 +8,7 @@ import (
 	"github.com/kratejs/krate/packages/native/sdk/window"
 
 	"practice-music/api/logger"
+	"practice-music/api/refusal"
 )
 
 type BrowserInfo struct {
@@ -78,7 +78,7 @@ func BrowserGo(url string) error {
 	id := browserView
 	browserMu.Unlock()
 	if id == "" {
-		return errors.New("the browser pane is not open")
+		return refusal.New("the browser pane is not open")
 	}
 	return remote.Navigate(id, url)
 }

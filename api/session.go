@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -18,6 +17,7 @@ import (
 	"practice-music/api/metronome"
 	"practice-music/api/mixer"
 	"practice-music/api/persist"
+	"practice-music/api/refusal"
 )
 
 type TapResult struct {
@@ -330,13 +330,13 @@ func LoadMetronomeSound(role, path string) (metronome.Setup, error) {
 		return metronome.Setup{}, fmt.Errorf("unknown click sound slot %q", role)
 	}
 	if !filepath.IsAbs(path) {
-		return metronome.Setup{}, errors.New("choose a sound file with a full path")
+		return metronome.Setup{}, refusal.New("choose a sound file with a full path")
 	}
 	if info, err := os.Stat(path); err != nil || info.IsDir() {
-		return metronome.Setup{}, errors.New("that sound file cannot be read")
+		return metronome.Setup{}, refusal.New("that sound file cannot be read")
 	}
 	if !audioRunning() {
-		return metronome.Setup{}, errors.New("start the audio engine before choosing a custom sound")
+		return metronome.Setup{}, refusal.New("start the audio engine before choosing a custom sound")
 	}
 	ctx, cancel := mixCtx()
 	defer cancel()
@@ -371,7 +371,7 @@ func ClearMetronomeSound(role string) (metronome.Setup, error) {
 func setMetronomeRunning(running bool) (engine.MetronomeState, error) {
 	boot()
 	if !audioRunning() {
-		return engine.MetronomeState{}, errors.New("start the audio engine first")
+		return engine.MetronomeState{}, refusal.New("start the audio engine first")
 	}
 	ctx, cancel := mixCtx()
 	defer cancel()

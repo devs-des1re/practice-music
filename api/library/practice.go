@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"errors"
 	"strings"
+
+	"practice-music/api/refusal"
 )
 
 type Grid struct {
@@ -26,16 +28,16 @@ type Section struct {
 
 func (g Grid) Validate() error {
 	if g.Bpm < 20 || g.Bpm > 400 {
-		return errors.New("tempo must be between 20 and 400 BPM")
+		return refusal.New("tempo must be between 20 and 400 BPM")
 	}
 	if g.BeatsPerBar < 1 || g.BeatsPerBar > 32 {
-		return errors.New("beats per bar must be between 1 and 32")
+		return refusal.New("beats per bar must be between 1 and 32")
 	}
 	if g.OffsetMs < 0 {
-		return errors.New("the first beat cannot be before the start of the song")
+		return refusal.New("the first beat cannot be before the start of the song")
 	}
 	if g.Downbeat < 0 || g.Downbeat >= g.BeatsPerBar {
-		return errors.New("the bar start must be one of the beats in the bar")
+		return refusal.New("the bar start must be one of the beats in the bar")
 	}
 	return nil
 }
@@ -94,13 +96,13 @@ func (d *DB) Sections(songID int64) ([]Section, error) {
 func (d *DB) SaveSection(songID int64, name string, startMs, endMs float64) (Section, error) {
 	name = strings.Join(strings.Fields(name), " ")
 	if name == "" {
-		return Section{}, errors.New("a section needs a name")
+		return Section{}, refusal.New("a section needs a name")
 	}
 	if len(name) > 60 {
-		return Section{}, errors.New("a section name can be at most 60 characters")
+		return Section{}, refusal.New("a section name can be at most 60 characters")
 	}
 	if startMs < 0 || endMs <= startMs {
-		return Section{}, errors.New("a section must end after it starts")
+		return Section{}, refusal.New("a section must end after it starts")
 	}
 	if _, err := d.Get(songID); err != nil {
 		return Section{}, err
@@ -116,7 +118,7 @@ func (d *DB) SaveSection(songID int64, name string, startMs, endMs float64) (Sec
 func (d *DB) RenameSection(id int64, name string) error {
 	name = strings.Join(strings.Fields(name), " ")
 	if name == "" {
-		return errors.New("a section needs a name")
+		return refusal.New("a section needs a name")
 	}
 	res, err := d.db.Exec(`UPDATE sections SET name = ? WHERE id = ?`, name, id)
 	return affected(res, err)

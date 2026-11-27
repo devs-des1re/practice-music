@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { describeError, isOffline, retryDelayMs, countdownText } from "../../src/lib/errors.ts";
+import { describeError, isOffline, isRefusal, retryDelayMs, countdownText } from "../../src/lib/errors.ts";
 
 test("network failures are recognised as the host being unreachable", () => {
   assert.equal(isOffline(new TypeError("Failed to fetch")), true);
@@ -37,4 +37,15 @@ test("the countdown reads in whole seconds", () => {
   assert.equal(countdownText(0, 1000), "");
   assert.equal(countdownText(13500, 1000), "Trying again in 13 seconds.");
   assert.equal(countdownText(1500, 1000), "Trying again now.");
+});
+
+test("only errors the host marks as refused count as refusals", () => {
+  const coded = (code: string) => Object.assign(new Error("open a song first"), { code });
+  assert.equal(isRefusal(coded("refused")), true);
+  for (const code of ["internal", "panic", "transport", "bad_args", "permission_denied"]) {
+    assert.equal(isRefusal(coded(code)), false, code);
+  }
+  assert.equal(isRefusal(new Error("refused")), false);
+  assert.equal(isRefusal("refused"), false);
+  assert.equal(isRefusal(null), false);
 });

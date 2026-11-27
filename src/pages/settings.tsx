@@ -26,6 +26,7 @@ import { emptyEngine } from "../lib/engine";
 import type { AppSettings, DeviceList, EngineStatus, Preferences } from "../lib/types";
 import { bufferLatencyMs, formatRate, formatRates, stateLabel, stateTone } from "../lib/format";
 import { logger } from "../lib/logger";
+import { logFailure } from "../lib/service";
 import { askConfirm } from "../lib/modal";
 import { ModalHost } from "../components/blocks/modal-host";
 import { ContextHost } from "../components/blocks/context-host";
@@ -211,7 +212,7 @@ export default function SettingsPage() {
         if (!saving.again) show(doc.settings);
       } while (saving.again);
     } catch (e) {
-      logger.error("settings were not saved", e);
+      logFailure("settings were not saved", e);
       setError("That change was not saved. " + describe(e));
       await reload().catch((again) => logger.error("could not read settings", again));
     } finally {
@@ -396,7 +397,7 @@ export default function SettingsPage() {
           ".",
       );
     } catch (e) {
-      logger.error("export failed", e);
+      logFailure("export failed", e);
       setError(describe(e));
     }
   }
@@ -418,7 +419,7 @@ export default function SettingsPage() {
       );
       setTransferNotes(res.notes.join(" "));
     } catch (e) {
-      logger.error("import failed", e);
+      logFailure("import failed", e);
       setError(describe(e));
     }
   }

@@ -19,6 +19,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"practice-music/api/refusal"
 )
 
 const (
@@ -231,7 +233,7 @@ func (m *Manager) Install(ctx context.Context) (YtDlpStatus, error) {
 	m.mu.Lock()
 	if m.busy {
 		m.mu.Unlock()
-		return m.Status(), errors.New("an install is already running")
+		return m.Status(), refusal.New("an install is already running")
 	}
 	m.busy = true
 	m.mu.Unlock()

@@ -2,7 +2,6 @@ package bundle
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -10,6 +9,7 @@ import (
 
 	"practice-music/api/metronome"
 	"practice-music/api/mixer"
+	"practice-music/api/refusal"
 	"practice-music/api/settings"
 )
 
@@ -76,37 +76,37 @@ func Decode(r io.Reader, home string) (Bundle, error) {
 		return Bundle{}, fmt.Errorf("read the settings file: %w", err)
 	}
 	if len(data) > MaxBytes {
-		return Bundle{}, errors.New("that file is too large to be a PracticeMusic settings export")
+		return Bundle{}, refusal.New("that file is too large to be a PracticeMusic settings export")
 	}
 	b := Bundle{Settings: settings.Settings{Preferences: settings.DefaultPreferences()}}
 	if err := json.Unmarshal(data, &b); err != nil {
-		return Bundle{}, errors.New("that file is not a PracticeMusic settings export")
+		return Bundle{}, refusal.New("that file is not a PracticeMusic settings export")
 	}
 	if b.Format != Format {
-		return Bundle{}, errors.New("that file is not a PracticeMusic settings export")
+		return Bundle{}, refusal.New("that file is not a PracticeMusic settings export")
 	}
 	if b.Version < 1 {
-		return Bundle{}, errors.New("that export has no version number")
+		return Bundle{}, refusal.New("that export has no version number")
 	}
 	if b.Version > Version {
-		return Bundle{}, fmt.Errorf("that export was made by a newer version of PracticeMusic (format %d)", b.Version)
+		return Bundle{}, refusal.Errorf("that export was made by a newer version of PracticeMusic (format %d)", b.Version)
 	}
 	clean, err := settings.Normalize(settingsWithDefaults(b.Settings, home))
 	if err != nil {
-		return Bundle{}, fmt.Errorf("the settings in that file are not valid: %w", err)
+		return Bundle{}, refusal.Errorf("the settings in that file are not valid: %w", err)
 	}
 	b.Settings = clean
 	b.Mixer = mixer.Normalize(b.Mixer)
 	b.Metronome = metronome.Normalize(b.Metronome)
 	if len(b.Scenes) > maxScenes {
-		return Bundle{}, fmt.Errorf("that export has more than %d scenes", maxScenes)
+		return Bundle{}, refusal.Errorf("that export has more than %d scenes", maxScenes)
 	}
 	seen := map[string]bool{}
 	scenes := make([]SceneEntry, 0, len(b.Scenes))
 	for _, sc := range b.Scenes {
 		name := strings.Join(strings.Fields(sc.Name), " ")
 		if name == "" || len([]rune(name)) > 40 {
-			return Bundle{}, errors.New("a scene in that file has no usable name")
+			return Bundle{}, refusal.New("a scene in that file has no usable name")
 		}
 		key := strings.ToLower(name)
 		if seen[key] {
@@ -114,11 +114,11 @@ func Decode(r io.Reader, home string) (Bundle, error) {
 		}
 		seen[key] = true
 		if len(sc.Data) > maxSceneLen {
-			return Bundle{}, fmt.Errorf("the scene %q is too large", name)
+			return Bundle{}, refusal.Errorf("the scene %q is too large", name)
 		}
 		var payload ScenePayload
 		if err := json.Unmarshal(sc.Data, &payload); err != nil {
-			return Bundle{}, fmt.Errorf("the scene %q is damaged", name)
+			return Bundle{}, refusal.Errorf("the scene %q is damaged", name)
 		}
 		payload.Version = 1
 		payload.Mixer = mixer.Normalize(payload.Mixer)

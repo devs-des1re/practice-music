@@ -12,6 +12,7 @@ import (
 	"github.com/kratejs/krate/packages/native/krate"
 
 	"practice-music/api/logger"
+	"practice-music/api/refusal"
 	"practice-music/api/update"
 )
 
@@ -119,10 +120,10 @@ func (f *updateFlow) start() (func(), error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.state.Phase == updateDownloading {
-		return nil, errors.New("the update is already downloading")
+		return nil, refusal.New("the update is already downloading")
 	}
 	if f.found == nil || f.found.Installer == nil {
-		return nil, errors.New("there is no installer to download for this computer")
+		return nil, refusal.New("there is no installer to download for this computer")
 	}
 	version, installer := f.found.Version, *f.found.Installer
 	ctx, cancel := context.WithCancel(context.Background())
@@ -224,7 +225,7 @@ func HideUpdate() UpdateState {
 func OpenReleasePage() error {
 	page := updater().snapshot().Page
 	if !strings.HasPrefix(page, update.PagePrefix) {
-		return errors.New("there is no release page to open")
+		return refusal.New("there is no release page to open")
 	}
 	return update.Open(page)
 }

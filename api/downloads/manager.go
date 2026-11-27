@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"practice-music/api/refusal"
 )
 
 type State string
@@ -93,14 +95,14 @@ var qualities = map[string][]string{
 func Validate(req Request) (Request, error) {
 	req.URL = strings.TrimSpace(req.URL)
 	if req.URL == "" {
-		return req, errors.New("paste a link to download")
+		return req, refusal.New("paste a link to download")
 	}
 	if len(req.URL) > 2048 {
-		return req, errors.New("that link is too long")
+		return req, refusal.New("that link is too long")
 	}
 	u, err := url.Parse(req.URL)
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-		return req, errors.New("only http and https links can be downloaded")
+		return req, refusal.New("only http and https links can be downloaded")
 	}
 	req.Format = strings.ToLower(strings.TrimSpace(req.Format))
 	if req.Format == "" {
@@ -353,7 +355,7 @@ func (m *Manager) Cancel(id int64) error {
 	defer m.mu.Unlock()
 	j := m.find(id)
 	if j == nil {
-		return errors.New("that download no longer exists")
+		return refusal.New("that download no longer exists")
 	}
 	switch j.State {
 	case StateQueued:
@@ -366,7 +368,7 @@ func (m *Manager) Cancel(id int64) error {
 			cancel()
 		}
 	default:
-		return errors.New("that download is not active")
+		return refusal.New("that download is not active")
 	}
 	m.emitLocked(true)
 	return nil
@@ -377,10 +379,10 @@ func (m *Manager) Retry(id int64) error {
 	defer m.mu.Unlock()
 	j := m.find(id)
 	if j == nil {
-		return errors.New("that download no longer exists")
+		return refusal.New("that download no longer exists")
 	}
 	if j.State != StateFailed && j.State != StateCancelled {
-		return errors.New("only failed or cancelled downloads can be retried")
+		return refusal.New("only failed or cancelled downloads can be retried")
 	}
 	j.State = StateQueued
 	j.Error = ""
@@ -399,7 +401,7 @@ func (m *Manager) Remove(id int64) error {
 		return nil
 	}
 	if !j.Finished() {
-		return errors.New("cancel the download before removing it")
+		return refusal.New("cancel the download before removing it")
 	}
 	if err := m.store.Delete(id); err != nil {
 		return err

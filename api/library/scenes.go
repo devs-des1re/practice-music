@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"errors"
 	"strings"
+
+	"practice-music/api/refusal"
 )
 
 type Scene struct {
@@ -20,10 +22,10 @@ const maxSceneBytes = 64 * 1024
 func cleanSceneName(name string) (string, error) {
 	name = strings.Join(strings.Fields(name), " ")
 	if name == "" {
-		return "", errors.New("a scene needs a name")
+		return "", refusal.New("a scene needs a name")
 	}
 	if len([]rune(name)) > maxSceneNameRunes {
-		return "", errors.New("a scene name can be at most 40 characters")
+		return "", refusal.New("a scene name can be at most 40 characters")
 	}
 	return name, nil
 }
@@ -60,7 +62,7 @@ func (d *DB) SaveScene(name, data string) (Scene, error) {
 		return Scene{}, err
 	}
 	if len(data) > maxSceneBytes {
-		return Scene{}, errors.New("the scene is too large")
+		return Scene{}, refusal.New("the scene is too large")
 	}
 	now := d.now().UnixMilli()
 	_, err = d.db.Exec(`
@@ -81,7 +83,7 @@ func (d *DB) RenameScene(id int64, name string) error {
 	}
 	res, err := d.db.Exec(`UPDATE scenes SET name = ? WHERE id = ?`, name, id)
 	if err != nil && strings.Contains(strings.ToLower(err.Error()), "unique") {
-		return errors.New("another scene already has that name")
+		return refusal.New("another scene already has that name")
 	}
 	return affected(res, err)
 }

@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,6 +12,7 @@ import (
 	"practice-music/api/logger"
 	"practice-music/api/metronome"
 	"practice-music/api/mixer"
+	"practice-music/api/refusal"
 )
 
 type TransferResult struct {
@@ -25,7 +25,7 @@ func ExportSettings(path string) (TransferResult, error) {
 	boot()
 	path = strings.TrimSpace(path)
 	if path == "" || !filepath.IsAbs(path) {
-		return TransferResult{}, errors.New("choose where to save the export")
+		return TransferResult{}, refusal.New("choose where to save the export")
 	}
 	if filepath.Ext(path) == "" {
 		path += ".json"
@@ -82,11 +82,11 @@ func ImportSettings(path string) (TransferResult, error) {
 	boot()
 	path = strings.TrimSpace(path)
 	if path == "" || !filepath.IsAbs(path) {
-		return TransferResult{}, errors.New("choose the file to import")
+		return TransferResult{}, refusal.New("choose the file to import")
 	}
 	f, err := os.Open(path)
 	if err != nil {
-		return TransferResult{}, errors.New("that file cannot be opened")
+		return TransferResult{}, refusal.New("that file cannot be opened")
 	}
 	defer f.Close()
 	home, _ := os.UserHomeDir()

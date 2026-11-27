@@ -1,5 +1,5 @@
 import { StartAudio } from "../../api/audio.go";
-import { AUTO_RETRIES, describeError, isOffline, retryDelayMs } from "./errors";
+import { AUTO_RETRIES, describeError, isOffline, isRefusal, retryDelayMs } from "./errors";
 import { logger } from "./logger";
 
 export type AudioPhase = "idle" | "starting" | "ready" | "failed" | "paused";
@@ -155,6 +155,10 @@ export function logFailure(context: string, e: unknown) {
   if (isOffline(e)) {
     reportOffline();
     logger.warn(context + ": the host is not reachable");
+    return;
+  }
+  if (isRefusal(e)) {
+    logger.warn(context + ": " + describeError(e));
     return;
   }
   logger.error(context, e);
