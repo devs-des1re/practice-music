@@ -583,7 +583,7 @@ export default function SettingsPage() {
           </span>
         </span>
         <div class="actions">
-          <button class="krate-button krate-button-ghost" type="button" disabled={!dirty() || busy()} onClick={discard}>
+          <button class="krate-button krate-button-secondary" type="button" disabled={!dirty() || busy()} onClick={discard}>
             <Icon name="lucide:undo-2" />
             Discard
           </button>

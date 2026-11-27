@@ -96,7 +96,7 @@ export function ServiceNotice() {
           <Icon name="lucide:rotate-cw" />
           Retry now
         </button>
-        <Link class="krate-button krate-button-ghost krate-button-sm" href="/settings" showIf={audioIssue()}>
+        <Link class="krate-button krate-button-secondary krate-button-sm" href="/settings" showIf={audioIssue()}>
           Audio settings
         </Link>
         <button

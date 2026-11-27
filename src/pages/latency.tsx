@@ -399,7 +399,7 @@ export default function LatencyPage() {
                   <Icon name="lucide:repeat" />
                   Run 20 clicks
                 </button>
-                <button class="krate-button krate-button-ghost" type="button" onClick={() => ResetLatency()}>
+                <button class="krate-button krate-button-secondary" type="button" onClick={() => ResetLatency()}>
                   <Icon name="lucide:eraser" />
                   Clear
                 </button>

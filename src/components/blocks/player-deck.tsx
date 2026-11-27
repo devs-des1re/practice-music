@@ -490,7 +490,7 @@ export function PlayerDeck(props: PlayerDeckProps) {
             No song loaded
           </span>
           <span class="timeline-hint">Double-click a song in the library to load it.</span>
-          <button class="krate-button krate-button-ghost krate-button-sm" type="button" onClick={props.onShowLibrary}>
+          <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={props.onShowLibrary}>
             <Icon name="lucide:library-big" />
             Show library
           </button>
@@ -566,11 +566,11 @@ export function PlayerDeck(props: PlayerDeckProps) {
         <div class="foot-body" showIf={side() === "grid"}>
           <LiveText class="grid-summary mono" text={gridText()} />
           <div class="grid-actions">
-            <button class="krate-button krate-button-ghost krate-button-sm" type="button" disabled={!st().loaded} data-tip="Find the tempo from the audio" onClick={detectGrid}>
+            <button class="krate-button krate-button-secondary krate-button-sm" type="button" disabled={!st().loaded} data-tip="Find the tempo from the audio" onClick={detectGrid}>
               <Icon name="lucide:scan-search" />
               Detect
             </button>
-            <button class="krate-button krate-button-ghost krate-button-sm" type="button" disabled={!st().loaded} data-tip="Move beat one to the playhead" onClick={markBeatOne}>
+            <button class="krate-button krate-button-secondary krate-button-sm" type="button" disabled={!st().loaded} data-tip="Move beat one to the playhead" onClick={markBeatOne}>
               <Icon name="lucide:flag" />
               Beat one here
             </button>
@@ -590,7 +590,7 @@ export function PlayerDeck(props: PlayerDeckProps) {
               </button>
             ))}
           </div>
-          <button class="krate-button krate-button-ghost" type="button" data-tip="Reset speed and pitch" data-keys="0" onClick={resetTempo}>
+          <button class="krate-button krate-button-secondary" type="button" data-tip="Reset speed and pitch" data-keys="0" onClick={resetTempo}>
             <Icon name="lucide:rotate-ccw" />
             Reset
           </button>

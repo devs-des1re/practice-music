@@ -128,7 +128,7 @@ export function ModalHost() {
           ))}
         </div>
         <div class="pm-modal-actions">
-          <button class="krate-button krate-button-ghost" type="button" onClick={() => settleModal(null)}>
+          <button class="krate-button krate-button-secondary" type="button" onClick={() => settleModal(null)}>
             Cancel
           </button>
           <button id="pm-modal-confirm" class="krate-button krate-button-primary pm-modal-confirm" type="button" data-danger={modalDanger() ? "true" : "false"} onClick={submitModal}>

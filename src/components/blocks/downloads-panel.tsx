@@ -123,7 +123,7 @@ export function DownloadsPanel() {
           Downloads
         </h2>
         <div class="panel-tools">
-          <button class="krate-button krate-button-ghost krate-button-sm" type="button" disabled={jobs().length === 0} onClick={clearFinished}>
+          <button class="krate-button krate-button-secondary krate-button-sm" type="button" disabled={jobs().length === 0} onClick={clearFinished}>
             <Icon name="lucide:eraser" />
             Clear finished
           </button>
@@ -228,7 +228,7 @@ export function DownloadsPanel() {
               <Icon name="lucide:package" />
               {ytBusy() === "installing" ? "Installing" : installLabel()}
             </button>
-            <button class="krate-button krate-button-ghost krate-button-sm" type="button" disabled={!!ytBusy()} onClick={() => guard(() => CheckTools())}>
+            <button class="krate-button krate-button-secondary krate-button-sm" type="button" disabled={!!ytBusy()} onClick={() => guard(() => CheckTools())}>
               <Icon name="lucide:refresh-cw" />
               {ytBusy() === "checking" ? "Checking" : "Check"}
             </button>

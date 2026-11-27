@@ -460,7 +460,7 @@ export function MetronomeDeck() {
             <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={() => chooseSound("all")}>
               One file for all
             </button>
-            <button class="krate-button krate-button-ghost krate-button-sm" type="button" onClick={() => resetSound("all")}>
+            <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={() => resetSound("all")}>
               Reset all
             </button>
           </div>
