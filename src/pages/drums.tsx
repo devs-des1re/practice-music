@@ -55,6 +55,7 @@ import {
   portChoices,
   removeFile,
   resetPad,
+  silentReason,
   soundChoices,
   soundSummary,
   type Choice,
@@ -92,6 +93,8 @@ const noDrumStrip = { index: DRUM_STRIP, gain: 0, mute: false } as unknown as Mi
 
 const noDrumView = {
   banner: "",
+  silent: "",
+  silentFix: "",
   learn: "",
   midi: "No MIDI input chosen",
   download: "Download",
@@ -171,7 +174,10 @@ export default function DrumsPage() {
     const hearing = !!settings?.enabled && status.load.state === "ready" && extra.length > 0;
     const room = settings?.room ?? 0.6;
     const overheads = settings?.overheads ?? 1;
+    const quiet = settings && info ? silentReason(settings, status.kit, status.load.state, drumRunning()) : null;
     setDrumView({
+      silent: quiet?.text || "",
+      silentFix: quiet?.fix || "",
       banner: hearing ? "You also hear " + extra.join(" and ") + " straight from the line input, on top of the sampled drums." : "",
       learn: "Hit the drum you want to use for " + chosen.label + ".",
       midi: status.portError || (status.open ? "Listening to " + status.open : "No MIDI input chosen"),
@@ -216,9 +222,9 @@ export default function DrumsPage() {
 
   async function loadDrumPage() {
     const found = await DrumsGet();
+    setDrumStatus(await DrumsScan());
     setDrumInfo(found);
     setDrumDraft(drumCopy(found.settings));
-    setDrumStatus(await DrumsScan());
     setDrumStrips((await GetMixer()).strips);
   }
 
@@ -488,6 +494,22 @@ export default function DrumsPage() {
           <div showIf={!!drumError()}>
             <Notice tone="bad" text={drumError()} />
           </div>
+          <div class="drum-banner" showIf={!!drumView().silent}>
+            <Notice tone="warn" title="Your drums are silent" text={drumView().silent} />
+            <button class="krate-button krate-button-primary krate-button-sm" type="button" showIf={drumView().silentFix === "choose"} onClick={() => editDrums((s) => ({ ...s, kit: "muldjord" }))}>
+              <Icon name="lucide:drum" />
+              Use MuldjordKit
+            </button>
+            <button class="krate-button krate-button-primary krate-button-sm" type="button" showIf={drumView().silentFix === "download"} onClick={downloadKit}>
+              <Icon name="lucide:download" />
+              Download MuldjordKit
+            </button>
+            <button class="krate-button krate-button-primary krate-button-sm" type="button" showIf={drumView().silentFix === "enable"} onClick={() => editDrums((s) => ({ ...s, enabled: true }))}>
+              <Icon name="lucide:power" />
+              Switch drum sounds on
+            </button>
+          </div>
+
           <div class="drum-banner" showIf={!!drumView().banner}>
             <Notice tone="warn" text={drumView().banner} />
             <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={stopListening}>

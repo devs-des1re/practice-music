@@ -15,6 +15,7 @@ import {
   portChoices,
   removeFile,
   resetPad,
+  silentReason,
   soundChoices,
   soundSummary,
   type DrumPadShape,
@@ -145,4 +146,27 @@ test("small helpers", () => {
     1,
   );
   assert.deepEqual(portChoices(["e-drum"], "old kit").map((c) => c.value), ["", "e-drum", "old kit"]);
+});
+
+test("the page says why hits are silent and offers the matching fix", () => {
+  const s = { ...settings(), enabled: true, kit: "none" };
+  const absent = { installed: false, phase: "" };
+  const present = { installed: true, phase: "" };
+  assert.equal(silentReason(s, absent, "idle", true).fix, "choose");
+  assert.equal(silentReason({ ...s, kit: "muldjord" }, absent, "idle", true).fix, "download");
+  assert.equal(silentReason({ ...s, enabled: false }, present, "ready", true).fix, "enable");
+  assert.equal(silentReason({ ...s, kit: "muldjord" }, present, "ready", true).text, "");
+  assert.equal(silentReason({ ...s, kit: "muldjord" }, present, "loading", true).text, "");
+  assert.equal(silentReason({ ...s, kit: "muldjord" }, { installed: false, phase: "downloading" }, "idle", true).text, "");
+  assert.match(silentReason({ ...s, kit: "muldjord" }, present, "idle", false).text, /Audio is not running/);
+  assert.match(silentReason({ ...s, kit: "muldjord" }, present, "failed", true).text, /could not be loaded/);
+  assert.match(silentReason({ ...s, kit: "muldjord" }, present, "idle", true).text, /each pad/);
+});
+
+test("your own files count as sounds even with no kit chosen", () => {
+  const s = { ...settings(), enabled: true, kit: "none" };
+  s.pads[0] = { ...s.pads[0], sound: "custom", files: ["/x/a.wav"] };
+  const absent = { installed: false, phase: "" };
+  assert.equal(silentReason(s, absent, "ready", true).text, "");
+  assert.match(silentReason(s, absent, "idle", false).text, /Audio is not running/);
 });

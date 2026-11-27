@@ -193,3 +193,29 @@ export function portChoices(ports: string[], saved: string): Choice[] {
   if (saved && !ports.includes(saved)) out.push({ value: saved, label: saved + " (not connected)" });
   return out;
 }
+
+export interface SilentReason {
+  text: string;
+  fix: "" | "enable" | "choose" | "download";
+}
+
+export function silentReason(
+  settings: { enabled: boolean; kit: string; pads: DrumPadShape[] },
+  kit: { installed: boolean; phase: string },
+  load: string,
+  running: boolean,
+): SilentReason {
+  const none: SilentReason = { text: "", fix: "" };
+  if (!settings.enabled) return { text: "Drum sounds are switched off, so hitting your kit makes no sound.", fix: "enable" };
+  if ((running && (load === "ready" || load === "loading")) || kit.phase) return none;
+  const ownFiles = settings.pads.some((p) => p.sound === "custom" && p.files.length > 0);
+  if (!ownFiles && settings.kit === "none") {
+    return { text: "No drum sounds are loaded, so hitting your kit makes no sound. Choose a kit, or add your own files to a pad.", fix: "choose" };
+  }
+  if (!ownFiles && !kit.installed) {
+    return { text: "MuldjordKit is not downloaded yet, so hitting your kit makes no sound.", fix: "download" };
+  }
+  if (!running) return { text: "Audio is not running, so hitting your kit makes no sound.", fix: "" };
+  if (load === "failed") return { text: "The drum sounds could not be loaded, so hitting your kit makes no sound. The reason is shown under Drum kit.", fix: "" };
+  return { text: "No drum sounds are loaded, so hitting your kit makes no sound. Check the sound chosen for each pad.", fix: "" };
+}
