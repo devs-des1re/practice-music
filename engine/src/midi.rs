@@ -1,9 +1,11 @@
+use std::sync::Arc;
 use std::sync::mpsc::Sender;
 use std::time::{Duration, Instant};
 
 use midir::{Ignore, MidiInput, MidiInputConnection};
 use serde_json::json;
 
+use crate::drums::{DrumCommand, Hub};
 use crate::protocol::event_frame;
 
 const CLIENT_NAME: &str = "PracticeMusic";
@@ -105,7 +107,7 @@ pub struct Link {
     pub name: String,
 }
 
-pub fn open(name: &str, events: Sender<String>) -> Result<Link, String> {
+pub fn open(name: &str, hub: Arc<Hub>, events: Sender<String>) -> Result<Link, String> {
     let input = client()?;
     let port = input
         .ports()
@@ -121,6 +123,7 @@ pub fn open(name: &str, events: Sender<String>) -> Result<Link, String> {
                 let Some(message) = parse(bytes) else {
                     return;
                 };
+                hub.send(DrumCommand::Midi(message));
                 if let Some(data) = report.describe(message, Instant::now()) {
                     let _ = events.send(event_frame("midi", data));
                 }

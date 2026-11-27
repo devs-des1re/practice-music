@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use serde_json::{Value, json};
 
 use crate::midi;
@@ -27,7 +29,8 @@ pub fn open(session: &mut Session, params: &Value) -> Result<Value, ProtoError> 
         .events
         .clone()
         .ok_or_else(|| ProtoError::new("midi_error", "this session has no event channel"))?;
-    let link = midi::open(&name, events).map_err(|m| ProtoError::new("midi_error", m))?;
+    let link = midi::open(&name, Arc::clone(&session.drums), events)
+        .map_err(|m| ProtoError::new("midi_error", m))?;
     session.midi = Some(link);
     Ok(json!({ "open": name }))
 }

@@ -320,7 +320,7 @@ mod tests {
             reduction_db: 3.0,
         };
         let v = meters_json(&snap);
-        assert_eq!(v["strips"].as_array().unwrap().len(), 6);
+        assert_eq!(v["strips"].as_array().unwrap().len(), 7);
         assert_eq!(v["strips"][1]["l"], 0.5);
         assert_eq!(v["strips"][1]["clip"], true);
         assert_eq!(v["strips"][1]["gr"], 3.0);

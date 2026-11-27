@@ -7,11 +7,12 @@ import (
 )
 
 const (
-	StripCount   = 6
+	StripCount   = 7
 	InputStrips  = 4
 	StripSong    = 0
 	StripClick   = 1
 	StripInput0  = 2
+	StripDrums   = 6
 	OffDB        = -60.0
 	MaxGain      = 12.0
 	MaxChannel   = 62
@@ -64,6 +65,10 @@ type Board struct {
 	Master Master  `json:"master"`
 }
 
+func IsInput(index int) bool {
+	return index >= StripInput0 && index < StripInput0+InputStrips
+}
+
 func defaultComp() Comp {
 	return Comp{Threshold: -18, Ratio: 3, Attack: 10, Release: 120}
 }
@@ -79,6 +84,7 @@ func Default() Board {
 			Main: OffDB, Monitor: OffDB, Source: i, Comp: defaultComp(),
 		}
 	}
+	strips[StripDrums] = Strip{Index: StripDrums, ID: "drums", Name: "Drums", Kind: "drums", Main: 0, Monitor: OffDB, Comp: defaultComp()}
 	return Board{Strips: strips, Master: Master{Limiter: true, Ceiling: -0.3}}
 }
 
@@ -142,7 +148,7 @@ func NormalizeStrip(index int, s Strip) Strip {
 		Release:   clamp(c.Release, 5, 2000),
 		Makeup:    clamp(c.Makeup, 0, 24),
 	}
-	if index >= StripInput0 {
+	if IsInput(index) {
 		out.Source = clampInt(s.Source, 0, 15)
 	} else {
 		out.Source = 0

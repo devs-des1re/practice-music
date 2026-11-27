@@ -23,7 +23,7 @@ import { LiveText } from "../ui/live-text";
 import { Menu, type MenuItem } from "../ui/menu";
 import { askConfirm, askText } from "../../lib/modal";
 import { DIVIDER, openContextMenu } from "../../lib/context-menu";
-import { channelPairs, formatDb, isListening, listenSend, sourceOptions } from "../../lib/mixer";
+import { channelPairs, formatDb, inDisplayOrder, isListening, listenSend, sourceOptions } from "../../lib/mixer";
 import { formatClock } from "../../lib/waveform";
 import { handleError, onRefresh, logFailure } from "../../lib/service";
 import { subscribePrefs } from "../../lib/prefs";
@@ -82,12 +82,14 @@ const INSPECTOR_MAX = 520;
 function toneOf(s: MixerStrip): string {
   if (s.kind === "song") return "1";
   if (s.kind === "click") return "2";
+  if (s.kind === "drums") return "7";
   return String(3 + (s.index % 4));
 }
 
 function sourceText(s: MixerStrip): string {
   if (s.kind === "song") return "Song player";
   if (s.kind === "click") return "Metronome";
+  if (s.kind === "drums") return "MIDI kit";
   return s.stereo ? "In " + (s.source + 1) + "-" + (s.source + 2) : "In " + (s.source + 1);
 }
 
@@ -480,7 +482,7 @@ export function MixerPanel() {
             <Icon name="lucide:loader" />
             Waiting for the audio engine
           </div>
-          {board().strips.map((s) => (
+          {inDisplayOrder(board().strips).map((s) => (
             <section
               class="strip"
               key={s.index}

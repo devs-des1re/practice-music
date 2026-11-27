@@ -10,6 +10,7 @@ use cpal::{BufferSize, DeviceId, OutputCallbackInfo, SampleFormat, StreamConfig}
 use serde_json::{Value, json};
 
 use crate::click::Controls;
+use crate::drums::DrumCommand;
 use crate::dsp::Dsp;
 use crate::mixer::{Meters, ParamTable};
 use crate::player::Command;
@@ -51,6 +52,7 @@ pub struct SoundCommand {
 pub struct Inbox {
     pub player: Receiver<Command>,
     pub sounds: Receiver<SoundCommand>,
+    pub drums: Receiver<DrumCommand>,
 }
 
 pub struct Shared {
@@ -60,6 +62,7 @@ pub struct Shared {
     pub capture: OnceLock<Link>,
     pub monitor: OnceLock<Link>,
     pub sound_tx: Sender<SoundCommand>,
+    pub drum_tx: Sender<DrumCommand>,
     kept_sounds: Mutex<Vec<Arc<[f32]>>>,
     report_seq: AtomicU64,
     report_callback_us: AtomicU64,
@@ -80,6 +83,7 @@ impl Shared {
     pub fn new(rate: u32) -> (Self, Inbox) {
         let (tx, rx) = mpsc::channel();
         let (sound_tx, sound_rx) = mpsc::channel();
+        let (drum_tx, drum_rx) = mpsc::channel();
         let shared = Self {
             controls: Controls::new(),
             params: ParamTable::new(),
@@ -87,6 +91,7 @@ impl Shared {
             capture: OnceLock::new(),
             monitor: OnceLock::new(),
             sound_tx,
+            drum_tx,
             kept_sounds: Mutex::new(Vec::new()),
             report_seq: AtomicU64::new(0),
             report_callback_us: AtomicU64::new(0),
@@ -107,6 +112,7 @@ impl Shared {
             Inbox {
                 player: rx,
                 sounds: sound_rx,
+                drums: drum_rx,
             },
         )
     }

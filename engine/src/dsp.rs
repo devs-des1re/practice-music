@@ -1,7 +1,8 @@
 use crate::audio::{Inbox, Shared};
 use crate::click::Renderer;
+use crate::drums::Sampler;
 use crate::mixer::{
-    BLOCK, INPUT_STRIPS, Mixer, STRIP_CLICK, STRIP_INPUT0, STRIP_SONG, STRIPS, mp, sp,
+    BLOCK, INPUT_STRIPS, Mixer, STRIP_CLICK, STRIP_DRUMS, STRIP_INPUT0, STRIP_SONG, STRIPS, mp, sp,
 };
 use crate::player::PlayerCore;
 use crate::ring::DriftReader;
@@ -10,6 +11,7 @@ use crate::routing::{MAX_CAPTURE_CHANNELS, add_pair};
 pub struct Dsp {
     renderer: Renderer,
     player: PlayerCore,
+    sampler: Sampler,
     inbox: Inbox,
     channels: usize,
     rate: u32,
@@ -27,6 +29,7 @@ impl Dsp {
         Self {
             renderer: Renderer::with_builtin(rate, 2),
             player: PlayerCore::new(rate),
+            sampler: Sampler::new(rate),
             inbox,
             channels: channels.max(1),
             rate,
@@ -85,6 +88,9 @@ impl Dsp {
         while let Ok(sound) = self.inbox.sounds.try_recv() {
             self.renderer.set_table(sound.role, sound.table);
         }
+        while let Ok(command) = self.inbox.drums.try_recv() {
+            self.sampler.apply(command);
+        }
         data.fill(0.0);
         let channels = self.channels;
         let total = data.len() / channels;
@@ -111,6 +117,8 @@ impl Dsp {
                 started = id;
             }
             self.fill_capture(shared, n);
+            self.sampler
+                .render(&mut self.strip_in[STRIP_DRUMS][..n * 2]);
             self.mixer.process(
                 &shared.params,
                 &shared.meters,
@@ -311,6 +319,46 @@ mod tests {
             peak(&muted[4800 * 2..]) < 1e-6,
             "the click fader still applies"
         );
+    }
+
+    #[test]
+    fn a_midi_hit_plays_on_the_drums_strip_and_obeys_its_fader() {
+        use crate::drums::{Config, DrumCommand, Kit, Layer, Sound};
+        use crate::midi::Message;
+        let (mut dsp, shared) = rig(2);
+        let kit = Kit {
+            rate: 48000,
+            pads: vec![Sound {
+                layers: vec![Layer {
+                    takes: vec![crate::drums::tests::flat(500, 48000)],
+                }],
+            }],
+        };
+        let mut config = Config {
+            enabled: true,
+            ..Config::default()
+        };
+        config.assign(36, 0);
+        let hit = || {
+            DrumCommand::Midi(Message::Hit {
+                note: 36,
+                velocity: 127,
+            })
+        };
+        shared
+            .drum_tx
+            .send(DrumCommand::Kit(Arc::new(kit)))
+            .unwrap();
+        shared
+            .drum_tx
+            .send(DrumCommand::Config(Arc::new(config)))
+            .unwrap();
+        shared.drum_tx.send(hit()).unwrap();
+        let out = run(&mut dsp, &shared, 4800, 2);
+        assert!((out[0] - 0.5).abs() < 0.01, "heard from the first frame");
+        shared.params.set(STRIP_DRUMS, sp::MUTE, 1.0);
+        let muted = run(&mut dsp, &shared, 9600, 2);
+        assert!(muted[muted.len() - 2].abs() < 1e-4);
     }
 
     #[test]

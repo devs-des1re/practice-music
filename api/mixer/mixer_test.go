@@ -7,12 +7,12 @@ import (
 	"testing"
 )
 
-func TestDefaultHasSixNamedStrips(t *testing.T) {
+func TestDefaultHasSevenNamedStrips(t *testing.T) {
 	st := Default()
 	if len(st.Strips) != StripCount {
 		t.Fatalf("strips = %d", len(st.Strips))
 	}
-	ids := []string{"song", "click", "in1", "in2", "in3", "in4"}
+	ids := []string{"song", "click", "in1", "in2", "in3", "in4", "drums"}
 	for i, id := range ids {
 		if st.Strips[i].ID != id || st.Strips[i].Index != i {
 			t.Fatalf("strip %d = %+v", i, st.Strips[i])
@@ -88,6 +88,31 @@ func TestNormalizeRepairsAShortOrEmptyList(t *testing.T) {
 	long.Strips = append(long.Strips, Strip{Index: 9})
 	if len(Normalize(long).Strips) != StripCount {
 		t.Fatal("extra strips must be dropped")
+	}
+}
+
+func TestASavedBoardFromBeforeTheDrumsChannelGainsIt(t *testing.T) {
+	old := Default()
+	old.Strips = old.Strips[:StripDrums]
+	old.Strips[StripInput0].Gain = 8.5
+	old.Strips[StripInput0].Main = 0
+	got := Normalize(old)
+	if len(got.Strips) != StripCount {
+		t.Fatalf("strips = %d", len(got.Strips))
+	}
+	if got.Strips[StripInput0].Gain != 8.5 || got.Strips[StripInput0].Main != 0 {
+		t.Fatalf("saved input settings were lost: %+v", got.Strips[StripInput0])
+	}
+	d := got.Strips[StripDrums]
+	if d.ID != "drums" || d.Main != 0 || d.Monitor != OffDB || d.Gain != 0 {
+		t.Fatalf("drums strip = %+v", d)
+	}
+}
+
+func TestTheDrumsChannelHasNoInputSource(t *testing.T) {
+	s := NormalizeStrip(StripDrums, Strip{Source: 3, Stereo: true})
+	if s.Source != 0 || s.Stereo {
+		t.Fatalf("drums strip took an input source: %+v", s)
 	}
 }
 

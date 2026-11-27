@@ -2,6 +2,8 @@ mod audio;
 mod click;
 mod decode;
 mod devices;
+mod drum_api;
+mod drums;
 mod dsp;
 mod fx;
 mod guide;

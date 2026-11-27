@@ -1,6 +1,6 @@
 use serde_json::{Map, Value, json};
 
-use crate::mixer::{INPUT_STRIPS, ParamTable, STRIP_INPUT0, STRIPS, mp, sp};
+use crate::mixer::{INPUT_STRIPS, ParamTable, STRIPS, is_input, mp, sp};
 use crate::protocol::ProtoError;
 
 enum Target {
@@ -80,7 +80,7 @@ fn collect_strip(c: &mut Collector, index: usize, obj: &Map<String, Value>) -> R
         c.strip_number(index, comp, "release", sp::COMP_RELEASE, 5.0, 2000.0)?;
         c.strip_number(index, comp, "makeup", sp::COMP_MAKEUP, 0.0, 24.0)?;
     }
-    if index >= STRIP_INPUT0 {
+    if is_input(index) {
         c.strip_number(index, obj, "source", sp::SOURCE, 0.0, 15.0)?;
         c.strip_flag(index, obj, "stereo", sp::STEREO)?;
     }
@@ -158,7 +158,7 @@ pub fn state(table: &ParamTable) -> Value {
                     "makeup": round2(table.get(s, sp::COMP_MAKEUP)),
                 },
             });
-            if s >= STRIP_INPUT0 {
+            if is_input(s) {
                 strip["source"] = json!(table.get(s, sp::SOURCE) as u32);
                 strip["stereo"] = json!(table.flag(s, sp::STEREO));
             }
@@ -193,6 +193,8 @@ mod tests {
         assert_eq!(v["strips"][0]["monitor"], -60.0);
         assert_eq!(v["strips"][2]["source"], 0);
         assert_eq!(v["strips"][5]["source"], 3);
+        assert_eq!(v["strips"][6]["main"], 0.0);
+        assert!(v["strips"][6].get("source").is_none());
         assert!(v["strips"][0].get("source").is_none());
         assert_eq!(v["master"]["limiter"], true);
     }

@@ -249,6 +249,7 @@
   --color-channel-4: #818cf8;
   --color-channel-5: #f472b6;
   --color-channel-6: #2dd4bf;
+  --color-channel-7: #a3e635;
   --color-channel-ink: #050505;
   --color-scrim: #00000080;
 
@@ -3359,6 +3360,10 @@ input[type="number"].krate-input {
 
 .strip[data-tone="6"] {
   --tone: var(--color-channel-6);
+}
+
+.strip[data-tone="7"] {
+  --tone: var(--color-channel-7);
 }
 
 .strip::before {

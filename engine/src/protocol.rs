@@ -1,10 +1,13 @@
 use serde::Deserialize;
 use serde_json::{Value, json};
 
+use std::sync::Arc;
 use std::sync::mpsc::Sender;
 
 use crate::audio::{self, AudioHandle};
 use crate::devices;
+use crate::drum_api;
+use crate::drums;
 use crate::loopback;
 use crate::metronome_api;
 use crate::midi;
@@ -55,6 +58,7 @@ pub struct Session {
     pub loaded: Option<Loaded>,
     pub events: Option<Sender<String>>,
     pub midi: Option<midi::Link>,
+    pub drums: Arc<drums::Hub>,
 }
 
 impl Session {
@@ -65,6 +69,7 @@ impl Session {
             loaded: None,
             events: Some(events),
             midi: None,
+            drums: Arc::default(),
         }
     }
 }
@@ -156,6 +161,7 @@ fn dispatch(session: &mut Session, request: &Request, recv_us: u64) -> Result<Va
             require_greeted(session).and_then(|_| audio_start(session, &request.params))
         }
         "audio_stop" => require_greeted(session).map(|_| {
+            session.drums.detach();
             session.audio = None;
             session.loaded = None;
             json!({ "stopped": true })
@@ -226,6 +232,12 @@ fn dispatch(session: &mut Session, request: &Request, recv_us: u64) -> Result<Va
         "midi_open" => {
             require_greeted(session).and_then(|_| midi_api::open(session, &request.params))
         }
+        "drums_config" => {
+            require_greeted(session).and_then(|_| drum_api::configure(session, &request.params))
+        }
+        "drums_trigger" => {
+            require_greeted(session).and_then(|_| drum_api::trigger(session, &request.params))
+        }
         "shutdown" => Ok(json!({ "bye": true })),
         other => Err(ProtoError::new(
             "unknown_method",
@@ -268,6 +280,7 @@ fn audio_start(session: &mut Session, params: &Value) -> Result<Value, ProtoErro
         .events
         .clone()
         .ok_or_else(|| ProtoError::new("audio_unavailable", "this session has no event channel"))?;
+    session.drums.detach();
     session.audio = None;
     session.loaded = None;
     let handle = audio::start(
@@ -289,6 +302,9 @@ fn audio_start(session: &mut Session, params: &Value) -> Result<Value, ProtoErro
         events,
     )?;
     let info = handle.info.clone();
+    session
+        .drums
+        .attach(handle.shared.drum_tx.clone(), handle.shared.rate);
     session.audio = Some(handle);
     Ok(info)
 }

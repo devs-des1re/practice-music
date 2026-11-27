@@ -132,3 +132,14 @@ test("listen switches the send to the speakers off and back to what it was", asy
   assert.equal(listenSend(-60, -6), -6);
   assert.equal(listenSend(-60, -60), 0);
 });
+
+test("the drums channel sits after the click and before the inputs", async () => {
+  const { inDisplayOrder } = await import("../../src/lib/mixer.ts");
+  const kinds = ["song", "click", "input", "input", "input", "input", "drums"];
+  const strips = kinds.map((kind, index) => ({ kind, index }));
+  assert.deepEqual(
+    inDisplayOrder(strips).map((s) => s.index),
+    [0, 1, 6, 2, 3, 4, 5],
+  );
+  assert.equal(strips[2].index, 2);
+});

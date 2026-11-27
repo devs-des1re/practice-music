@@ -3,11 +3,12 @@ use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 use crate::fx::{CompSettings, Compressor, Eq3, Limiter, db_to_lin};
 
-pub const STRIPS: usize = 6;
+pub const STRIPS: usize = 7;
 pub const INPUT_STRIPS: usize = 4;
 pub const STRIP_SONG: usize = 0;
 pub const STRIP_CLICK: usize = 1;
 pub const STRIP_INPUT0: usize = 2;
+pub const STRIP_DRUMS: usize = 6;
 pub const OFF_DB: f32 = -60.0;
 pub const BLOCK: usize = 1024;
 
@@ -42,13 +43,17 @@ pub mod mp {
     pub const COUNT: usize = 6;
 }
 
+pub fn is_input(strip: usize) -> bool {
+    (STRIP_INPUT0..STRIP_INPUT0 + INPUT_STRIPS).contains(&strip)
+}
+
 pub fn default_strip_param(strip: usize, param: usize) -> f32 {
     match param {
         sp::MAIN => {
-            if strip < STRIP_INPUT0 {
-                0.0
-            } else {
+            if is_input(strip) {
                 OFF_DB
+            } else {
+                0.0
             }
         }
         sp::MONITOR => OFF_DB,
@@ -56,7 +61,7 @@ pub fn default_strip_param(strip: usize, param: usize) -> f32 {
         sp::COMP_RATIO => 3.0,
         sp::COMP_ATTACK => 10.0,
         sp::COMP_RELEASE => 120.0,
-        sp::SOURCE => strip.saturating_sub(STRIP_INPUT0) as f32,
+        sp::SOURCE if is_input(strip) => (strip - STRIP_INPUT0) as f32,
         _ => 0.0,
     }
 }
@@ -312,7 +317,7 @@ impl Mixer {
             let reduction = strip.comp.process_stereo(buf, &comp);
             let audible = !params.flag(s, sp::MUTE) && (!any_solo || params.flag(s, sp::SOLO));
             let fader = if audible { db_to_lin(params.get(s, sp::GAIN)) } else { 0.0 };
-            let balance = s < STRIP_INPUT0 || params.flag(s, sp::STEREO);
+            let balance = !is_input(s) || params.flag(s, sp::STEREO);
             let (pan_l, pan_r) = pan_gains(params.get(s, sp::PAN), balance);
             let target_l = fader * pan_l;
             let target_r = fader * pan_r;
