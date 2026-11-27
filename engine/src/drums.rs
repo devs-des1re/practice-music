@@ -129,7 +129,7 @@ struct HubState {
     rate: u32,
     kit: Option<Arc<Kit>>,
     config: Option<Arc<Config>>,
-    retired_kits: Vec<Arc<Kit>>,
+    retired_kit: Option<Arc<Kit>>,
     retired_configs: Vec<Arc<Config>>,
 }
 
@@ -182,13 +182,17 @@ impl Hub {
             {
                 let _ = sender.send(DrumCommand::Kit(Arc::clone(&kit)));
             }
-            if let Some(old) = state.kit.replace(kit) {
-                state.retired_kits.push(old);
-                if state.retired_kits.len() > RETIRED {
-                    state.retired_kits.remove(0);
-                }
-            }
+            let old = state.kit.replace(kit);
+            state.retired_kit = old;
         }
+    }
+
+    pub fn release_retired_kit(&self) {
+        let old = match self.state.lock() {
+            Ok(mut state) => state.retired_kit.take(),
+            Err(_) => None,
+        };
+        drop(old);
     }
 
     pub fn set_config(&self, config: Arc<Config>) {
@@ -627,6 +631,18 @@ pub mod tests {
             hit(&mut s, 46, 100);
         }
         assert_eq!(s.sounding(), VOICES);
+    }
+
+    #[test]
+    fn a_replaced_kit_is_freed_once_the_stream_has_had_time_to_switch() {
+        let hub = Hub::default();
+        let first = kit();
+        let watch = Arc::downgrade(&first);
+        hub.set_kit(first);
+        hub.set_kit(kit());
+        assert!(watch.upgrade().is_some(), "not freed on the swap itself");
+        hub.release_retired_kit();
+        assert!(watch.upgrade().is_none());
     }
 
     #[test]

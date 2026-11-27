@@ -19,6 +19,7 @@ const PRE_ROLL: usize = 24;
 const FADE_FRAMES: usize = 960;
 const SAME_LAYER_DB: f32 = 1.5;
 const MAX_WORKERS: usize = 6;
+const SWITCH_TIME: Duration = Duration::from_millis(500);
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct Mic {
@@ -316,6 +317,8 @@ impl Loader {
             }
             hub.set_kit(Arc::new(kit));
             report("ready", total, total, bytes, "");
+            thread::sleep(SWITCH_TIME);
+            hub.release_retired_kit();
         });
     }
 }
