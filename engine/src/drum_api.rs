@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use serde_json::{Value, json};
 
+use crate::drum_loader::Request;
 use crate::drums::{Config, DrumCommand, MAX_PADS, Pedal};
 use crate::protocol::{ProtoError, Session};
 
@@ -74,6 +75,23 @@ pub fn read_config(params: &Value) -> Result<Config, ProtoError> {
 pub fn configure(session: &Session, params: &Value) -> Result<Value, ProtoError> {
     session.drums.set_config(Arc::new(read_config(params)?));
     Ok(json!({ "ok": true }))
+}
+
+pub fn load(session: &Session, params: &Value) -> Result<Value, ProtoError> {
+    let rate = session.drums.rate().ok_or_else(|| {
+        ProtoError::new("audio_not_started", "start audio before loading a drum kit")
+    })?;
+    let events = session
+        .events
+        .clone()
+        .ok_or_else(|| ProtoError::new("audio_unavailable", "this session has no event channel"))?;
+    let token = params.get("token").and_then(Value::as_u64).unwrap_or(0);
+    let request: Request =
+        serde_json::from_value(params.clone()).map_err(|e| bad(e.to_string()))?;
+    session
+        .loader
+        .start(request, rate, token, Arc::clone(&session.drums), events);
+    Ok(json!({ "accepted": true, "rate": rate }))
 }
 
 pub fn trigger(session: &Session, params: &Value) -> Result<Value, ProtoError> {

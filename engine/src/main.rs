@@ -3,6 +3,7 @@ mod click;
 mod decode;
 mod devices;
 mod drum_api;
+mod drum_loader;
 mod drums;
 mod dsp;
 mod fx;

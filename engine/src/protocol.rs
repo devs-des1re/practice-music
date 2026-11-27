@@ -7,6 +7,7 @@ use std::sync::mpsc::Sender;
 use crate::audio::{self, AudioHandle};
 use crate::devices;
 use crate::drum_api;
+use crate::drum_loader;
 use crate::drums;
 use crate::loopback;
 use crate::metronome_api;
@@ -59,6 +60,7 @@ pub struct Session {
     pub events: Option<Sender<String>>,
     pub midi: Option<midi::Link>,
     pub drums: Arc<drums::Hub>,
+    pub loader: drum_loader::Loader,
 }
 
 impl Session {
@@ -70,6 +72,7 @@ impl Session {
             events: Some(events),
             midi: None,
             drums: Arc::default(),
+            loader: drum_loader::Loader::default(),
         }
     }
 }
@@ -234,6 +237,9 @@ fn dispatch(session: &mut Session, request: &Request, recv_us: u64) -> Result<Va
         }
         "drums_config" => {
             require_greeted(session).and_then(|_| drum_api::configure(session, &request.params))
+        }
+        "drums_load" => {
+            require_greeted(session).and_then(|_| drum_api::load(session, &request.params))
         }
         "drums_trigger" => {
             require_greeted(session).and_then(|_| drum_api::trigger(session, &request.params))

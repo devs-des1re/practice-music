@@ -37,6 +37,17 @@ pub struct Kit {
     pub pads: Vec<Sound>,
 }
 
+impl Kit {
+    pub fn bytes(&self) -> usize {
+        self.pads
+            .iter()
+            .flat_map(|p| p.layers.iter())
+            .flat_map(|l| l.takes.iter())
+            .map(|s| s.data.len() * 2)
+            .sum()
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PadConfig {
     pub gain_db: f32,
@@ -115,8 +126,10 @@ pub enum DrumCommand {
 #[derive(Default)]
 struct HubState {
     sender: Option<Sender<DrumCommand>>,
+    rate: u32,
     kit: Option<Arc<Kit>>,
     config: Option<Arc<Config>>,
+    retired_kits: Vec<Arc<Kit>>,
     retired_configs: Vec<Arc<Config>>,
 }
 
@@ -137,6 +150,7 @@ impl Hub {
                 let _ = sender.send(DrumCommand::Kit(Arc::clone(kit)));
             }
             state.sender = Some(sender);
+            state.rate = rate;
         }
     }
 
@@ -144,6 +158,11 @@ impl Hub {
         if let Ok(mut state) = self.state.lock() {
             state.sender = None;
         }
+    }
+
+    pub fn rate(&self) -> Option<u32> {
+        let state = self.state.lock().ok()?;
+        state.sender.as_ref().map(|_| state.rate)
     }
 
     pub fn send(&self, command: DrumCommand) -> bool {
@@ -154,6 +173,22 @@ impl Hub {
             .sender
             .as_ref()
             .is_some_and(|sender| sender.send(command).is_ok())
+    }
+
+    pub fn set_kit(&self, kit: Arc<Kit>) {
+        if let Ok(mut state) = self.state.lock() {
+            if let Some(sender) = &state.sender
+                && kit.rate == state.rate
+            {
+                let _ = sender.send(DrumCommand::Kit(Arc::clone(&kit)));
+            }
+            if let Some(old) = state.kit.replace(kit) {
+                state.retired_kits.push(old);
+                if state.retired_kits.len() > RETIRED {
+                    state.retired_kits.remove(0);
+                }
+            }
+        }
     }
 
     pub fn set_config(&self, config: Arc<Config>) {
@@ -595,8 +630,9 @@ pub mod tests {
     }
 
     #[test]
-    fn the_hub_replays_the_settings_to_a_restarted_stream() {
+    fn the_hub_replays_the_kit_and_settings_to_a_restarted_stream() {
         let hub = Hub::default();
+        hub.set_kit(kit());
         hub.set_config(Arc::new(config()));
         assert!(!hub.send(DrumCommand::Trigger {
             pad: 0,
@@ -605,10 +641,13 @@ pub mod tests {
         let (tx, rx) = std::sync::mpsc::channel();
         hub.attach(tx, 48000);
         assert!(matches!(rx.try_recv(), Ok(DrumCommand::Config(_))));
-        hub.detach();
-        assert!(!hub.send(DrumCommand::Trigger {
-            pad: 0,
-            velocity: 90
-        }));
+        assert!(matches!(rx.try_recv(), Ok(DrumCommand::Kit(_))));
+        let (tx, rx) = std::sync::mpsc::channel();
+        hub.attach(tx, 44100);
+        assert!(matches!(rx.try_recv(), Ok(DrumCommand::Config(_))));
+        assert!(
+            rx.try_recv().is_err(),
+            "a kit made for another rate is not replayed"
+        );
     }
 }
