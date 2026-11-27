@@ -23,7 +23,7 @@ export const SHORTCUTS: ShortcutGroup[] = [
   {
     title: "Tempo and pitch",
     rows: [
-      { label: "Slower or faster by 5 percent", keys: ["-", "="] },
+      { label: "Slower or faster by one speed step", keys: ["-", "="] },
       { label: "Reset speed and pitch", keys: ["0"] },
       { label: "Metronome tempo", keys: ["Up", "Down"] },
       { label: "Metronome start or stop", keys: ["M"] },

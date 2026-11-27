@@ -21,6 +21,7 @@ import { LiveText } from "../ui/live-text";
 import { NumberInput } from "../ui/number-input";
 import { askConfirm, askForm } from "../../lib/modal";
 import { clampNumber } from "../../lib/numbers";
+import { currentPrefs } from "../../lib/prefs";
 import { SUBDIVISIONS, accentLabel, barCaption, cleanBpm, cycleAccent, polyLabel } from "../../lib/mixer";
 import { isTyping } from "../../lib/workspace";
 import { handleError, onRefresh, startAudioForUser, logFailure } from "../../lib/service";
@@ -152,8 +153,9 @@ export function MetronomeDeck() {
     update({ bpm: cleanBpm(value) });
   }
 
-  function nudge(delta: number) {
-    setTempo(cfg().bpm + delta);
+  function nudge(direction: number, large: boolean) {
+    const step = large ? currentPrefs().tempoStepLarge : currentPrefs().tempoStep;
+    setTempo(cfg().bpm + direction * step);
   }
 
   function toggleLarge() {
@@ -249,10 +251,10 @@ export function MetronomeDeck() {
         tap();
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
-        nudge(e.shiftKey ? 5 : 1);
+        nudge(1, e.shiftKey);
       } else if (e.key === "ArrowDown") {
         e.preventDefault();
-        nudge(e.shiftKey ? -5 : -1);
+        nudge(-1, e.shiftKey);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -306,10 +308,10 @@ export function MetronomeDeck() {
             <span class="bpm-unit">BPM</span>
           </label>
           <div class="bpm-steps">
-            <button class="tp-btn" type="button" aria-label="Faster" data-tip="Faster by 1, Shift for 5" data-keys="Up" onClick={(e: MouseEvent) => nudge(e.shiftKey ? 5 : 1)}>
+            <button class="tp-btn" type="button" aria-label="Faster" data-tip="Faster. Hold Shift for the larger step." data-keys="Up" onClick={(e: MouseEvent) => nudge(1, e.shiftKey)}>
               <Icon name="lucide:plus" />
             </button>
-            <button class="tp-btn" type="button" aria-label="Slower" data-tip="Slower by 1, Shift for 5" data-keys="Down" onClick={(e: MouseEvent) => nudge(e.shiftKey ? -5 : -1)}>
+            <button class="tp-btn" type="button" aria-label="Slower" data-tip="Slower. Hold Shift for the larger step." data-keys="Down" onClick={(e: MouseEvent) => nudge(-1, e.shiftKey)}>
               <Icon name="lucide:minus" />
             </button>
           </div>

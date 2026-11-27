@@ -87,7 +87,7 @@ The engine binary is located automatically. To use a specific build, set `PM_ENG
 PM_ENGINE_PATH=/path/to/pm-engine npm run dev
 ```
 
-Settings are stored as JSON in the per-user config folder and can be changed from the Settings screen.
+Settings are stored as JSON in the per-user config folder. Changes made on the Settings screen save automatically, and cover audio devices, the library, appearance, the mixer, the player, the metronome and downloads.
 
 ## Contributing
 

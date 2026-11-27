@@ -78,7 +78,7 @@ func Decode(r io.Reader, home string) (Bundle, error) {
 	if len(data) > MaxBytes {
 		return Bundle{}, errors.New("that file is too large to be a PracticeMusic settings export")
 	}
-	var b Bundle
+	b := Bundle{Settings: settings.Settings{Preferences: settings.DefaultPreferences()}}
 	if err := json.Unmarshal(data, &b); err != nil {
 		return Bundle{}, errors.New("that file is not a PracticeMusic settings export")
 	}

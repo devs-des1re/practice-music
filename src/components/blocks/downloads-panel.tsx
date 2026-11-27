@@ -16,21 +16,10 @@ import { Notice } from "../ui/notice";
 import { StatusDot } from "../ui/status-dot";
 import { jobTone } from "../../lib/format";
 import { askConfirm, askForm } from "../../lib/modal";
+import { currentPrefs } from "../../lib/prefs";
+import { DOWNLOAD_CHOICES, downloadDefault } from "../../lib/prefs-model";
 import { handleError, logFailure } from "../../lib/service";
 import type { Job, ToolsState } from "../../lib/types";
-
-const CHOICES = [
-  { value: "mp3:best", label: "MP3 audio, best quality" },
-  { value: "mp3:320", label: "MP3 audio, 320 kbps" },
-  { value: "mp3:256", label: "MP3 audio, 256 kbps" },
-  { value: "mp3:192", label: "MP3 audio, 192 kbps" },
-  { value: "mp3:128", label: "MP3 audio, 128 kbps" },
-  { value: "mp4:best", label: "MP4 video, best quality" },
-  { value: "mp4:1080", label: "MP4 video, 1080p" },
-  { value: "mp4:720", label: "MP4 video, 720p" },
-  { value: "mp4:480", label: "MP4 video, 480p" },
-  { value: "mp4:360", label: "MP4 video, 360p" },
-];
 
 const CHOICE_KEY = "pm.download.choice";
 
@@ -73,13 +62,13 @@ export function DownloadsPanel() {
   }
 
   async function add() {
-    const saved = localStorage.getItem(CHOICE_KEY);
+    const preferred = downloadDefault(currentPrefs().downloadChoice, localStorage.getItem(CHOICE_KEY));
     const values = await askForm({
       title: "New download",
       confirmLabel: "Download",
       fields: [
         { key: "url", label: "Link", type: "url", placeholder: "Paste a link", required: true },
-        { key: "choice", label: "Format and quality", type: "select", options: CHOICES, value: CHOICES.some((c) => c.value === saved) ? String(saved) : CHOICES[0].value },
+        { key: "choice", label: "Format and quality", type: "select", options: DOWNLOAD_CHOICES, value: preferred },
       ],
     });
     if (!values) return;

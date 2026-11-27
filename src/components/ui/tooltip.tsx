@@ -1,11 +1,12 @@
 import { onMount, onCleanup } from "@krate/runtime";
+import { currentPrefs, ensurePrefs } from "../../lib/prefs";
 
-const DELAY_MS = 450;
 const GAP = 6;
 const EDGE = 4;
 
 export function TooltipHost() {
   onMount(() => {
+    ensurePrefs();
     let timer = 0;
     let current: Element | null = null;
 
@@ -48,9 +49,9 @@ export function TooltipHost() {
       const target = el && el.closest ? el.closest("[data-tip]") : null;
       if (target === current) return;
       hide();
-      if (!target) return;
+      if (!target || !currentPrefs().tooltips) return;
       current = target;
-      timer = window.setTimeout(() => show(target), DELAY_MS);
+      timer = window.setTimeout(() => show(target), currentPrefs().tooltipDelayMs);
     };
 
     document.addEventListener("mouseover", over);

@@ -25,6 +25,7 @@ import { askConfirm, askText } from "../../lib/modal";
 import { channelPairs, formatDb, sourceOptions } from "../../lib/mixer";
 import { formatClock } from "../../lib/waveform";
 import { handleError, onRefresh, logFailure } from "../../lib/service";
+import { subscribePrefs } from "../../lib/prefs";
 import type { AudioState, MixerBoard, MixerMaster, MixerStrip, SceneInfo, SceneStatus } from "../../lib/types";
 
 const emptyMaster: MixerMaster = {
@@ -118,11 +119,13 @@ export function MixerPanel() {
   const [selected, setSelected] = createSignal(0);
   const [tab, setTab] = createSignal("channel");
   const [inspectorTitle, setInspectorTitle] = createSignal("Channel");
+  const [faderStep, setFaderStep] = createSignal(0.5);
   const [songRows, setSongRows] = createSignal<string[]>(["No song loaded", "-", "-", "-", "-", "-", "-"]);
   const [inspect, setInspect] = createSignal(false);
   const [ceilingText, setCeilingText] = createSignal("-0.3 dB");
   const [inspectorWidth, setInspectorWidth] = createSignal(INSPECTOR_DEFAULT);
   const [closedSections, setClosedSections] = createSignal<Record<string, boolean>>({});
+  onMount(() => onCleanup(subscribePrefs((p) => setFaderStep(p.faderStepDb))));
   const strip = () => board().strips[selected()] || noStrip;
   const cap = () => audio().capture ?? noLink;
   const mon = () => audio().monitor ?? noLink;
@@ -500,7 +503,7 @@ export function MixerPanel() {
                     value={s.gain}
                     min={-60}
                     max={12}
-                    step={0.5}
+                    step={faderStep()}
                     marks={FADER_MARKS}
                     onInput={(v) => patchStrip(s.index, (x) => ({ ...x, gain: v }))}
                     onReset={() => patchStrip(s.index, (x) => ({ ...x, gain: 0 }))}
@@ -598,7 +601,7 @@ export function MixerPanel() {
                     value={board().master.main}
                     min={-60}
                     max={12}
-                    step={0.5}
+                    step={faderStep()}
                     marks={FADER_MARKS}
                     onInput={(v) => patchMaster((m) => ({ ...m, main: v }))}
                     onReset={() => patchMaster((m) => ({ ...m, main: 0 }))}
@@ -620,7 +623,7 @@ export function MixerPanel() {
                     value={board().master.monitor}
                     min={-60}
                     max={12}
-                    step={0.5}
+                    step={faderStep()}
                     marks={FADER_MARKS}
                     onInput={(v) => patchMaster((m) => ({ ...m, monitor: v }))}
                     onReset={() => patchMaster((m) => ({ ...m, monitor: 0 }))}

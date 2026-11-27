@@ -20,7 +20,7 @@ import {
   LibraryRevision,
   ImportState,
 } from "../../../api/library.go";
-import { PlayerOpen, PlayerStream } from "../../../api/player.go";
+import { PlayerOpen, PlayerPlay, PlayerStream } from "../../../api/player.go";
 import { Menu, type MenuItem } from "../ui/menu";
 import { Select } from "../ui/select";
 import { FoldButton } from "../ui/fold-button";
@@ -29,7 +29,9 @@ import { formatDurationMs } from "../../lib/format";
 import { askConfirm, askForm, askText } from "../../lib/modal";
 import { splitTags, tagChanges } from "../../lib/tags";
 import { setQueue } from "../../lib/queue";
-import { handleError, onRefresh, logFailure } from "../../lib/service";
+import { handleError, onRefresh, logFailure, startAudioForUser } from "../../lib/service";
+import { currentPrefs, subscribePrefs } from "../../lib/prefs";
+import { AudioStream } from "../../../api/audio.go";
 import type { ImportProgress, Playlist, Song, TagCount } from "../../lib/types";
 
 const emptyImport: ImportProgress = { running: false, total: 0, done: 0, current: "", errors: [] };
@@ -51,6 +53,7 @@ export function LibraryPanel() {
   const [info, setInfo] = createSignal("");
   const [importing, setImporting] = createSignal<ImportProgress>(emptyImport);
   const [ready, setReady] = createSignal(false);
+  const [artwork, setArtwork] = createSignal(true);
   const [menuOpen, setMenuOpen] = createSignal(false);
   const [menuX, setMenuX] = createSignal(0);
   const [menuY, setMenuY] = createSignal(0);
@@ -112,6 +115,16 @@ export function LibraryPanel() {
   });
 
   onMount(() => {
+    let appliedSort = "";
+    onCleanup(
+      subscribePrefs((p) => {
+        setArtwork(p.artwork);
+        if (p.librarySort !== appliedSort) {
+          appliedSort = p.librarySort;
+          setSort(p.librarySort);
+        }
+      }),
+    );
     load();
     const off = onRefresh(() => {
       void load();
@@ -184,7 +197,12 @@ export function LibraryPanel() {
   function loadSong(id: number) {
     setSelected(id);
     setLoadingId(id);
-    guard(() => PlayerOpen(id)).finally(() => setLoadingId(0));
+    guard(async () => {
+      await PlayerOpen(id);
+      if (!currentPrefs().playOnLoad) return;
+      if (!AudioStream()?.running) await startAudioForUser();
+      await PlayerPlay();
+    }).finally(() => setLoadingId(0));
   }
 
   async function edit(id: number) {
@@ -470,7 +488,7 @@ export function LibraryPanel() {
                   <Icon name="lucide:audio-lines" />
                 </span>
                 <span class="song-cell song-title-cell">
-                  <span class="thumb">{thumbs()[s.id] ? <img alt="" src={thumbs()[s.id]} /> : <Icon name="lucide:music" />}</span>
+                  <span class="thumb">{artwork() && thumbs()[s.id] ? <img alt="" src={thumbs()[s.id]} /> : <Icon name="lucide:music" />}</span>
                   <span class="song-title">{s.title}</span>
                 </span>
                 <span class="song-cell song-artist">{s.artist || "Unknown artist"}</span>

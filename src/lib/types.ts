@@ -1,6 +1,7 @@
 export type {
   Status as EngineStatus,
   Settings as AppSettings,
+  Preferences,
   Device,
   DeviceList,
   SettingsDocument,

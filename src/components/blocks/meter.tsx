@@ -4,6 +4,7 @@ import { MeterStream, ResetMeters } from "../../../api/session.go";
 import { LiveText } from "../ui/live-text";
 import { dbFraction, peakText, peakZone, scaleFraction, toDb } from "../../lib/mixer";
 import { LANE_WIDTH, drawLane } from "../../lib/meter-draw";
+import { currentPrefs } from "../../lib/prefs";
 
 export interface MeterProps {
   which: string;
@@ -18,7 +19,6 @@ interface Level {
 }
 
 const THUMB_HALF_REM = 0.5625;
-const HOLD_MS = 1200;
 const GREEN_TOP = dbFraction(-12);
 const AMBER_TOP = dbFraction(-3);
 const UNITY = dbFraction(0);
@@ -63,12 +63,15 @@ export function Meter(props: MeterProps) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const now = performance.now();
     const fraction = scaleFraction(Math.max(lv.l, lv.r));
-    if (fraction >= hold.value || now - hold.at >= HOLD_MS) {
+    const holdMs = currentPrefs().peakHoldMs;
+    if (holdMs === 0) {
+      hold.value = 0;
+    } else if (fraction >= hold.value || now - hold.at >= holdMs) {
       hold.value = fraction;
       hold.at = now;
     }
     if (hold.value > fraction) {
-      const timer = window.setTimeout(() => setExpired(expired() + 1), Math.max(0, HOLD_MS - (now - hold.at)) + 16);
+      const timer = window.setTimeout(() => setExpired(expired() + 1), Math.max(0, holdMs - (now - hold.at)) + 16);
       onCleanup(() => window.clearTimeout(timer));
     }
     const rootPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
@@ -82,7 +85,7 @@ export function Meter(props: MeterProps) {
         yellowTop: AMBER_TOP,
         unity: UNITY,
         clip: lv.clip,
-        reduction: lv.gr > 0.1 ? lv.gr / 24 : 0,
+        reduction: currentPrefs().reductionBars && lv.gr > 0.1 ? lv.gr / 24 : 0,
         pad: Math.round(THUMB_HALF_REM * rootPx),
       },
       token,

@@ -25,6 +25,7 @@ import { Notice } from "../ui/notice";
 import { LiveText } from "../ui/live-text";
 import { askConfirm, askForm, askText } from "../../lib/modal";
 import { clampNumber } from "../../lib/numbers";
+import { currentPrefs, subscribePrefs } from "../../lib/prefs";
 import { PlayGlyph } from "../ui/glyphs";
 import { barAndBeat, formatClock, type SnapMode } from "../../lib/waveform";
 import { emptyPlayer } from "../../lib/player";
@@ -48,7 +49,6 @@ const COUNT_INS = [
 
 const PRESETS = [50, 60, 70, 80, 90, 100];
 const SECTION_NAMES = ["Intro", "Verse", "Pre-chorus", "Chorus", "Bridge", "Fill", "Solo", "Outro"];
-const RESTART_AFTER_MS = 3000;
 
 export interface PlayerDeckProps {
   onShowLibrary: () => void;
@@ -61,6 +61,7 @@ export function PlayerDeck(props: PlayerDeckProps) {
   const [info, setInfo] = createSignal("");
   const [snap, setSnap] = createSignal<SnapMode>("beat");
   const [gridText, setGridText] = createSignal("No beat grid yet");
+  const [showGrid, setShowGrid] = createSignal(true);
   const [sections, setSections] = createSignal<Section[]>([]);
   const [speedShown, setSpeedShown] = createSignal(100);
   const [pitchShown, setPitchShown] = createSignal(0);
@@ -180,7 +181,7 @@ export function PlayerDeck(props: PlayerDeckProps) {
 
   function previous() {
     if (!st().loaded) return;
-    if (st().positionMs > RESTART_AFTER_MS) {
+    if (st().positionMs > currentPrefs().restartAfterSeconds * 1000) {
       guard(() => PlayerSeek(startOfPlay()));
       return;
     }
@@ -226,6 +227,16 @@ export function PlayerDeck(props: PlayerDeckProps) {
   }
 
   onMount(() => {
+    let appliedSnap = "";
+    onCleanup(
+      subscribePrefs((p) => {
+        setShowGrid(p.beatGrid);
+        if (p.defaultSnap !== appliedSnap) {
+          appliedSnap = p.defaultSnap;
+          setSnap(p.defaultSnap as SnapMode);
+        }
+      }),
+    );
     const onKey = (e: KeyboardEvent) => {
       if (isTyping(e)) return;
       const onWave = (e.target as HTMLElement | null)?.id === "waveform";
@@ -240,10 +251,10 @@ export function PlayerDeck(props: PlayerDeckProps) {
         if (st().loaded) guard(() => PlayerSeek(startOfPlay()));
       } else if (e.key === "ArrowLeft" && !onWave) {
         e.preventDefault();
-        seekBy(e.shiftKey ? -15000 : -5000);
+        seekBy(-1000 * (e.shiftKey ? currentPrefs().seekLargeSeconds : currentPrefs().seekSeconds));
       } else if (e.key === "ArrowRight" && !onWave) {
         e.preventDefault();
-        seekBy(e.shiftKey ? 15000 : 5000);
+        seekBy(1000 * (e.shiftKey ? currentPrefs().seekLargeSeconds : currentPrefs().seekSeconds));
       } else if (e.key === "l" || e.key === "L") {
         toggleLoop();
       } else if (e.key === "n" || e.key === "N") {
@@ -251,9 +262,9 @@ export function PlayerDeck(props: PlayerDeckProps) {
       } else if (e.key === "p" || e.key === "P") {
         previous();
       } else if (e.key === "-") {
-        stepSpeed(-5);
+        stepSpeed(-currentPrefs().speedStep);
       } else if (e.key === "=" || e.key === "+") {
-        stepSpeed(5);
+        stepSpeed(currentPrefs().speedStep);
       } else if (e.key === "0") {
         resetTempo();
       }
@@ -514,6 +525,7 @@ export function PlayerDeck(props: PlayerDeckProps) {
             gridBeats={st().grid.beatsPerBar}
             gridDownbeat={st().grid.downbeat}
             snap={snap()}
+            showGrid={showGrid()}
             markers={sections().map((s) => ({ name: s.name, startMs: s.startMs, endMs: s.endMs }))}
             onSeek={(ms) => guard(() => PlayerSeek(ms))}
             onLoop={(s, e) => guard(() => PlayerSetLoop(s, e, true))}

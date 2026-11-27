@@ -38,10 +38,11 @@ type Appearance struct {
 }
 
 type Settings struct {
-	Version    int        `json:"version"`
-	Library    Library    `json:"library"`
-	Audio      Audio      `json:"audio"`
-	Appearance Appearance `json:"appearance"`
+	Version     int         `json:"version"`
+	Library     Library     `json:"library"`
+	Audio       Audio       `json:"audio"`
+	Appearance  Appearance  `json:"appearance"`
+	Preferences Preferences `json:"preferences"`
 }
 
 var allowedModes = []string{"shared", "lowlatency", "exclusive"}
@@ -68,10 +69,11 @@ func Defaults(home string) Settings {
 		folders = append(folders, filepath.Join(home, "Music", "PracticeMusic"))
 	}
 	return Settings{
-		Version:    Version,
-		Library:    Library{Folders: folders, NormalizeOnImport: false},
-		Audio:      Audio{Mode: DefaultMode(), SampleRate: 0, BufferFrames: 0},
-		Appearance: Appearance{UIScale: 100},
+		Version:     Version,
+		Library:     Library{Folders: folders, NormalizeOnImport: false},
+		Audio:       Audio{Mode: DefaultMode(), SampleRate: 0, BufferFrames: 0},
+		Appearance:  Appearance{UIScale: 100},
+		Preferences: DefaultPreferences(),
 	}
 }
 
@@ -93,6 +95,11 @@ func Normalize(in Settings) (Settings, error) {
 	if !slices.Contains(allowedModes, out.Audio.Mode) {
 		return Settings{}, fmt.Errorf("output mode %q is not supported", out.Audio.Mode)
 	}
+	preferences, err := normalizePreferences(out.Preferences)
+	if err != nil {
+		return Settings{}, err
+	}
+	out.Preferences = preferences
 	seen := map[string]bool{}
 	folders := make([]string, 0, len(in.Library.Folders))
 	for _, f := range in.Library.Folders {
@@ -147,7 +154,7 @@ func (s *Store) Load() (Settings, string, error) {
 	if err != nil {
 		return Settings{}, "", fmt.Errorf("read settings: %w", err)
 	}
-	var raw Settings
+	raw := Settings{Preferences: DefaultPreferences()}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return s.quarantine(fmt.Sprintf("settings file is not valid JSON: %v", err))
 	}

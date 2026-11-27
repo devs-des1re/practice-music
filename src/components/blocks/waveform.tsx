@@ -14,6 +14,7 @@ export interface WaveformProps {
   gridBeats: number;
   gridDownbeat: number;
   snap: SnapMode;
+  showGrid: boolean;
   onSeek: (ms: number) => void;
   markers: WaveMarker[];
   onLoop: (start: number, end: number) => void;
@@ -75,7 +76,7 @@ export function Waveform(props: WaveformProps) {
       ctx,
       width,
       HEIGHT,
-      { peaks, duration, position, region: reg, lines: gridLines(grid(), duration), markers: props.markers },
+      { peaks, duration, position, region: reg, lines: props.showGrid ? gridLines(grid(), duration) : [], markers: props.markers },
       token,
     );
   });
