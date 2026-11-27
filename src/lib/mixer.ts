@@ -55,6 +55,15 @@ export function sourceOptions(channels: number, stereo: boolean): Option[] {
   return out.length > 0 ? out : [{ value: "0", label: stereo ? "Inputs 1-2" : "Input 1" }];
 }
 
+export function isListening(mainDb: number): boolean {
+  return mainDb > OFF_DB;
+}
+
+export function listenSend(mainDb: number, remembered: number | undefined): number {
+  if (isListening(mainDb)) return OFF_DB;
+  return remembered !== undefined && isListening(remembered) ? remembered : 0;
+}
+
 export function cycleAccent(level: number): number {
   switch (level) {
     case 3:

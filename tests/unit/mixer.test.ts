@@ -122,3 +122,13 @@ test("the peak colour zone follows the meter colours", async () => {
   assert.equal(peakZone(0.5), "high");
   assert.equal(peakZone(0.9), "top");
 });
+
+test("listen switches the send to the speakers off and back to what it was", async () => {
+  const { isListening, listenSend } = await import("../../src/lib/mixer.ts");
+  assert.equal(isListening(-60), false);
+  assert.equal(isListening(-12), true);
+  assert.equal(listenSend(-60, undefined), 0);
+  assert.equal(listenSend(-6, undefined), -60);
+  assert.equal(listenSend(-60, -6), -6);
+  assert.equal(listenSend(-60, -60), 0);
+});

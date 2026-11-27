@@ -22,7 +22,7 @@ import { Notice } from "../ui/notice";
 import { LiveText } from "../ui/live-text";
 import { Menu, type MenuItem } from "../ui/menu";
 import { askConfirm, askText } from "../../lib/modal";
-import { channelPairs, formatDb, sourceOptions } from "../../lib/mixer";
+import { channelPairs, formatDb, isListening, listenSend, sourceOptions } from "../../lib/mixer";
 import { formatClock } from "../../lib/waveform";
 import { handleError, onRefresh, logFailure } from "../../lib/service";
 import { subscribePrefs } from "../../lib/prefs";
@@ -131,6 +131,7 @@ export function MixerPanel() {
   const mon = () => audio().monitor ?? noLink;
   const sending: Record<string, boolean> = {};
   const dirty: Record<string, boolean> = {};
+  const heardAt: Record<number, number> = {};
 
   createEffect(() => {
     const next = AudioStream();
@@ -305,6 +306,14 @@ export function MixerPanel() {
   function patchMaster(change: (m: MixerMaster) => MixerMaster) {
     setBoard({ ...board(), master: change(board().master) });
     flush("master", () => SetMixerMaster(board().master));
+  }
+
+  function toggleListen(index: number) {
+    const current = board().strips[index];
+    if (!current) return;
+    const next = listenSend(current.main, heardAt[index]);
+    if (isListening(current.main)) heardAt[index] = current.main;
+    patchStrip(index, (x) => ({ ...x, main: next }));
   }
 
   function numberOf(e: Event): number {
@@ -512,6 +521,19 @@ export function MixerPanel() {
                 </div>
 
                 <div class="strip-controls">
+                  <button
+                    class="strip-toggle strip-listen"
+                    type="button"
+                    data-kind="listen"
+                    data-on={s.main > -60 ? "true" : "false"}
+                    aria-pressed={s.main > -60}
+                    aria-label={"Send " + s.name + " to the speakers"}
+                    data-tip="Send this channel to your speakers with the music"
+                    onClick={() => toggleListen(s.index)}
+                  >
+                    <Icon name="lucide:volume-2" />
+                    Listen
+                  </button>
                   <div class="strip-buttons">
                     <button
                       class="strip-toggle"

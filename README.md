@@ -34,7 +34,7 @@ In place so far:
 - Scenes that restore routing, levels and metronome settings, and settings export and import
 - One workstation workspace where every panel can be dragged by its header, docked against another panel's edge, resized with the dividers and collapsed to a header bar or a side rail; the layout is remembered, and the Layout menu switches between a practice and a mixing arrangement
 - Transport bar with play, stop, previous and next song, loop, a time and bar display, and speed, pitch and volume sliders, above a waveform timeline with a time ruler and clickable section flags
-- Console style mixer with a colour coded channel strip per source, segmented level meters and peak readouts on the same dB scale as the faders, pan, mute, solo, a headphone monitor send, a master section with its own limiter, and an adjustable inspector for EQ, compressor and routing
+- Console style mixer with a colour coded channel strip per source, a live level inside each fader with peak readouts, a Listen button that sends a channel to your speakers, pan, mute, solo, a headphone monitor send, a master section with its own limiter, and an adjustable inspector for EQ, compressor and routing
 - Metronome that can collapse into a compact control bar or switch to a large display for playing along
 - Library table with sortable columns, a playlist and tag rail, keyboard browsing and a right click menu for song actions
 - Keyboard shortcuts for the transport, metronome and panels (press ? in the app for the full list) and tooltips on every control
@@ -86,6 +86,8 @@ The engine binary is located automatically. To use a specific build, set `PM_ENG
 ```sh
 PM_ENGINE_PATH=/path/to/pm-engine npm run dev
 ```
+
+To hear a drum kit or instrument along with the music, choose its input under Settings, Audio, then press Listen on that input channel. Inputs start with Listen off so that a microphone cannot feed back through the speakers.
 
 Settings are stored as JSON in the per-user config folder. Changes made on the Settings screen save automatically, and cover audio devices, the library, appearance, the mixer, the player, the metronome and downloads.
 

@@ -673,36 +673,42 @@ input[type="number"].krate-input {
   gap: var(--space-2);
   padding: 0 var(--space-3);
   border: 0;
-  border-bottom: 2px solid transparent;
+  border-radius: 0;
   background: transparent;
   color: var(--color-text-muted);
   font-size: var(--text-sm);
   font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
-  transition:
-    background-color var(--ease),
-    color var(--ease),
-    border-color var(--ease);
-  border-radius: 0;
 }
 
 .tab:hover {
-  background: var(--color-surface-hover);
   color: var(--color-text);
 }
 
 .tab[data-active="true"],
 .tab[aria-pressed="true"] {
-  border-bottom-color: var(--color-accent);
-  background: var(--color-surface-hover);
   color: var(--color-text);
+}
+
+.tab::after {
+  content: "";
+  position: absolute;
+  right: var(--space-3);
+  bottom: 0;
+  left: var(--space-3);
+  height: 2px;
+  background: transparent;
+}
+
+.tab[data-active="true"]::after,
+.tab[aria-pressed="true"]::after {
+  background: var(--color-accent);
 }
 
 .tab svg {
   font-size: 1.1rem;
   color: var(--color-text-dim);
-  transition: color var(--ease);
 }
 
 .tab[data-active="true"] svg,
@@ -911,10 +917,6 @@ input[type="number"].krate-input {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-}
-
-.pm-modal-select {
-  appearance: auto;
 }
 
 .pm-modal-field {
@@ -4552,10 +4554,8 @@ input[type="number"].krate-input {
   box-shadow: var(--glass-rim);
 }
 
-.topbar,
 .panel-head,
 .transport,
-.deck-foot,
 .inspector-head {
   background-image: var(--glass-sheen);
   box-shadow: var(--glass-rim);
@@ -4643,4 +4643,88 @@ input[type="number"].krate-input {
   --glass-rim: inset 0 0 0 transparent;
   --glass-blur: none;
   --color-glass: var(--color-surface-raised);
+}
+
+.strip-listen {
+  grid-auto-flow: column;
+  gap: var(--space-1);
+  width: 100%;
+  font-weight: 600;
+  color: var(--color-text-dim);
+}
+
+.strip-toggle[data-on="true"][data-kind="listen"] {
+  border-color: var(--color-success);
+  background-color: var(--color-success-soft);
+  color: var(--color-success);
+}
+
+@supports (appearance: base-select) {
+  select,
+  select::picker(select) {
+    appearance: base-select;
+  }
+
+  select.krate-native-select,
+  select.krate-input {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+
+  select::picker-icon {
+    flex-shrink: 0;
+    color: var(--color-text-dim);
+    font-size: 0.7em;
+  }
+
+  select:open {
+    border-color: var(--color-button-border-strong);
+  }
+
+  select::picker(select) {
+    min-width: anchor-size(width);
+    max-height: min(22rem, 60vh);
+    margin-block: var(--space-1);
+    padding: var(--space-1);
+    overflow-y: auto;
+    border: 1px solid var(--color-glass-line);
+    border-radius: var(--radius-lg);
+    background-color: var(--color-glass);
+    color: var(--color-text);
+    box-shadow: var(--glass-rim);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+  }
+
+  select option {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: var(--control-height-sm);
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-text);
+    font-size: var(--text-sm);
+    cursor: pointer;
+  }
+
+  select option:hover,
+  select option:focus-visible {
+    background: var(--color-button-hover);
+    outline: none;
+  }
+
+  select option:checked {
+    background: var(--color-button-strong);
+  }
+
+  select option::checkmark {
+    order: 1;
+    margin-left: auto;
+  }
 }
