@@ -236,6 +236,7 @@ export function LibraryPanel() {
   }
 
   async function chooseFiles() {
+    const target = playlistId();
     await guard(async () => {
       const files = await openFile({
         title: "Import songs",
@@ -259,7 +260,7 @@ export function LibraryPanel() {
           },
         ],
       });
-      if (files && files.length > 0) await ImportFiles(files);
+      if (files && files.length > 0) await ImportFiles(files, target);
     });
   }
 
@@ -401,7 +402,7 @@ export function LibraryPanel() {
             class="krate-button krate-button-primary krate-button-sm"
             type="button"
             aria-label="Import songs"
-            data-tip="Import songs from files"
+            data-tip={playlistId() ? "Import songs into the open playlist" : "Import songs from files"}
             disabled={importing().running}
             onClick={chooseFiles}
           >
@@ -628,12 +629,28 @@ export function LibraryPanel() {
               Import songs
             </button>
           </div>
-          <div class="empty-state" showIf={ready() && songs().length === 0 && (!!text() || !!tag() || !!playlistId())}>
+          <div class="empty-state" showIf={ready() && songs().length === 0 && (!!text() || !!tag())}>
             <span class="empty-icon">
               <Icon name="lucide:search-x" />
             </span>
             <span class="empty-title">Nothing matches</span>
             <span>Clear the search, tag or playlist to see more songs.</span>
+          </div>
+          <div class="empty-state" showIf={ready() && songs().length === 0 && !text() && !tag() && !!playlistId()}>
+            <span class="empty-icon">
+              <Icon name="lucide:list-plus" />
+            </span>
+            <span class="empty-title">This playlist is empty</span>
+            <span>Import songs straight into it, or right-click a song in All songs to add it.</span>
+            <button
+              class="krate-button krate-button-primary krate-button-sm"
+              type="button"
+              disabled={importing().running}
+              onClick={chooseFiles}
+            >
+              <Icon name="lucide:file-plus" />
+              Import to playlist
+            </button>
           </div>
 
           <div class="song-list" tabindex={0} aria-label="Songs" onKeyDown={onListKey}>

@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -200,7 +201,7 @@ func DeleteSong(id int64, deleteFile bool) error {
 	return nil
 }
 
-func ImportFiles(paths []string) error {
+func ImportFiles(paths []string, playlistID int64) error {
 	boot()
 	if lib == nil {
 		return errLibrary()
@@ -213,6 +214,11 @@ func ImportFiles(paths []string) error {
 	if err != nil {
 		return err
 	}
+	if playlistID != 0 {
+		if err := lib.AddToPlaylist(playlistID, nil); err != nil {
+			return errors.New("that playlist no longer exists")
+		}
+	}
 	importMu.Lock()
 	if ImportState.Get().Running {
 		importMu.Unlock()
@@ -220,31 +226,62 @@ func ImportFiles(paths []string) error {
 	}
 	ImportState.Set(ImportProgress{Running: true, Total: len(paths), Errors: []string{}})
 	importMu.Unlock()
+	job := importJob{
+		db:         lib,
+		dir:        dir,
+		playlistID: playlistID,
+		index:      func(path string) (int64, error) { return finishNewFile(path, "", normalise) },
+		progress:   func(p ImportProgress) { ImportState.Set(p) },
+	}
 	go func() {
-		errs := []string{}
-		for i, src := range paths {
-			name := filepath.Base(src)
-			ImportState.Set(ImportProgress{Running: true, Total: len(paths), Done: i, Current: name, Errors: errs})
-			if _, ok := library.KindOf(src); !ok {
-				errs = append(errs, name+": not a supported audio or video file")
-				continue
-			}
-			if err := os.MkdirAll(dir, 0o755); err != nil {
-				errs = append(errs, name+": "+err.Error())
-				continue
-			}
-			dst := uniquePath(dir, name)
-			if err := copyFile(src, dst); err != nil {
-				errs = append(errs, name+": "+err.Error())
-				continue
-			}
-			if _, err := finishNewFile(dst, "", normalise); err != nil {
-				errs = append(errs, name+": "+err.Error())
-			}
-		}
+		errs := job.run(paths)
 		ImportState.Set(ImportProgress{Running: false, Total: len(paths), Done: len(paths), Errors: errs})
 		bumpLibrary()
 		logger.Infof("import finished: %d files, %d problems", len(paths), len(errs))
 	}()
+	return nil
+}
+
+type importJob struct {
+	db         *library.DB
+	dir        string
+	playlistID int64
+	index      func(path string) (int64, error)
+	progress   func(ImportProgress)
+}
+
+func (j importJob) run(paths []string) []string {
+	errs := []string{}
+	for i, src := range paths {
+		name := filepath.Base(src)
+		j.progress(ImportProgress{Running: true, Total: len(paths), Done: i, Current: name, Errors: errs})
+		if err := j.one(src); err != nil {
+			errs = append(errs, name+": "+err.Error())
+		}
+	}
+	return errs
+}
+
+func (j importJob) one(src string) error {
+	if _, ok := library.KindOf(src); !ok {
+		return errors.New("not a supported audio or video file")
+	}
+	if err := os.MkdirAll(j.dir, 0o755); err != nil {
+		return err
+	}
+	dst := uniquePath(j.dir, filepath.Base(src))
+	if err := copyFile(src, dst); err != nil {
+		return err
+	}
+	id, err := j.index(dst)
+	if err != nil {
+		return err
+	}
+	if j.playlistID == 0 {
+		return nil
+	}
+	if err := j.db.AddToPlaylist(j.playlistID, []int64{id}); err != nil {
+		return fmt.Errorf("added to the library but not to the playlist: %w", err)
+	}
 	return nil
 }
