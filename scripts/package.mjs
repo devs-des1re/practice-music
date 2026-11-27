@@ -3,7 +3,7 @@ import { copyFileSync, existsSync, readFileSync, readdirSync, rmSync, writeFileS
 import { delimiter } from "node:path";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { setNativeVersion, installerFormats, targetArch } from "./package-options.mjs";
+import { setHostVersion, setNativeVersion, installerFormats, targetArch } from "./package-options.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const windows = process.platform === "win32";
@@ -12,6 +12,7 @@ const engineBuilt = path.join(root, "engine", "target", "release", engineName);
 const payloadDir = path.join(root, "api", "engine", "payload");
 const payloadFile = path.join(payloadDir, engineName);
 const configPath = path.join(root, "krate.config.ts");
+const hostPath = path.join(root, "api", "host.go");
 
 const version = (process.env.PM_VERSION || "").replace(/^v/, "");
 
@@ -69,6 +70,7 @@ if (!existsSync(engineBuilt)) {
 ensureNsis();
 
 const originalConfig = readFileSync(configPath, "utf8");
+const originalHost = readFileSync(hostPath, "utf8");
 let status = 0;
 
 try {
@@ -78,6 +80,7 @@ try {
       throw new Error("PM_VERSION is not a version number: " + version);
     }
     writeFileSync(configPath, setNativeVersion(originalConfig, version));
+    writeFileSync(hostPath, setHostVersion(originalHost, version));
   }
   run("node", [
     path.join("scripts", "krate.mjs"),
@@ -95,6 +98,7 @@ try {
   status = 1;
 } finally {
   writeFileSync(configPath, originalConfig);
+  writeFileSync(hostPath, originalHost);
   for (const file of readdirSync(payloadDir)) {
     if (file !== ".gitkeep") rmSync(path.join(payloadDir, file), { force: true });
   }

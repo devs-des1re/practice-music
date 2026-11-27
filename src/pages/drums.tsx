@@ -18,6 +18,7 @@ import { AudioStream } from "../../api/audio.go";
 import { GetMixer, SetMixerStrip } from "../../api/session.go";
 import { Topbar } from "../components/blocks/topbar";
 import { ShortcutsHost } from "../components/blocks/shortcuts-dialog";
+import { UpdateNotice } from "../components/blocks/update-notice";
 import { pressedCommand } from "../lib/keymap";
 import { ServiceNotice } from "../components/blocks/service-notice";
 import { ModalHost } from "../components/blocks/modal-host";
@@ -530,6 +531,7 @@ export default function DrumsPage() {
       <ShortcutsHost scope="drums" />
       <Topbar />
       <ServiceNotice />
+      <UpdateNotice />
       <div class="viewport">
         <main class="page drum-page">
           <header class="page-head">

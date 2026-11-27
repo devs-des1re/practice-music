@@ -1,6 +1,7 @@
 import { createSignal, createEffect, onMount, onCleanup } from "@krate/runtime";
 import { Topbar } from "../components/blocks/topbar";
 import { ShortcutsHost } from "../components/blocks/shortcuts-dialog";
+import { UpdateNotice } from "../components/blocks/update-notice";
 import { chordOf, commandFor, popupOpen, pressedCommand } from "../lib/keymap";
 import { ServiceNotice } from "../components/blocks/service-notice";
 import { PlayerDeck } from "../components/blocks/player-deck";
@@ -375,6 +376,7 @@ export default function Workspace() {
         onReset={resetLayout}
       />
       <ServiceNotice />
+      <UpdateNotice />
       <main class="ws">
         <div
           class="ws-stage"

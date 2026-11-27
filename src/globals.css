@@ -4554,6 +4554,22 @@ input.param-row-value {
   display: none;
 }
 
+.update-bar {
+  flex-wrap: wrap;
+  border-left-color: var(--color-info);
+}
+
+.update-bar .service-text {
+  flex-basis: 16rem;
+}
+
+.update-check {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
 .service-bar[data-tone="bad"] {
   border-left-color: var(--color-danger);
 }

@@ -18,6 +18,7 @@ export interface PreferenceValues {
   artwork: boolean;
   playOnLoad: boolean;
   downloadChoice: string;
+  checkUpdates: boolean;
 }
 
 export const FALLBACK_PREFERENCES: PreferenceValues = {
@@ -40,6 +41,7 @@ export const FALLBACK_PREFERENCES: PreferenceValues = {
   artwork: true,
   playOnLoad: false,
   downloadChoice: "last",
+  checkUpdates: true,
 };
 
 export const DOWNLOAD_CHOICES = [

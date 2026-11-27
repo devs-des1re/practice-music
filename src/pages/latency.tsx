@@ -1,6 +1,7 @@
 import { createSignal, createEffect, createMemo, onMount, onCleanup } from "@krate/runtime";
 import { Topbar } from "../components/blocks/topbar";
 import { ShortcutsHost } from "../components/blocks/shortcuts-dialog";
+import { UpdateNotice } from "../components/blocks/update-notice";
 import { pressedCommand } from "../lib/keymap";
 import { Devices, GetSettings, SaveSettings } from "../../api/host.go";
 import {
@@ -331,6 +332,7 @@ export default function LatencyPage() {
       <ContextHost />
       <TooltipHost />
       <Topbar />
+      <UpdateNotice />
       <div class="viewport">
         <main class="page">
           <header class="page-head">

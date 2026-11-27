@@ -9,7 +9,7 @@ export default defineConfig({
     productName: "PracticeMusic",
     version: "0.1.0",
     window: { width: 1280, height: 800 },
-    permissions: ["dialog"],
+    permissions: ["dialog", "app"],
     media: {
       usage: { microphone: "PracticeMusic reads your instrument or line input so you can hear it in the mix." },
     },

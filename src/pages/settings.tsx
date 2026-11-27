@@ -13,6 +13,9 @@ import { StatusDot } from "../components/ui/status-dot";
 import { LiveText } from "../components/ui/live-text";
 import { Topbar } from "../components/blocks/topbar";
 import { ShortcutsHost } from "../components/blocks/shortcuts-dialog";
+import { UpdateNotice } from "../components/blocks/update-notice";
+import { UpdateCheck } from "../components/blocks/update-settings";
+import { CheckForUpdate } from "../../api/updates.go";
 import { pressedCommand } from "../lib/keymap";
 import { applyScale } from "../lib/appearance";
 import { applyPrefs } from "../lib/prefs";
@@ -176,6 +179,7 @@ export default function SettingsPage() {
       "metronome",
       "downloads",
       "backup",
+      "updates",
     ];
     const actions: Record<string, () => void> = {
       section: () => setSection(sections[at]),
@@ -187,6 +191,7 @@ export default function SettingsPage() {
       export: () => void exportAll(),
       import: () => void importAll(),
       reset: () => void resetPreferences(),
+      updates: () => void CheckForUpdate().catch((e) => logger.warn("update check failed", e)),
     };
     actions[name]?.();
   }
@@ -425,6 +430,7 @@ export default function SettingsPage() {
       <TooltipHost />
       <ShortcutsHost scope="settings" />
       <Topbar />
+      <UpdateNotice />
       <div class="viewport">
         <main class="page settings-page">
           <header class="page-head">
@@ -559,6 +565,17 @@ export default function SettingsPage() {
                 <span class="rail-label">
                   <Icon name="lucide:save" />
                   Backup
+                </span>
+              </button>
+              <button
+                class="rail-item"
+                type="button"
+                data-active={section() === "updates" ? "true" : "false"}
+                onClick={() => setSection("updates")}
+              >
+                <span class="rail-label">
+                  <Icon name="lucide:circle-arrow-up" />
+                  Updates
                 </span>
               </button>
             </aside>
@@ -1031,6 +1048,22 @@ export default function SettingsPage() {
                       />
                     </Field>
                   </PanelBody>
+                </Panel>
+              </div>
+
+              <div class="pane" showIf={section() === "updates"}>
+                <Panel>
+                  <PanelHead title="Updates" />
+                  <div class="panel-body">
+                    <Toggle
+                      id="pref-check-updates"
+                      label="Check for updates when the app starts"
+                      hint="Asks GitHub for the newest release, pre-releases included. Nothing is downloaded until you agree."
+                      checked={!!draft()?.preferences.checkUpdates}
+                      onChange={(v) => prefer((p) => (p.checkUpdates = v))}
+                    />
+                    <UpdateCheck />
+                  </div>
                 </Panel>
               </div>
 

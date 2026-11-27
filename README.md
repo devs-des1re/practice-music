@@ -41,6 +41,7 @@ In place so far:
 - Library table with sortable columns, a playlist and tag rail, keyboard browsing and a right click menu for song actions
 - Keyboard shortcuts on every page (press ? in the app for the list for that page) and tooltips on every control
 - Volume numbers you can type into, and imports that join the playlist you have open
+- A check for new releases on GitHub that can download and open the installer
 - Sampled drums played from an e-kit over MIDI, with velocity layers, choking, your own sound files, per-pad settings, a hit monitor and a Drums mixer channel
 
 ## Requirements
@@ -67,6 +68,12 @@ PracticeMusic is developed and tested on Windows. The macOS and Linux installers
 The installers are not signed. Windows may show a SmartScreen warning. macOS will refuse to open the app until you allow it under System Settings, Privacy and Security.
 
 Downloading songs also needs ffmpeg and ffprobe on your PATH.
+
+## Updates
+
+When it starts, PracticeMusic asks GitHub for the newest release, pre-releases included. If there is a newer one, a message offers it. Nothing is downloaded until you press Update and confirm. The app then downloads the installer for your system, checks it against the SHA-256 that GitHub publishes for it, opens it and closes itself. You finish the steps in the installer.
+
+The check protects against a damaged or swapped download, but the installers are not signed, so it trusts whoever can publish releases in this repository. Turn the check at startup off, or check by hand, under Settings, Updates. On a system with no matching installer the message links to the release page.
 
 ## Getting started
 

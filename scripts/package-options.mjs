@@ -14,6 +14,12 @@ export function targetArch(platform, wanted, host) {
   return wanted;
 }
 
+export function setHostVersion(source, version) {
+  const pattern = /(\bconst Version = ")[^"]*(")/;
+  if (!pattern.test(source)) throw new Error("api/host.go has no version to replace");
+  return source.replace(pattern, (_, before, after) => before + version + after);
+}
+
 export function setNativeVersion(config, version) {
   const pattern = /(\bversion:\s*)(["'])[^"']*\2/;
   if (!pattern.test(config)) throw new Error("krate.config.ts has no version to replace");

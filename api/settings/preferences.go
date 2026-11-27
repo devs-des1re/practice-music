@@ -25,6 +25,7 @@ type Preferences struct {
 	Artwork             bool    `json:"artwork"`
 	PlayOnLoad          bool    `json:"playOnLoad"`
 	DownloadChoice      string  `json:"downloadChoice"`
+	CheckUpdates        bool    `json:"checkUpdates"`
 }
 
 var (
@@ -57,6 +58,7 @@ func DefaultPreferences() Preferences {
 		Artwork:             true,
 		PlayOnLoad:          false,
 		DownloadChoice:      "last",
+		CheckUpdates:        true,
 	}
 }
 
