@@ -2771,9 +2771,9 @@ input[type="number"].krate-input {
   background: transparent;
   color: var(--color-accent);
   font-family: var(--font-mono);
-  font-size: clamp(1.5rem, min(6cqh, 13cqw), 2.125rem);
+  font-size: clamp(1.25rem, min(5cqh, 9cqw), 1.625rem);
   font-variant-numeric: tabular-nums;
-  line-height: 1.1;
+  line-height: 1.35;
   text-align: right;
   outline: none;
   -moz-appearance: textfield;
@@ -3021,7 +3021,7 @@ input[type="number"].krate-input {
 }
 
 .metro-panel[data-size="large"] .bpm-input {
-  font-size: clamp(2.5rem, min(24cqw, 28cqh), 11rem);
+  font-size: clamp(2rem, min(13cqw, 12cqh), 5rem);
   text-align: center;
 }
 
@@ -3070,7 +3070,7 @@ input[type="number"].krate-input {
   }
 
   .bpm-input {
-    font-size: 2.25rem;
+    font-size: 1.25rem;
   }
 }
 
@@ -4851,3 +4851,6 @@ input[type="number"].krate-input {
   min-width: 13rem;
 }
 
+.metro-panel[data-size="large"] .metro-top {
+  flex: 0 0 auto;
+}
