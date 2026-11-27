@@ -15,6 +15,8 @@ import { GainReduction, Meter, PeakReadout } from "./meter";
 import { Fader } from "../ui/fader";
 import { Field } from "../ui/field";
 import { ParamRow } from "../ui/param-row";
+import { LevelRow } from "../ui/level-row";
+import { NumberInput } from "../ui/number-input";
 import { Section } from "../ui/section";
 import { Select } from "../ui/select";
 import { FoldButton } from "../ui/fold-button";
@@ -23,7 +25,7 @@ import { LiveText } from "../ui/live-text";
 import { Menu, type MenuItem } from "../ui/menu";
 import { askConfirm, askText } from "../../lib/modal";
 import { DIVIDER, openContextMenu } from "../../lib/context-menu";
-import { channelPairs, formatDb, inDisplayOrder, isListening, listenSend, sourceOptions } from "../../lib/mixer";
+import { channelPairs, inDisplayOrder, isListening, listenSend, sourceOptions } from "../../lib/mixer";
 import { formatClock } from "../../lib/waveform";
 import { handleError, onRefresh, logFailure } from "../../lib/service";
 import { subscribePrefs } from "../../lib/prefs";
@@ -609,9 +611,18 @@ export function MixerPanel() {
                 </label>
 
                 <div class="strip-readouts">
-                  <div class="strip-db mono" data-tip="Fader level in dB">
-                    {formatDb(s.gain)}
-                  </div>
+                  <NumberInput
+                    id={"strip-db-" + s.index}
+                    class="strip-db mono"
+                    label={s.name + " level in dB"}
+                    tip="Fader level in dB. Type a number and press Enter."
+                    unit="db"
+                    value={s.gain}
+                    min={-60}
+                    max={12}
+                    decimals={1}
+                    onCommit={(v) => patchStrip(s.index, (x) => ({ ...x, gain: v }))}
+                  />
                   <PeakReadout which={String(s.index)} />
                 </div>
 
@@ -727,9 +738,18 @@ export function MixerPanel() {
               <div class="master-bus">
                 <span class="strip-label bus-label">Main</span>
                 <div class="strip-readouts">
-                  <div class="strip-db mono" data-tip="Main level in dB">
-                    {formatDb(board().master.main)}
-                  </div>
+                  <NumberInput
+                    id="master-db-main"
+                    class="strip-db mono"
+                    label="Main mix level in dB"
+                    tip="Main level in dB. Type a number and press Enter."
+                    unit="db"
+                    value={board().master.main}
+                    min={-60}
+                    max={12}
+                    decimals={1}
+                    onCommit={(v) => patchMaster((m) => ({ ...m, main: v }))}
+                  />
                   <PeakReadout which="main" />
                 </div>
                 <div class="strip-main">
@@ -749,9 +769,18 @@ export function MixerPanel() {
               <div class="master-bus">
                 <span class="strip-label bus-label">Monitor</span>
                 <div class="strip-readouts">
-                  <div class="strip-db mono" data-tip="Monitor level in dB">
-                    {formatDb(board().master.monitor)}
-                  </div>
+                  <NumberInput
+                    id="master-db-monitor"
+                    class="strip-db mono"
+                    label="Monitor mix level in dB"
+                    tip="Monitor level in dB. Type a number and press Enter."
+                    unit="db"
+                    value={board().master.monitor}
+                    min={-60}
+                    max={12}
+                    decimals={1}
+                    onCommit={(v) => patchMaster((m) => ({ ...m, monitor: v }))}
+                  />
                   <PeakReadout which="monitor" />
                 </div>
                 <div class="strip-main">
@@ -906,25 +935,25 @@ export function MixerPanel() {
                 onInput={(v) => patchStrip(selected(), (x) => ({ ...x, pan: v }))}
                 onReset={() => patchStrip(selected(), (x) => ({ ...x, pan: 0 }))}
               />
-              <ParamRow
+              <LevelRow
+                id="send-db-main"
                 label="Main"
                 ariaLabel="Send to main"
                 min={-60}
                 max={12}
                 step={0.5}
                 value={strip().main}
-                text={formatDb(strip().main)}
                 onInput={(v) => patchStrip(selected(), (x) => ({ ...x, main: v }))}
                 onReset={() => patchStrip(selected(), (x) => ({ ...x, main: 0 }))}
               />
-              <ParamRow
+              <LevelRow
+                id="send-db-monitor"
                 label="Monitor"
                 ariaLabel="Send to monitor"
                 min={-60}
                 max={12}
                 step={0.5}
                 value={strip().monitor}
-                text={formatDb(strip().monitor)}
                 onInput={(v) => patchStrip(selected(), (x) => ({ ...x, monitor: v }))}
                 onReset={() => patchStrip(selected(), (x) => ({ ...x, monitor: 0 }))}
               />

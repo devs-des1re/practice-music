@@ -521,7 +521,21 @@ export function MetronomeDeck() {
             onInput={(e: Event) => setVolumeShown(Number((e.target as HTMLInputElement).value))}
             onChange={(e: Event) => update({ volume: Number((e.target as HTMLInputElement).value) / 100 })}
           />
-          <LiveText class="param-value" text={volumeShown() + "%"} />
+          <NumberInput
+            id="metro-volume-number"
+            class="param-value level-input"
+            label="Metronome volume in percent"
+            tip="Click volume. Type a number and press Enter."
+            unit="percent"
+            value={volumeShown()}
+            min={0}
+            max={100}
+            decimals={0}
+            onCommit={(v) => {
+              setVolumeShown(v);
+              update({ volume: v / 100 });
+            }}
+          />
         </div>
       </div>
 

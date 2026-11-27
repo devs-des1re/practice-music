@@ -1,5 +1,6 @@
 import { createEffect, onMount } from "@krate/runtime";
-import { clampNumber } from "../../lib/numbers";
+import { parseLevel } from "../../lib/numbers";
+import { formatDb } from "../../lib/mixer";
 
 export interface NumberInputProps {
   id: string;
@@ -9,13 +10,22 @@ export interface NumberInputProps {
   min: number;
   max: number;
   decimals: number;
+  unit?: string;
+  tip?: string;
+  disabled?: boolean;
   onCommit: (value: number) => void;
+}
+
+function numberText(value: number, unit: string | undefined): string {
+  if (unit === "db") return formatDb(value);
+  if (unit === "percent") return value + "%";
+  return String(value);
 }
 
 export function NumberInput(props: NumberInputProps) {
   const show = (value: number) => {
     const el = document.getElementById(props.id) as HTMLInputElement | null;
-    if (el && document.activeElement !== el) el.value = String(value);
+    if (el && document.activeElement !== el) el.value = numberText(value, props.unit);
   };
 
   createEffect(() => {
@@ -26,12 +36,13 @@ export function NumberInput(props: NumberInputProps) {
   onMount(() => show(props.value));
 
   const commit = (el: HTMLInputElement) => {
-    const next = clampNumber(el.value, props.min, props.max, props.decimals);
+    const current = numberText(props.value, props.unit);
+    const next = el.value === current ? null : parseLevel(el.value, props.min, props.max, props.decimals);
     if (next === null) {
-      el.value = String(props.value);
+      el.value = current;
       return;
     }
-    el.value = String(next);
+    el.value = numberText(next, props.unit);
     if (next !== props.value) props.onCommit(next);
   };
 
@@ -43,15 +54,19 @@ export function NumberInput(props: NumberInputProps) {
       inputMode="decimal"
       autocomplete="off"
       aria-label={props.label}
+      data-tip={props.tip}
+      disabled={props.disabled}
       onFocus={(e: FocusEvent) => (e.target as HTMLInputElement).select()}
       onBlur={(e: FocusEvent) => commit(e.target as HTMLInputElement)}
       onKeyDown={(e: KeyboardEvent) => {
         const el = e.target as HTMLInputElement;
         if (e.key === "Enter") {
           e.preventDefault();
+          e.stopPropagation();
           el.blur();
         } else if (e.key === "Escape") {
-          el.value = String(props.value);
+          e.stopPropagation();
+          el.value = numberText(props.value, props.unit);
           el.blur();
         }
       }}

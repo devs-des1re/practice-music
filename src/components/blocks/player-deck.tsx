@@ -24,6 +24,7 @@ import { FoldButton } from "../ui/fold-button";
 import { Select } from "../ui/select";
 import { Notice } from "../ui/notice";
 import { LiveText } from "../ui/live-text";
+import { NumberInput } from "../ui/number-input";
 import { askConfirm, askForm, askText } from "../../lib/modal";
 import { DIVIDER, openContextMenu } from "../../lib/context-menu";
 import { clampNumber } from "../../lib/numbers";
@@ -79,7 +80,6 @@ export function PlayerDeck(props: PlayerDeckProps) {
   const [loopText, setLoopText] = createSignal("Off");
   const [speedText, setSpeedText] = createSignal("100%");
   const [pitchText, setPitchText] = createSignal("0 st");
-  const [volumeText, setVolumeText] = createSignal("90%");
   let shownSong = -1;
 
   createEffect(() => {
@@ -123,7 +123,6 @@ export function PlayerDeck(props: PlayerDeckProps) {
     const p = pitchShown();
     setSpeedText(speedShown() + "%");
     setPitchText((p > 0 ? "+" : "") + p + " st");
-    setVolumeText(volumeShown() + "%");
   });
 
   createEffect(() => {
@@ -640,7 +639,22 @@ export function PlayerDeck(props: PlayerDeckProps) {
               onChange={(e: Event) => guard(() => PlayerSetVolume(Number((e.target as HTMLInputElement).value) / 100))}
               onDoubleClick={() => guard(() => PlayerSetVolume(0.9))}
             />
-            <LiveText class="param-value" text={volumeText()} />
+            <NumberInput
+              id="volume-number"
+              class="param-value level-input"
+              label="Song volume in percent"
+              tip="Song volume. Type a number and press Enter."
+              unit="percent"
+              value={volumeShown()}
+              min={0}
+              max={120}
+              decimals={0}
+              disabled={!st().loaded}
+              onCommit={(v) => {
+                setVolumeShown(v);
+                guard(() => PlayerSetVolume(v / 100));
+              }}
+            />
           </div>
         </div>
         <FoldButton />

@@ -2401,6 +2401,47 @@ input[type="number"].krate-input {
   text-align: right;
 }
 
+.level-input {
+  min-width: 0;
+  height: 1.5rem;
+  padding: 0 var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  cursor: text;
+  transition:
+    background-color var(--ease),
+    border-color var(--ease);
+}
+
+.level-input:hover:not(:disabled) {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-hover);
+}
+
+.level-input:focus {
+  border-color: var(--color-accent);
+  background: var(--color-surface-inset);
+}
+
+.level-input:disabled {
+  color: var(--color-text-dim);
+  cursor: not-allowed;
+}
+
+input.param-value {
+  flex: none;
+  width: 3.25rem;
+}
+
+input.param-row-value {
+  width: 100%;
+  text-align: center;
+}
+
 .param-wide {
   flex: none;
   width: 100%;
@@ -3461,7 +3502,22 @@ input[type="number"].krate-input {
 }
 
 .strip-db {
+  width: 100%;
   color: var(--color-text);
+  cursor: text;
+  transition:
+    background-color var(--ease),
+    border-color var(--ease);
+}
+
+.strip-db:hover {
+  border-color: var(--color-border-strong);
+  background: var(--color-surface-hover);
+}
+
+.strip-db:focus {
+  border-color: var(--color-accent);
+  background: var(--color-surface-inset);
 }
 
 .strip-peak {

@@ -29,10 +29,10 @@ import { Notice } from "../components/ui/notice";
 import { StatusDot } from "../components/ui/status-dot";
 import { LiveText } from "../components/ui/live-text";
 import { ParamRow } from "../components/ui/param-row";
+import { LevelRow } from "../components/ui/level-row";
 import { NumberInput } from "../components/ui/number-input";
 import { askConfirm } from "../lib/modal";
 import { DIVIDER, openContextMenu } from "../lib/context-menu";
-import { formatDb } from "../lib/mixer";
 import { handleError, logFailure } from "../lib/service";
 import {
   CHOKE_CHOICES,
@@ -103,10 +103,8 @@ const noDrumView = {
   credit: "",
   load: "",
   loadPercent: "0",
-  level: "0.0",
   mute: "Mute the Drums channel",
   pedal: "",
-  volume: "0 dB",
   pan: "",
   tune: "",
   sensitivity: "100%",
@@ -189,10 +187,8 @@ export default function DrumsPage() {
       credit: info ? info.kitCredit + " Licence: " + info.kitLicense + "." : "",
       load: loadText(status.load.state, status.load.done, status.load.total, status.load.bytes, drumRunning()),
       loadPercent: String(percentDone(status.load.done, status.load.total)),
-      level: formatDb(strip.gain),
       mute: strip.mute ? "Unmute the Drums channel" : "Mute the Drums channel",
       pedal: "Pedal position now: " + drumPedal(),
-      volume: (chosen.gainDb > 0 ? "+" : "") + chosen.gainDb + " dB",
       pan: panLabel(chosen.pan),
       tune: tuneLabel(chosen.tune),
       sensitivity: Math.round(chosen.sensitivity * 100) + "%",
@@ -665,14 +661,14 @@ export default function DrumsPage() {
                     <Notice tone="warn" text={drumStatus().load.error} />
                   </div>
 
-                  <ParamRow
+                  <LevelRow
+                    id="drum-level-db"
                     label="Level"
                     ariaLabel="Drums channel level"
                     min={-60}
                     max={12}
                     step={0.5}
                     value={drumView().stripGain}
-                    text={drumView().level}
                     onInput={(v) => editDrumStrip((s) => ({ ...s, gain: v }))}
                     onReset={() => editDrumStrip((s) => ({ ...s, gain: 0 }))}
                   />
@@ -925,14 +921,14 @@ export default function DrumsPage() {
                     </p>
                   </div>
 
-                  <ParamRow
+                  <LevelRow
+                    id="pad-volume-db"
                     label="Volume"
                     ariaLabel="Pad volume"
                     min={-24}
                     max={12}
                     step={0.5}
                     value={drumView().padGain}
-                    text={drumView().volume}
                     onInput={(v) => editPad((p) => ({ ...p, gainDb: v }))}
                     onReset={() => editPad((p) => ({ ...p, gainDb: 0 }))}
                   />
