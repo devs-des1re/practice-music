@@ -40,6 +40,7 @@ In place so far:
 - Metronome that can collapse into a compact control bar or switch to a large display for playing along
 - Library table with sortable columns, a playlist and tag rail, keyboard browsing and a right click menu for song actions
 - Keyboard shortcuts for the transport, metronome and panels (press ? in the app for the full list) and tooltips on every control
+- Sampled drums played from an e-kit over MIDI, with velocity layers, choking, your own sound files, per-pad settings, a hit monitor and a Drums mixer channel
 
 ## Requirements
 
@@ -81,6 +82,19 @@ Build the installer (on Windows this needs NSIS on your PATH):
 npm run package
 ```
 
+## Drums over MIDI
+
+Connect your drum module by USB or MIDI, then open Drums in the top bar.
+
+1. Choose your module under MIDI input. Hit a drum and it appears in the hit monitor.
+2. Pick a kit. MuldjordKit is not part of the app or the installer. Nothing is downloaded until you press Download and confirm. The download is about 346 MB and about 147 MB is kept.
+3. If a drum plays the wrong pad, select the pad, press Learn and hit that drum.
+4. Plug your headphones or speakers into the computer and turn the module's own volume down. If you also listen to the module on a line input, turn Listen off for that channel.
+
+Each pad has its own sound, MIDI notes, volume, pan, pitch, sensitivity and choke group. A pad can play your own WAV, FLAC, OGG, MP3 or AIFF files, with or without a downloaded kit. Add several hits from soft to hard to get velocity layers. The Playing panel sets the velocity curve, the weakest hit that counts and how the hi-hat pedal behaves.
+
+The engine reads the kit's recordings directly. It does not import other SFZ kits. Drum settings are not part of settings export.
+
 ## Configuration
 
 The engine binary is located automatically. To use a specific build, set `PM_ENGINE_PATH`:
@@ -96,6 +110,10 @@ Settings are stored as JSON in the per-user config folder. Changes made on the S
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Security issues are covered in [SECURITY.md](SECURITY.md).
+
+## Credits
+
+The optional drum recordings are [MuldjordKit](https://github.com/sfzinstruments/DrumGizmo.MuldjordKit) by Lars Muldjord (drumgizmo.org), SFZ edition by kinwie, licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). PracticeMusic mixes the microphone recordings of each hit into one stereo sound when it loads them.
 
 ## License
 
