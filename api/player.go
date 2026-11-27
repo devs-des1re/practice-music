@@ -34,6 +34,7 @@ type PlayerState struct {
 	Volume     float64       `json:"volume"`
 	Loop       LoopRegion    `json:"loop"`
 	CountIn    int           `json:"countIn"`
+	Click      bool          `json:"click"`
 	Grid       library.Grid  `json:"grid"`
 	Error      string        `json:"error"`
 }
@@ -97,6 +98,38 @@ func pushCountIn() {
 	}
 }
 
+func guideFor(st PlayerState) engine.GuideParams {
+	beats := st.Grid.BeatsPerBar
+	if beats <= 0 {
+		beats = 4
+	}
+	return engine.GuideParams{
+		Enabled:     st.Click && st.Loaded && st.Grid.Bpm > 0,
+		Bpm:         st.Grid.Bpm,
+		OffsetMs:    st.Grid.OffsetMs,
+		BeatsPerBar: beats,
+		Downbeat:    st.Grid.Downbeat,
+	}
+}
+
+func pushGuide() error {
+	guide := guideFor(playerSnapshot())
+	return playerControl(engine.PlayerControl{Guide: &guide})
+}
+
+func PlayerSetClick(on bool) error {
+	boot()
+	st := playerSnapshot()
+	if on && !st.Loaded {
+		return errors.New("open a song first")
+	}
+	if on && st.Grid.Bpm <= 0 {
+		return errors.New("set or detect the tempo first")
+	}
+	playerUpdate(func(p *PlayerState) { p.Click = on })
+	return pushGuide()
+}
+
 func ensureAudio() error {
 	if AudioStream.Get().Running {
 		return nil
@@ -150,8 +183,10 @@ func openSong(songID int64) (PlayerOpened, error) {
 	playerMu.Lock()
 	playerPeaks = loaded.Peaks
 	playerMu.Unlock()
+	click := playerSnapshot().Click
 	playerUpdate(func(p *PlayerState) {
 		*p = defaultPlayerState()
+		p.Click = click
 		p.Loaded = true
 		p.SongID = songID
 		p.Title = song.Title
@@ -160,6 +195,9 @@ func openSong(songID int64) (PlayerOpened, error) {
 		p.DurationMs = loaded.DurationMs
 		p.Grid = grid
 	})
+	if err := pushGuide(); err != nil {
+		logger.Warnf("the song click was not applied: %v", err)
+	}
 	return PlayerOpened{DurationMs: loaded.DurationMs, Peaks: loaded.Peaks, Grid: grid}, nil
 }
 
@@ -288,6 +326,9 @@ func PlayerSetGrid(bpm, offsetMs float64, beatsPerBar, downbeat int) (library.Gr
 	}
 	playerUpdate(func(p *PlayerState) { p.Grid = g })
 	pushCountIn()
+	if err := pushGuide(); err != nil {
+		return library.Grid{}, err
+	}
 	return g, nil
 }
 
@@ -303,6 +344,9 @@ func PlayerDetectGrid() (library.Grid, error) {
 	}
 	playerUpdate(func(p *PlayerState) { p.Grid = g })
 	pushCountIn()
+	if err := pushGuide(); err != nil {
+		return library.Grid{}, err
+	}
 	return g, nil
 }
 

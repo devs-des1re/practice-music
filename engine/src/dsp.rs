@@ -61,7 +61,11 @@ impl Dsp {
             let stereo = shared.params.flag(strip, sp::STEREO);
             for f in 0..frames {
                 let base = f * cch;
-                let l = if source < cch { self.capture_scratch[base + source] } else { 0.0 };
+                let l = if source < cch {
+                    self.capture_scratch[base + source]
+                } else {
+                    0.0
+                };
                 let r = if stereo && source + 1 < cch {
                     self.capture_scratch[base + source + 1]
                 } else {
@@ -94,9 +98,15 @@ impl Dsp {
             {
                 let song = &mut self.strip_in[STRIP_SONG][..n * 2];
                 song.fill(0.0);
+                self.player
+                    .set_guide_subdivision(shared.controls.subdivision());
                 self.player.mix_into(song, 2);
             }
-            let id = self.renderer.render(&mut self.strip_in[STRIP_CLICK][..n * 2]);
+            self.renderer
+                .follow(self.player.guiding(), self.player.cues());
+            let id = self
+                .renderer
+                .render(&mut self.strip_in[STRIP_CLICK][..n * 2]);
             if started.is_none() {
                 started = id;
             }
@@ -121,7 +131,9 @@ impl Dsp {
         let beats = self.renderer.beat_counter();
         if beats != self.published_beat {
             self.published_beat = beats;
-            shared.controls.publish_beat(beats, self.renderer.last_beat());
+            shared
+                .controls
+                .publish_beat(beats, self.renderer.last_beat());
         }
         shared.set_player_state(
             self.player.position(),
@@ -163,7 +175,8 @@ mod tests {
     }
 
     fn channel_peak(out: &[f32], channels: usize, ch: usize) -> f32 {
-        out.chunks_exact(channels).fold(0.0f32, |m, f| m.max(f[ch].abs()))
+        out.chunks_exact(channels)
+            .fold(0.0f32, |m, f| m.max(f[ch].abs()))
     }
 
     #[test]
@@ -198,7 +211,9 @@ mod tests {
     #[test]
     fn the_monitor_pair_on_the_same_device_gets_only_what_is_sent_to_it() {
         let (mut dsp, shared) = rig(4);
-        shared.params.set(STRIP_CLICK, sp::MAIN, crate::mixer::OFF_DB);
+        shared
+            .params
+            .set(STRIP_CLICK, sp::MAIN, crate::mixer::OFF_DB);
         shared.params.set(STRIP_CLICK, sp::MONITOR, 0.0);
         shared.params.set_master(mp::MONITOR_CHANNEL, 2.0);
         shared.controls.set_running(true);
@@ -219,7 +234,9 @@ mod tests {
             })
             .ok()
             .unwrap();
-        shared.params.set(STRIP_CLICK, sp::MAIN, crate::mixer::OFF_DB);
+        shared
+            .params
+            .set(STRIP_CLICK, sp::MAIN, crate::mixer::OFF_DB);
         shared.params.set(STRIP_CLICK, sp::MONITOR, 0.0);
         shared.controls.set_running(true);
         let mut reader = DriftReader::new(48000, 48000);
@@ -255,8 +272,45 @@ mod tests {
             dsp.process(&shared, &mut buf);
             out.extend_from_slice(&buf);
         }
-        assert!(channel_peak(&out, 2, 0) > 0.3, "left {}", channel_peak(&out, 2, 0));
+        assert!(
+            channel_peak(&out, 2, 0) > 0.3,
+            "left {}",
+            channel_peak(&out, 2, 0)
+        );
         assert!(channel_peak(&out, 2, 1) < 0.05);
+    }
+
+    #[test]
+    fn the_song_click_plays_on_the_click_strip_in_time_and_replaces_the_free_click() {
+        let (mut dsp, shared) = rig(2);
+        dsp.player
+            .apply(Command::Load(Arc::new(vec![0.0f32; 2 * 96000])));
+        dsp.player.apply(Command::Guide(Some(crate::guide::Grid {
+            frames_per_beat: 24000.0,
+            offset: 4800.0,
+            beats_per_bar: 4,
+            downbeat: 0,
+        })));
+        shared.controls.set_bpm(400.0);
+        shared.controls.set_running(true);
+        dsp.player.apply(Command::Play);
+        let out = run(&mut dsp, &shared, 48000, 2);
+        assert!(
+            peak(&out[..4700 * 2]) < 1e-6,
+            "silent before the first beat"
+        );
+        assert!(peak(&out[4800 * 2..5400 * 2]) > 0.2, "click on beat one");
+        assert!(
+            peak(&out[12000 * 2..28000 * 2]) < 1e-3,
+            "no free running click between the song beats"
+        );
+        assert!(peak(&out[28800 * 2..29400 * 2]) > 0.2, "click on beat two");
+        shared.params.set(STRIP_CLICK, sp::MUTE, 1.0);
+        let muted = run(&mut dsp, &shared, 48000, 2);
+        assert!(
+            peak(&muted[4800 * 2..]) < 1e-6,
+            "the click fader still applies"
+        );
     }
 
     #[test]
@@ -279,7 +333,11 @@ mod tests {
         assert!((out[out.len() - 2] - 0.5).abs() < 1e-3);
         shared.params.set(STRIP_SONG, sp::GAIN, -6.0);
         let out = run(&mut dsp, &shared, 9600, 2);
-        assert!((out[out.len() - 2] - 0.25).abs() < 0.01, "{}", out[out.len() - 2]);
+        assert!(
+            (out[out.len() - 2] - 0.25).abs() < 0.01,
+            "{}",
+            out[out.len() - 2]
+        );
     }
 
     #[test]

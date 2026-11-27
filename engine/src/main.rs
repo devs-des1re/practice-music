@@ -4,6 +4,7 @@ mod decode;
 mod devices;
 mod dsp;
 mod fx;
+mod guide;
 mod loopback;
 mod metronome_api;
 mod mixer;

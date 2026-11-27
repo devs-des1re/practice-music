@@ -4832,3 +4832,17 @@ input[type="number"].krate-input {
   }
 }
 
+.tp-btn.tp-click[data-on="true"] {
+  border-color: var(--color-click);
+  color: var(--color-click);
+}
+
+.metro-actions .song-click {
+  grid-column: 1 / -1;
+}
+
+.metro-actions .song-click[data-on="true"] {
+  border-color: var(--color-click);
+  color: var(--color-click);
+}
+

@@ -21,6 +21,7 @@ import { LiveText } from "../ui/live-text";
 import { NumberInput } from "../ui/number-input";
 import { askConfirm, askForm } from "../../lib/modal";
 import { clampNumber } from "../../lib/numbers";
+import { PlayerSetClick, PlayerStream } from "../../../api/player.go";
 import { currentPrefs } from "../../lib/prefs";
 import { SUBDIVISIONS, accentLabel, barCaption, cleanBpm, cycleAccent, polyLabel } from "../../lib/mixer";
 import { isTyping } from "../../lib/workspace";
@@ -88,6 +89,10 @@ export function MetronomeDeck() {
   const [subShown, setSubShown] = createSignal(55);
   const [polyShown, setPolyShown] = createSignal(80);
   const [captionText, setCaptionText] = createSignal("Stopped");
+  const [songClick, setSongClick] = createSignal(false);
+  const [songPlaying, setSongPlaying] = createSignal(false);
+  const [songBpm, setSongBpm] = createSignal(0);
+  const [songLoaded, setSongLoaded] = createSignal(false);
   const [view, setView] = createSignal("play");
   const [silentText, setSilentText] = createSignal("Off");
   const [large, setLarge] = createSignal(false);
@@ -113,8 +118,24 @@ export function MetronomeDeck() {
   });
 
   createEffect(() => {
+    const p = PlayerStream();
+    if (!p) return;
+    setSongClick(p.click);
+    setSongLoaded(p.loaded);
+    setSongPlaying(p.loaded && p.click && p.playing);
+    setSongBpm(p.loaded && p.grid.bpm > 0 ? p.grid.bpm * p.speed : 0);
+  });
+
+  const beatSeen = { seq: -1 };
+
+  createEffect(() => {
     const frame = BeatStream();
-    if (!frame || !audio().metronome.running) return;
+    if (!frame) return;
+    if (!(audio().metronome.running || songPlaying())) {
+      beatSeen.seq = frame.seq;
+      return;
+    }
+    if (frame.seq === beatSeen.seq) return;
     const lead = audio().streamLatencyMs > 0 ? audio().streamLatencyMs : audio().periodMs;
     const delay = Math.min(150, Math.max(0, lead || 0));
     const timer = setTimeout(() => setShown({ beat: frame.beat, bar: frame.bar, level: frame.level, silent: frame.silent }), delay);
@@ -123,11 +144,13 @@ export function MetronomeDeck() {
 
   createEffect(() => {
     const b = shown();
-    setCaptionText(b.beat >= 0 ? (b.silent ? "Silent bar. " : "") + barCaption(b.bar, b.beat, cfg().beatsPerBar) : "Stopped");
+    const idle = songClick() && songBpm() > 0 ? "Ready to click with the song at " + songBpm().toFixed(1) + " BPM" : "Stopped";
+    const counted = b.beat >= 0 ? (b.silent ? "Silent bar. " : "") + barCaption(b.bar, b.beat, cfg().beatsPerBar) : idle;
+    setCaptionText(songPlaying() ? "With the song at " + songBpm().toFixed(1) + " BPM" : counted);
   });
 
   createEffect(() => {
-    if (!audio().metronome.running) setShown({ beat: -1, bar: 0, level: 2, silent: false });
+    if (!(audio().metronome.running || songPlaying())) setShown({ beat: -1, bar: 0, level: 2, silent: false });
   });
 
   async function guard(action: () => Promise<unknown>) {
@@ -333,6 +356,19 @@ export function MetronomeDeck() {
           <button class="krate-button krate-button-secondary" type="button" data-tip="Tap the tempo" data-keys="T" onClick={tap}>
             <Icon name="lucide:hand" />
             Tap
+          </button>
+          <button
+            class="krate-button krate-button-secondary song-click"
+            type="button"
+            aria-pressed={songClick()}
+            data-on={songClick() ? "true" : "false"}
+            data-tip="Click in time with the loaded song, at its tempo"
+            data-keys="K"
+            disabled={!songLoaded()}
+            onClick={() => guard(() => PlayerSetClick(!songClick()))}
+          >
+            <Icon name="lucide:audio-waveform" />
+            Click with song
           </button>
         </div>
 

@@ -16,6 +16,7 @@ export const SHORTCUTS: ShortcutGroup[] = [
       { label: "Stop and return", keys: ["Enter"] },
       { label: "Back to the start", keys: ["Home"] },
       { label: "Step back or forward", keys: ["Left", "Right"] },
+      { label: "Metronome with the song", keys: ["K"] },
       { label: "Select a loop", keys: ["S"] },
       { label: "Loop on or off", keys: ["L"] },
       { label: "Previous or next song", keys: ["P", "N"] },

@@ -10,6 +10,7 @@ import {
   PlayerSetVolume,
   PlayerSetLoop,
   PlayerSetCountIn,
+  PlayerSetClick,
   PlayerSetGrid,
   PlayerDetectGrid,
   PlayerSections,
@@ -218,6 +219,11 @@ export function PlayerDeck(props: PlayerDeckProps) {
     });
   }
 
+  function toggleClick() {
+    if (!st().loaded) return;
+    guard(() => PlayerSetClick(!st().click));
+  }
+
   function toggleLoop() {
     const l = st().loop;
     if (l.endMs <= l.startMs) {
@@ -260,6 +266,8 @@ export function PlayerDeck(props: PlayerDeckProps) {
         if (st().loaded) setSelecting(!selecting());
       } else if (e.key === "Escape" && selecting()) {
         setSelecting(false);
+      } else if (e.key === "k" || e.key === "K") {
+        toggleClick();
       } else if (e.key === "l" || e.key === "L") {
         toggleLoop();
       } else if (e.key === "n" || e.key === "N") {
@@ -390,6 +398,10 @@ export function PlayerDeck(props: PlayerDeckProps) {
             <Icon name="lucide:skip-forward" />
           </button>
           <span class="tp-gap" />
+          <button class="tp-btn tp-select tp-click" type="button" aria-label="Metronome with the song" aria-pressed={st().click} data-tip="Play the metronome in time with this song" data-keys="K" data-on={st().click ? "true" : "false"} disabled={!st().loaded} onClick={toggleClick}>
+            <Icon name="lucide:metronome" />
+            Click
+          </button>
           <button class="tp-btn tp-select" type="button" aria-label="Select a loop" aria-pressed={selecting()} data-tip="Select a loop, then drag on the timeline. Esc cancels." data-keys="S" data-on={selecting() ? "true" : "false"} disabled={!st().loaded} onClick={() => setSelecting(!selecting())}>
             <Icon name="lucide:scan-line" />
             Select loop

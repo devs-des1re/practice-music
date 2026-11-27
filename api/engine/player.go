@@ -34,6 +34,14 @@ type CountInParams struct {
 	SpacingMs float64 `json:"spacingMs"`
 }
 
+type GuideParams struct {
+	Enabled     bool    `json:"enabled"`
+	Bpm         float64 `json:"bpm"`
+	OffsetMs    float64 `json:"offsetMs"`
+	BeatsPerBar int     `json:"beatsPerBar"`
+	Downbeat    int     `json:"downbeat"`
+}
+
 type PlayerControl struct {
 	Action  string         `json:"action,omitempty"`
 	SeekMs  *float64       `json:"seekMs,omitempty"`
@@ -42,6 +50,7 @@ type PlayerControl struct {
 	Volume  *float64       `json:"volume,omitempty"`
 	Loop    *LoopParams    `json:"loop,omitempty"`
 	CountIn *CountInParams `json:"countIn,omitempty"`
+	Guide   *GuideParams   `json:"guide,omitempty"`
 }
 
 type PlayerEvent struct {

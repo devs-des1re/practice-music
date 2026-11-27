@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 
+use crate::guide::{Cue, MAX_CUES};
 use crate::sounds::{self, ROLE_ACCENT, ROLE_BEAT, ROLE_POLY, ROLE_SUB, ROLES};
 
 pub const MIN_BPM: f64 = 20.0;
@@ -24,7 +25,11 @@ const NO_ROLE: u8 = 255;
 pub fn default_accents() -> u64 {
     let mut pattern = 0u64;
     for beat in 0..MAX_BEATS {
-        let level = if beat == 0 { LEVEL_ACCENT } else { LEVEL_NORMAL };
+        let level = if beat == 0 {
+            LEVEL_ACCENT
+        } else {
+            LEVEL_NORMAL
+        };
         pattern |= u64::from(level) << (2 * beat);
     }
     pattern
@@ -206,7 +211,10 @@ impl Controls {
 
     pub fn beat(&self) -> (u64, BeatInfo) {
         let seq = self.beat_seq.load(Ordering::Acquire);
-        (seq, BeatInfo::unpack(self.beat_word.load(Ordering::Relaxed)))
+        (
+            seq,
+            BeatInfo::unpack(self.beat_word.load(Ordering::Relaxed)),
+        )
     }
 }
 
@@ -276,6 +284,9 @@ pub struct Renderer {
     seen_trigger: u64,
     beat_counter: u64,
     last_beat: BeatInfo,
+    following: bool,
+    cues: [Cue; MAX_CUES],
+    cue_len: usize,
 }
 
 impl Renderer {
@@ -285,12 +296,7 @@ impl Renderer {
         Self {
             rate: f64::from(rate),
             channels: channels.max(1),
-            tables: [
-                Arc::clone(&accent),
-                Arc::clone(&normal),
-                normal,
-                accent,
-            ],
+            tables: [Arc::clone(&accent), Arc::clone(&normal), normal, accent],
             voices: [IDLE_VOICE; MAX_VOICES],
             events: [EMPTY_EVENT; MAX_EVENTS],
             ev_head: 0,
@@ -323,6 +329,50 @@ impl Renderer {
                 level: LEVEL_NORMAL,
                 silent: false,
             },
+            following: false,
+            cues: [Cue::default(); MAX_CUES],
+            cue_len: 0,
+        }
+    }
+
+    pub fn follow(&mut self, following: bool, cues: &[Cue]) {
+        self.following = following;
+        self.cue_len = cues.len().min(MAX_CUES);
+        self.cues[..self.cue_len].copy_from_slice(&cues[..self.cue_len]);
+    }
+
+    fn fire_cue(&mut self, cue: Cue) {
+        let level = {
+            let stored = ((self.accents >> (2 * cue.beat.min(MAX_BEATS - 1))) & 3) as u8;
+            if cue.beats_per_bar == 1 && stored == LEVEL_ACCENT {
+                LEVEL_NORMAL
+            } else {
+                stored
+            }
+        };
+        let silent = self.is_silent_bar(u64::from(cue.bar));
+        if cue.division > 0 {
+            if !silent && self.sub_level > 0.0 {
+                self.start_voice(ROLE_SUB as u8, self.sub_level);
+            }
+            return;
+        }
+        self.last_beat = BeatInfo {
+            beat: cue.beat,
+            bar: cue.bar,
+            beats_per_bar: cue.beats_per_bar,
+            level,
+            silent,
+        };
+        self.beat_counter += 1;
+        if silent {
+            return;
+        }
+        match level {
+            LEVEL_ACCENT => self.start_voice(ROLE_ACCENT as u8, 1.0),
+            LEVEL_NORMAL => self.start_voice(ROLE_BEAT as u8, 1.0),
+            LEVEL_SOFT => self.start_voice(ROLE_BEAT as u8, SOFT_GAIN),
+            _ => {}
         }
     }
 
@@ -519,7 +569,8 @@ impl Renderer {
             let last_beat = beat_in_bar + 1 == bpb;
             let count = self.poly_beats;
             while self.poly_next < count {
-                let t = self.bar_start + self.bar_length * f64::from(self.poly_next) / f64::from(count);
+                let t =
+                    self.bar_start + self.bar_length * f64::from(self.poly_next) / f64::from(count);
                 if t >= t0 + fpb - 1e-6 && !last_beat {
                     break;
                 }
@@ -566,6 +617,9 @@ impl Renderer {
         while self.ev_head < self.ev_len && self.events[self.ev_head].frame <= abs {
             let event = self.events[self.ev_head];
             self.ev_head += 1;
+            if self.following {
+                continue;
+            }
             if let Some(info) = event.beat {
                 self.last_beat = info;
                 self.beat_counter += 1;
@@ -584,7 +638,13 @@ impl Renderer {
             self.start_voice(ROLE_BEAT as u8, 1.0);
         }
         let write = self.channels.min(2);
+        let mut next_cue = 0;
         for i in 0..frames {
+            while next_cue < self.cue_len && self.cues[next_cue].frame <= i {
+                let cue = self.cues[next_cue];
+                next_cue += 1;
+                self.fire_cue(cue);
+            }
             let abs = self.clock + i as u64;
             if self.running {
                 self.fire_due(abs);
@@ -613,6 +673,7 @@ impl Renderer {
             }
         }
         self.clock += frames as u64;
+        self.cue_len = 0;
         started
     }
 }
@@ -909,7 +970,10 @@ mod tests {
                 let value = if b % 4 == 0 { 8.0 } else { 4.0 };
                 want.push((t0.round() as usize, value));
                 for j in 1..divisions {
-                    want.push(((t0 + fpb * f64::from(j) / f64::from(divisions)).round() as usize, 2.0));
+                    want.push((
+                        (t0 + fpb * f64::from(j) / f64::from(divisions)).round() as usize,
+                        2.0,
+                    ));
                 }
             }
             want.retain(|(f, _)| *f < 44100 * 8);
@@ -976,7 +1040,10 @@ mod tests {
             .filter(|(_, v)| *v == 1.0 || *v == 9.0 || *v == 5.0)
             .map(|(i, _)| i)
             .collect();
-        assert_eq!(poly, vec![0, 36000, 72000, 108000, 144000, 180000, 216000, 252000]);
+        assert_eq!(
+            poly,
+            vec![0, 36000, 72000, 108000, 144000, 180000, 216000, 252000]
+        );
     }
 
     #[test]
@@ -1006,7 +1073,11 @@ mod tests {
         r.start();
         let signal = render_chunked(&mut r, 96000 * 6, 512, 1);
         let got = onsets(&signal);
-        assert!(got.iter().all(|&i| i < 96000 || (288000..384000).contains(&i)), "{got:?}");
+        assert!(
+            got.iter()
+                .all(|&i| i < 96000 || (288000..384000).contains(&i)),
+            "{got:?}"
+        );
         assert!(got.iter().any(|&i| i < 96000));
         assert!(got.iter().any(|&i| (288000..384000).contains(&i)));
         assert!(got.contains(&0));
@@ -1040,20 +1111,34 @@ mod tests {
     #[test]
     fn accent_levels_choose_the_sound_and_loudness_of_each_beat() {
         let mut r = role_renderer(48000);
-        r.set_accents(pack_accents(&[LEVEL_ACCENT, LEVEL_SOFT, LEVEL_MUTE, LEVEL_NORMAL]));
+        r.set_accents(pack_accents(&[
+            LEVEL_ACCENT,
+            LEVEL_SOFT,
+            LEVEL_MUTE,
+            LEVEL_NORMAL,
+        ]));
         r.start();
         let signal = render_chunked(&mut r, 48000 * 4, 256, 1);
         let got = pairs(&signal);
         assert_eq!(
             got,
-            vec![(0, 8.0), (24000, 2.0), (72000, 4.0), (96000, 8.0), (120000, 2.0), (168000, 4.0)]
+            vec![
+                (0, 8.0),
+                (24000, 2.0),
+                (72000, 4.0),
+                (96000, 8.0),
+                (120000, 2.0),
+                (168000, 4.0)
+            ]
         );
     }
 
     #[test]
     fn muted_beats_still_report_to_the_visual_indicator() {
         let mut r = role_renderer(48000);
-        r.set_accents(pack_accents(&[LEVEL_MUTE, LEVEL_MUTE, LEVEL_MUTE, LEVEL_MUTE]));
+        r.set_accents(pack_accents(&[
+            LEVEL_MUTE, LEVEL_MUTE, LEVEL_MUTE, LEVEL_MUTE,
+        ]));
         r.start();
         let signal = render_chunked(&mut r, 48000 * 2, 256, 1);
         assert!(onsets(&signal).is_empty());

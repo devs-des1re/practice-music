@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use crate::guide::{Cue, Follower, Grid};
 use crate::sounds::builtin_click;
 use crate::stretch::Stretcher;
 
@@ -20,6 +21,7 @@ pub enum Command {
         beats: u32,
         spacing: usize,
     },
+    Guide(Option<Grid>),
 }
 
 struct CountIn {
@@ -59,6 +61,10 @@ pub struct PlayerCore {
     click_accent: Box<[f32]>,
     voice: Voice,
     scratch: Vec<f32>,
+    follower: Follower,
+    guide_position: Option<f64>,
+    resync: f64,
+    block_offset: usize,
 }
 
 const MAX_CHUNK: usize = 4096;
@@ -88,6 +94,10 @@ impl PlayerCore {
             click_accent: builtin_click(rate, 1600.0, 1.0),
             voice: Voice::Idle,
             scratch: vec![0.0; MAX_CHUNK * 2],
+            follower: Follower::new(rate),
+            guide_position: None,
+            resync: f64::from(rate) * 0.05,
+            block_offset: 0,
         }
     }
 
@@ -102,6 +112,7 @@ impl PlayerCore {
                 self.loops = 0;
                 self.loop_enabled = false;
                 self.count_in = None;
+                self.follower.set_grid(None);
                 self.enter_mode();
             }
             Command::Play => {
@@ -112,6 +123,7 @@ impl PlayerCore {
                     self.seek(0);
                 }
                 self.playing = true;
+                self.restart_guide();
                 if self.count_in_beats > 0 && self.count_in_spacing > 0 {
                     self.count_in = Some(CountIn {
                         beats_left: self.count_in_beats,
@@ -150,11 +162,32 @@ impl PlayerCore {
                 self.loop_end = end.min(self.len);
                 self.loop_enabled = enabled && self.loop_end > self.loop_start + 64;
             }
+            Command::Guide(grid) => {
+                self.follower.set_grid(grid);
+                self.guide_position = None;
+            }
             Command::CountIn { beats, spacing } => {
                 self.count_in_beats = beats.min(16);
                 self.count_in_spacing = spacing;
             }
         }
+    }
+
+    fn restart_guide(&mut self) {
+        self.follower.restart();
+        self.guide_position = None;
+    }
+
+    pub fn set_guide_subdivision(&mut self, subdivision: u32) {
+        self.follower.set_subdivision(subdivision);
+    }
+
+    pub fn guiding(&self) -> bool {
+        self.playing && self.follower.active()
+    }
+
+    pub fn cues(&self) -> &[Cue] {
+        self.follower.cues()
     }
 
     fn wants_stretch(&self) -> bool {
@@ -177,11 +210,13 @@ impl PlayerCore {
                 self.pos = self.pos.min(self.len);
             }
             self.stretched = want;
+            self.guide_position = None;
         }
     }
 
     fn seek(&mut self, frame: usize) {
         let frame = frame.min(self.len);
+        self.restart_guide();
         self.pos = frame;
         self.src_cursor = frame;
         if self.stretched {
@@ -251,7 +286,9 @@ impl PlayerCore {
         let channels = channels.max(1);
         let frames = out.len() / channels;
         let mut done = 0usize;
+        self.follower.clear();
         while done < frames {
+            self.block_offset = done;
             let n = (frames - done).min(MAX_CHUNK);
             self.mix_chunk(&mut out[done * channels..(done + n) * channels], channels);
             done += n;
@@ -315,16 +352,46 @@ impl PlayerCore {
             if self.loop_enabled && self.pos >= self.loop_end {
                 self.pos = self.loop_start;
                 self.loops += 1;
+                self.follower.restart();
             }
             if self.pos >= self.len {
                 self.playing = false;
                 return;
             }
+            self.follower
+                .observe(self.pos as f64, self.block_offset + frame);
             for ch in 0..write {
                 out[frame * channels + ch] += track[self.pos * 2 + ch] * self.volume;
             }
             self.pos += 1;
         }
+    }
+
+    fn follow_stretched(&mut self, start: usize, frames: usize) {
+        if !self.follower.active() {
+            return;
+        }
+        let heard = self.estimated_position();
+        let mut position = match self.guide_position {
+            Some(p) if (p - heard).abs() <= self.resync => p,
+            Some(_) => {
+                self.follower.restart();
+                heard
+            }
+            None => heard,
+        };
+        for i in 0..frames {
+            if self.loop_enabled && position >= self.loop_end as f64 {
+                position -= (self.loop_end - self.loop_start) as f64;
+                self.follower.restart();
+            }
+            if position < self.len as f64 {
+                self.follower
+                    .observe(position, self.block_offset + start + i);
+            }
+            position += self.speed;
+        }
+        self.guide_position = Some(position);
     }
 
     fn render_stretched(&mut self, out: &mut [f32], channels: usize, start: usize) {
@@ -336,6 +403,7 @@ impl PlayerCore {
         if frames == 0 {
             return;
         }
+        self.follow_stretched(start, frames);
         let mut buf = std::mem::take(&mut self.scratch);
         let write = channels.min(2);
         {
@@ -558,6 +626,83 @@ mod tests {
         let y = render(&mut b, 16000, 97);
         assert_eq!(x, y);
         assert_eq!(x[3 * 4001], source(0));
+    }
+
+    fn guided(p: &mut PlayerCore, total: usize, chunk: usize) -> Vec<(usize, u32)> {
+        let mut found = Vec::new();
+        let mut done = 0;
+        while done < total {
+            let n = chunk.min(total - done);
+            let mut buf = vec![0.0f32; n * 2];
+            p.mix_into(&mut buf, 2);
+            found.extend(p.cues().iter().map(|c| (done + c.frame, c.beat)));
+            done += n;
+        }
+        found
+    }
+
+    fn beat_grid() -> Option<Grid> {
+        Some(Grid {
+            frames_per_beat: 12000.0,
+            offset: 0.0,
+            beats_per_bar: 4,
+            downbeat: 0,
+        })
+    }
+
+    #[test]
+    fn the_guide_clicks_stay_on_the_song_beats_through_a_loop() {
+        for chunk in [64usize, 480, 4096] {
+            let mut p = player_with(96000);
+            p.apply(Command::Guide(beat_grid()));
+            p.apply(Command::Loop {
+                start: 24000,
+                end: 48000,
+                enabled: true,
+            });
+            p.apply(Command::Seek(24000));
+            p.apply(Command::Play);
+            assert_eq!(
+                guided(&mut p, 60000, chunk),
+                vec![(0, 2), (12000, 3), (24000, 2), (36000, 3), (48000, 2)],
+                "chunk {chunk}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_seek_moves_the_clicks_with_the_song() {
+        let mut p = player_with(96000);
+        p.apply(Command::Guide(beat_grid()));
+        p.apply(Command::Play);
+        guided(&mut p, 1000, 480);
+        p.apply(Command::Seek(30000));
+        assert_eq!(guided(&mut p, 20000, 480), vec![(6000, 3), (18000, 0)]);
+    }
+
+    #[test]
+    fn at_half_speed_the_clicks_come_half_as_often() {
+        let mut p = PlayerCore::new(48000);
+        p.apply(Command::Load(tone_track(48000 * 20)));
+        p.apply(Command::Guide(beat_grid()));
+        p.apply(Command::Speed(0.5));
+        p.apply(Command::Play);
+        let found = guided(&mut p, 48000 * 4, 480);
+        assert!((8..=9).contains(&found.len()), "{} clicks", found.len());
+        for pair in found.windows(2) {
+            let gap = pair[1].0 as i64 - pair[0].0 as i64;
+            assert!((gap - 24000).abs() < 2500, "gap {gap}");
+        }
+    }
+
+    #[test]
+    fn a_paused_song_gives_no_clicks() {
+        let mut p = player_with(96000);
+        p.apply(Command::Guide(beat_grid()));
+        assert!(guided(&mut p, 30000, 480).is_empty());
+        assert!(!p.guiding());
+        p.apply(Command::Play);
+        assert!(p.guiding());
     }
 
     #[test]

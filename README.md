@@ -29,6 +29,7 @@ In place so far:
 - Downloader built on yt-dlp with a queue, progress, retry and cancel
 - Browser pane that sends the current page to the downloader
 - Waveform player with beat-snapped loops, tempo and pitch control, and saved sections
+- A metronome click that follows the loaded song on its own beat grid, through speed changes, loops and skips
 - Mixer with song, click and input channels, EQ, compressor, meters, a master limiter, and separate main and monitor mixes
 - Metronome with accents, subdivisions, polyrhythms, silent bars, custom sounds and a large beat display
 - Scenes that restore routing, levels and metronome settings, and settings export and import

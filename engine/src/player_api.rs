@@ -3,6 +3,7 @@ use std::sync::Arc;
 use serde_json::{Value, json};
 
 use crate::decode;
+use crate::guide::Grid;
 use crate::player::Command;
 use crate::protocol::{ProtoError, Session};
 use crate::tempo;
@@ -107,6 +108,17 @@ pub fn control(session: &Session, params: &Value) -> Result<Value, ProtoError> {
             rate,
         );
         send(Command::CountIn { beats, spacing })?;
+    }
+    if let Some(g) = params.get("guide") {
+        let number = |key: &str| g.get(key).and_then(Value::as_f64).unwrap_or(0.0);
+        let bpm = number("bpm");
+        let enabled = g.get("enabled").and_then(Value::as_bool).unwrap_or(false) && bpm > 0.0;
+        send(Command::Guide(enabled.then(|| Grid {
+            frames_per_beat: f64::from(rate) * 60.0 / bpm,
+            offset: number("offsetMs") * f64::from(rate) / 1000.0,
+            beats_per_bar: number("beatsPerBar").clamp(1.0, 32.0) as u32,
+            downbeat: number("downbeat") as i64,
+        })))?;
     }
     if let Some(ms) = params.get("seekMs").and_then(Value::as_f64) {
         send(Command::Seek(ms_to_frames(ms, rate)))?;
