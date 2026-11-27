@@ -81,6 +81,10 @@ export function Topbar(props: TopbarProps) {
         <button class="krate-button krate-button-ghost krate-button-icon" type="button" aria-label="Keyboard shortcuts" showIf={!!props.panels} data-tip="Keyboard shortcuts" data-keys="?" onClick={shortcuts}>
           <Icon name="lucide:keyboard" />
         </button>
+        <Link class="krate-button krate-button-ghost krate-button-sm drum-link" href="/drums" aria-label="MIDI drums" data-tip="MIDI drums and kit settings">
+          <Icon name="lucide:drum" />
+          <span>Drums</span>
+        </Link>
         <Link class="krate-button krate-button-ghost krate-button-icon" href="/latency" aria-label="Latency" data-tip="Latency tools">
           <Icon name="lucide:timer" />
         </Link>
