@@ -29,6 +29,8 @@ import { formatDurationMs } from "../../lib/format";
 import { askConfirm, askForm, askText } from "../../lib/modal";
 import { splitTags, tagChanges } from "../../lib/tags";
 import { setQueue } from "../../lib/queue";
+import { pressedCommand } from "../../lib/keymap";
+import { panelShown } from "../../lib/workspace";
 import { handleError, onRefresh, logFailure, startAudioForUser } from "../../lib/service";
 import { currentPrefs, subscribePrefs } from "../../lib/prefs";
 import { AudioStream } from "../../../api/audio.go";
@@ -130,6 +132,13 @@ export function LibraryPanel() {
       void load();
     });
     onCleanup(off);
+    const onKey = (e: KeyboardEvent) => {
+      if (!panelShown("library")) return;
+      const hit = pressedCommand(e, "workspace", "library");
+      if (hit) runLibraryKey(hit.id.split(".")[1]);
+    };
+    window.addEventListener("keydown", onKey);
+    onCleanup(() => window.removeEventListener("keydown", onKey));
   });
 
   createEffect(() => {
@@ -187,6 +196,73 @@ export function LibraryPanel() {
       e.preventDefault();
       loadSong(list[at].id);
     }
+  }
+
+  function focusSongs() {
+    const list = songs();
+    if (list.length === 0) return;
+    if (!selectedSong()) setSelected(list[0].id);
+    (document.querySelector(".library-panel .song-list") as HTMLElement | null)?.focus();
+  }
+
+  function songMenuByKey() {
+    const row = document.querySelector('[data-song="' + selected() + '"]');
+    if (!row) return;
+    row.scrollIntoView({ block: "nearest" });
+    const box = row.getBoundingClientRect();
+    setMenuX(box.left + 24);
+    setMenuY(box.bottom);
+    setMenuOpen(true);
+  }
+
+  function stepPlaylist(delta: number) {
+    const ids = [0].concat(playlists().map((x) => x.id));
+    const at = Math.max(0, ids.indexOf(playlistId()));
+    setPlaylistId(ids[(at + delta + ids.length) % ids.length]);
+  }
+
+  function nextSort() {
+    const order = ["added", "title", "artist", "duration"];
+    setSort(order[(order.indexOf(sort()) + 1) % order.length]);
+  }
+
+  function runLibraryKey(name: string) {
+    const actions: Record<string, () => void> = {
+      search: () => {
+        const box = document.querySelector('.library-panel input[type="search"]') as HTMLInputElement | null;
+        box?.focus();
+        box?.select();
+      },
+      list: focusSongs,
+      import: () => {
+        if (!importing().running) void chooseFiles();
+      },
+      rescan: () => void rescan(),
+      sort: nextSort,
+      "list-previous": () => stepPlaylist(-1),
+      "list-next": () => stepPlaylist(1),
+      "list-new": () => void createList(),
+      "list-rename": () => void renameList(),
+      "list-delete": () => void deleteList(),
+    };
+    const onSong: Record<string, () => void> = {
+      edit: () => void edit(selected()),
+      menu: songMenuByKey,
+      up: () => void move(-1),
+      down: () => void move(1),
+      remove: () => void (playlistId() ? removeFromList() : forget()),
+      erase: () => void removeSong(),
+    };
+    if (actions[name]) {
+      actions[name]();
+      return;
+    }
+    if (!selectedSong()) {
+      setInfo("Select a song first. Press J, then use the arrow keys.");
+      return;
+    }
+    setInfo("");
+    onSong[name]?.();
   }
 
   async function guard(action: () => Promise<unknown>) {
@@ -394,6 +470,7 @@ export function LibraryPanel() {
             type="button"
             aria-label="Rescan the library folder"
             data-tip="Rescan the library folder"
+            data-command="library.rescan"
             onClick={rescan}
           >
             <Icon name="lucide:refresh-cw" />
@@ -403,6 +480,7 @@ export function LibraryPanel() {
             type="button"
             aria-label="Import songs"
             data-tip={playlistId() ? "Import songs into the open playlist" : "Import songs from files"}
+            data-command="library.import"
             disabled={importing().running}
             onClick={chooseFiles}
           >
@@ -442,6 +520,16 @@ export function LibraryPanel() {
             aria-label="Search the library"
             value={text()}
             onInput={(e: Event) => setText((e.target as HTMLInputElement).value)}
+            onKeyDown={(e: KeyboardEvent) => {
+              if (e.key === "ArrowDown") {
+                e.preventDefault();
+                e.stopPropagation();
+                focusSongs();
+              } else if (e.key === "Escape") {
+                setText("");
+                (e.target as HTMLInputElement).blur();
+              }
+            }}
           />
         </div>
         <div class="narrow-only">
@@ -459,6 +547,7 @@ export function LibraryPanel() {
             type="button"
             aria-label="New playlist"
             data-tip="New playlist"
+            data-command="library.list-new"
             onClick={createList}
           >
             <Icon name="lucide:list-plus" />
@@ -468,6 +557,7 @@ export function LibraryPanel() {
             type="button"
             aria-label="Rename playlist"
             data-tip="Rename the open playlist"
+            data-command="library.list-rename"
             disabled={!playlistId()}
             onClick={renameList}
           >
@@ -478,6 +568,7 @@ export function LibraryPanel() {
             type="button"
             aria-label="Delete playlist"
             data-tip="Delete the open playlist"
+            data-command="library.list-delete"
             disabled={!playlistId()}
             onClick={deleteList}
           >
@@ -495,6 +586,7 @@ export function LibraryPanel() {
               type="button"
               aria-label="New playlist"
               data-tip="New playlist"
+              data-command="library.list-new"
               onClick={createList}
             >
               <Icon name="lucide:plus" />
@@ -504,6 +596,7 @@ export function LibraryPanel() {
               type="button"
               aria-label="Rename playlist"
               data-tip="Rename the open playlist"
+              data-command="library.list-rename"
               disabled={!playlistId()}
               onClick={renameList}
             >
@@ -514,6 +607,7 @@ export function LibraryPanel() {
               type="button"
               aria-label="Delete playlist"
               data-tip="Delete the open playlist"
+              data-command="library.list-delete"
               disabled={!playlistId()}
               onClick={deleteList}
             >

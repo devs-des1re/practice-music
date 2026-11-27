@@ -1,5 +1,6 @@
 import { onMount, onCleanup } from "@krate/runtime";
 import { currentPrefs, ensurePrefs } from "../../lib/prefs";
+import { commandKeys } from "../../lib/keymap";
 
 const GAP = 6;
 const EDGE = 4;
@@ -26,7 +27,8 @@ export function TooltipHost() {
       const label = document.createElement("span");
       label.textContent = target.getAttribute("data-tip") || "";
       tip.appendChild(label);
-      const keys = target.getAttribute("data-keys");
+      const command = target.getAttribute("data-command");
+      const keys = command ? commandKeys(command) : target.getAttribute("data-keys");
       if (keys) {
         const key = document.createElement("span");
         key.className = "kbd";

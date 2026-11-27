@@ -947,8 +947,9 @@ input[type="number"].krate-input {
 .dialog {
   display: flex;
   flex-direction: column;
-  width: min(34rem, 100%);
-  max-height: 100%;
+  width: min(46rem, 100%);
+  max-height: calc(100vh - 2 * var(--space-4));
+  max-height: calc(100dvh - 2 * var(--space-4));
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius-lg);
   background: var(--color-surface);
@@ -1009,6 +1010,8 @@ input[type="number"].krate-input {
 
 .shortcut-keys {
   display: inline-flex;
+  flex-shrink: 0;
+  white-space: nowrap;
   gap: var(--space-1);
 }
 
@@ -5083,4 +5086,8 @@ input.param-row-value {
 
 .metro-panel[data-size="large"] .metro-volume {
   display: none;
+}
+
+.dialog-body:focus-visible {
+  outline: 0;
 }

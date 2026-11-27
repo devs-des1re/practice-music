@@ -33,7 +33,7 @@ import { PlayGlyph } from "../ui/glyphs";
 import { barAndBeat, formatClock, type SnapMode } from "../../lib/waveform";
 import { emptyPlayer } from "../../lib/player";
 import { neighbour } from "../../lib/queue";
-import { isTyping } from "../../lib/workspace";
+import { pressedCommand } from "../../lib/keymap";
 import { handleError, logFailure } from "../../lib/service";
 import type { PlayerState, Section } from "../../lib/types";
 
@@ -217,7 +217,8 @@ export function PlayerDeck(props: PlayerDeckProps) {
 
   function stepSpeed(delta: number) {
     if (!st().loaded) return;
-    const pct = Math.min(200, Math.max(25, Math.round(st().speed * 100) + delta));
+    const pct = Math.min(200, Math.max(25, speedShown() + delta));
+    setSpeedShown(pct);
     guard(() => PlayerSetSpeed(pct / 100));
   }
 
@@ -291,6 +292,68 @@ export function PlayerDeck(props: PlayerDeckProps) {
     guard(() => PlayerSetLoop(l.startMs, l.endMs, !l.enabled));
   }
 
+  function seekStep(direction: number, large: boolean) {
+    const seconds = large ? currentPrefs().seekLargeSeconds : currentPrefs().seekSeconds;
+    seekBy(direction * 1000 * seconds);
+  }
+
+  function stepPitch(delta: number) {
+    const to = Math.min(12, Math.max(-12, Math.round(pitchShown()) + delta));
+    setPitchShown(to);
+    guard(() => PlayerSetPitch(to));
+  }
+
+  function stepVolume(delta: number) {
+    const to = Math.min(120, Math.max(0, volumeShown() + delta));
+    setVolumeShown(to);
+    guard(() => PlayerSetVolume(to / 100));
+  }
+
+  function nextChoice(list: { value: string }[], value: string): string {
+    const at = list.findIndex((x) => x.value === value);
+    return list[(at + 1) % list.length].value;
+  }
+
+  function runPlayerKey(name: string, at: number) {
+    const actions: Record<string, () => void> = {
+      play: togglePlay,
+      stop,
+      previous,
+      next,
+      click: toggleClick,
+      reset: resetTempo,
+      back: () => seekStep(-1, false),
+      forward: () => seekStep(1, false),
+      "back-big": () => seekStep(-1, true),
+      "forward-big": () => seekStep(1, true),
+      slower: () => stepSpeed(-currentPrefs().speedStep),
+      faster: () => stepSpeed(currentPrefs().speedStep),
+      snap: () => setSnap(nextChoice(SNAPS, snap()) as SnapMode),
+      "count-in": () => guard(() => PlayerSetCountIn(Number(nextChoice(COUNT_INS, String(st().countIn))))),
+      tab: () => setSide(side() === "sections" ? "grid" : side() === "grid" ? "practice" : "sections"),
+    };
+    const needsSong: Record<string, () => void> = {
+      start: () => void guard(() => PlayerSeek(startOfPlay())),
+      select: () => setSelecting(!selecting()),
+      loop: toggleLoop,
+      "save-loop": () => void saveSection(),
+      "clear-loop": () => void guard(() => PlayerSetLoop(0, 0, false)),
+      section: () => {
+        const target = sections()[at];
+        if (target) applySection(target);
+      },
+      "pitch-down": () => stepPitch(-1),
+      "pitch-up": () => stepPitch(1),
+      quieter: () => stepVolume(-5),
+      louder: () => stepVolume(5),
+      detect: detectGrid,
+      "beat-one": markBeatOne,
+      grid: () => void editGrid(),
+    };
+    if (actions[name]) actions[name]();
+    else if (st().loaded && needsSong[name]) needsSong[name]();
+  }
+
   onMount(() => {
     let appliedSnap = "";
     onCleanup(
@@ -303,42 +366,12 @@ export function PlayerDeck(props: PlayerDeckProps) {
       }),
     );
     const onKey = (e: KeyboardEvent) => {
-      if (isTyping(e)) return;
-      const onWave = (e.target as HTMLElement | null)?.id === "waveform";
-      if (e.code === "Space") {
-        e.preventDefault();
-        togglePlay();
-      } else if (e.key === "Enter") {
-        e.preventDefault();
-        stop();
-      } else if (e.key === "Home") {
-        e.preventDefault();
-        if (st().loaded) guard(() => PlayerSeek(startOfPlay()));
-      } else if (e.key === "ArrowLeft" && !onWave) {
-        e.preventDefault();
-        seekBy(-1000 * (e.shiftKey ? currentPrefs().seekLargeSeconds : currentPrefs().seekSeconds));
-      } else if (e.key === "ArrowRight" && !onWave) {
-        e.preventDefault();
-        seekBy(1000 * (e.shiftKey ? currentPrefs().seekLargeSeconds : currentPrefs().seekSeconds));
-      } else if (e.key === "s" || e.key === "S") {
-        if (st().loaded) setSelecting(!selecting());
-      } else if (e.key === "Escape" && selecting()) {
+      if (e.key === "Escape" && selecting()) {
         setSelecting(false);
-      } else if (e.key === "k" || e.key === "K") {
-        toggleClick();
-      } else if (e.key === "l" || e.key === "L") {
-        toggleLoop();
-      } else if (e.key === "n" || e.key === "N") {
-        next();
-      } else if (e.key === "p" || e.key === "P") {
-        previous();
-      } else if (e.key === "-") {
-        stepSpeed(-currentPrefs().speedStep);
-      } else if (e.key === "=" || e.key === "+") {
-        stepSpeed(currentPrefs().speedStep);
-      } else if (e.key === "0") {
-        resetTempo();
+        return;
       }
+      const hit = pressedCommand(e, "workspace", "player");
+      if (hit) runPlayerKey(hit.id.split(".")[1], hit.at);
     };
     window.addEventListener("keydown", onKey);
     onCleanup(() => window.removeEventListener("keydown", onKey));
@@ -471,7 +504,7 @@ export function PlayerDeck(props: PlayerDeckProps) {
             type="button"
             aria-label="Previous"
             data-tip="Restart or previous song"
-            data-keys="P"
+            data-command="player.previous"
             disabled={!st().loaded}
             onClick={previous}
           >
@@ -482,7 +515,7 @@ export function PlayerDeck(props: PlayerDeckProps) {
             type="button"
             aria-label="Stop"
             data-tip="Stop and return"
-            data-keys="Enter"
+            data-command="player.stop"
             disabled={!st().loaded}
             onClick={stop}
           >
@@ -493,7 +526,7 @@ export function PlayerDeck(props: PlayerDeckProps) {
             type="button"
             aria-label="Play or pause"
             data-tip="Play or pause"
-            data-keys="Space"
+            data-command="player.play"
             data-on={st().playing ? "true" : "false"}
             disabled={!st().loaded}
             onClick={togglePlay}
@@ -505,7 +538,7 @@ export function PlayerDeck(props: PlayerDeckProps) {
             type="button"
             aria-label="Next"
             data-tip="Next song"
-            data-keys="N"
+            data-command="player.next"
             disabled={!st().loaded}
             onClick={next}
           >
@@ -518,7 +551,7 @@ export function PlayerDeck(props: PlayerDeckProps) {
             aria-label="Metronome with the song"
             aria-pressed={st().click}
             data-tip="Play the metronome in time with this song"
-            data-keys="K"
+            data-command="player.click"
             data-on={st().click ? "true" : "false"}
             disabled={!st().loaded}
             onClick={toggleClick}
@@ -532,7 +565,7 @@ export function PlayerDeck(props: PlayerDeckProps) {
             aria-label="Select a loop"
             aria-pressed={selecting()}
             data-tip="Select a loop, then drag on the timeline. Esc cancels."
-            data-keys="S"
+            data-command="player.select"
             data-on={selecting() ? "true" : "false"}
             disabled={!st().loaded}
             onClick={() => setSelecting(!selecting())}
@@ -545,7 +578,7 @@ export function PlayerDeck(props: PlayerDeckProps) {
             type="button"
             aria-label="Loop on or off"
             data-tip="Loop on or off"
-            data-keys="L"
+            data-command="player.loop"
             data-on={st().loop.enabled ? "true" : "false"}
             disabled={!st().loaded}
             onClick={toggleLoop}
@@ -557,6 +590,7 @@ export function PlayerDeck(props: PlayerDeckProps) {
             type="button"
             aria-label="Clear the loop"
             data-tip="Clear the loop"
+            data-command="player.clear-loop"
             disabled={!st().loaded || st().loop.endMs <= st().loop.startMs}
             onClick={() => guard(() => PlayerSetLoop(0, 0, false))}
           >
@@ -804,6 +838,7 @@ export function PlayerDeck(props: PlayerDeckProps) {
             type="button"
             disabled={!st().loop.enabled}
             data-tip="Save the current loop as a section"
+            data-command="player.save-loop"
             onClick={saveSection}
           >
             <Icon name="lucide:bookmark-plus" />
@@ -819,6 +854,7 @@ export function PlayerDeck(props: PlayerDeckProps) {
               type="button"
               disabled={!st().loaded}
               data-tip="Find the tempo from the audio"
+              data-command="player.detect"
               onClick={detectGrid}
             >
               <Icon name="lucide:scan-search" />
@@ -829,6 +865,7 @@ export function PlayerDeck(props: PlayerDeckProps) {
               type="button"
               disabled={!st().loaded}
               data-tip="Move beat one to the playhead"
+              data-command="player.beat-one"
               onClick={markBeatOne}
             >
               <Icon name="lucide:flag" />
@@ -866,7 +903,7 @@ export function PlayerDeck(props: PlayerDeckProps) {
             class="krate-button krate-button-secondary"
             type="button"
             data-tip="Reset speed and pitch"
-            data-keys="0"
+            data-command="player.reset"
             onClick={resetTempo}
           >
             <Icon name="lucide:rotate-ccw" />

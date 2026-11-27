@@ -33,6 +33,7 @@ export function Menu(props: MenuProps) {
       const top = Math.max(EDGE, Math.min(window.innerHeight - el.offsetHeight - EDGE, y));
       el.style.left = left + "px";
       el.style.top = top + "px";
+      (el.querySelector(".menu-item:not(:disabled)") as HTMLElement | null)?.focus({ preventScroll: true });
     });
   });
 
@@ -44,7 +45,20 @@ export function Menu(props: MenuProps) {
       props.onClose();
     };
     const key = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && props.open) props.onClose();
+      if (!props.open) return;
+      if (e.key === "Escape") {
+        props.onClose();
+        return;
+      }
+      if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+      const el = document.getElementById(props.id);
+      const items = Array.from(el?.querySelectorAll<HTMLElement>(".menu-item:not(:disabled)") || []);
+      if (items.length === 0) return;
+      e.preventDefault();
+      const at = items.indexOf(document.activeElement as HTMLElement);
+      const move = e.key === "ArrowDown" ? 1 : -1;
+      const next = at < 0 ? 0 : (at + move + items.length) % items.length;
+      items[next].focus({ preventScroll: true });
     };
     const leave = () => {
       if (props.open) props.onClose();

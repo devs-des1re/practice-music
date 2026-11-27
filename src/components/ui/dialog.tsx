@@ -38,7 +38,9 @@ export function Dialog(props: DialogProps) {
             <Icon name="lucide:x" />
           </button>
         </header>
-        <div class="dialog-body">{props.children}</div>
+        <div class="dialog-body" tabindex={-1}>
+          {props.children}
+        </div>
       </section>
     </div>
   );

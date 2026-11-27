@@ -25,6 +25,8 @@ import { LiveText } from "../ui/live-text";
 import { Menu, type MenuItem } from "../ui/menu";
 import { askConfirm, askText } from "../../lib/modal";
 import { DIVIDER, openContextMenu } from "../../lib/context-menu";
+import { pressedCommand } from "../../lib/keymap";
+import { panelShown } from "../../lib/workspace";
 import { channelPairs, inDisplayOrder, isListening, listenSend, sourceOptions } from "../../lib/mixer";
 import { formatClock } from "../../lib/waveform";
 import { handleError, onRefresh, logFailure } from "../../lib/service";
@@ -487,6 +489,86 @@ export function MixerPanel() {
     setSceneMenu(!sceneMenu());
   }
 
+  function levelWithin(db: number): number {
+    return Math.min(12, Math.max(-60, Math.round(db * 10) / 10));
+  }
+
+  function selectBeside(delta: number) {
+    const order = inDisplayOrder(board().strips).map((s) => s.index);
+    if (order.length === 0) return;
+    const at = Math.max(0, order.indexOf(selected()));
+    setSelected(order[(at + delta + order.length) % order.length]);
+    window.setTimeout(
+      () =>
+        document
+          .querySelector('.channels .strip[data-selected="true"]')
+          ?.scrollIntoView({ block: "nearest", inline: "nearest" }),
+      0,
+    );
+  }
+
+  function nudgeStrip(change: (s: MixerStrip) => MixerStrip) {
+    if (board().strips[selected()]) patchStrip(selected(), change);
+  }
+
+  function nextTab() {
+    const order = ["song", "channel", "routing"];
+    if (inspect()) setTab(order[(order.indexOf(tab()) + 1) % order.length]);
+    showInspector(true);
+  }
+
+  function runMixerKey(name: string, at: number) {
+    const step = faderStep();
+    const actions: Record<string, () => void> = {
+      previous: () => selectBeside(-1),
+      next: () => selectBeside(1),
+      up: () => nudgeStrip((x) => ({ ...x, gain: levelWithin(x.gain + step) })),
+      down: () => nudgeStrip((x) => ({ ...x, gain: levelWithin(x.gain - step) })),
+      unity: () => nudgeStrip((x) => ({ ...x, gain: 0 })),
+      mute: () => nudgeStrip((x) => ({ ...x, mute: !x.mute })),
+      solo: () => nudgeStrip((x) => ({ ...x, solo: !x.solo })),
+      listen: () => toggleListen(selected()),
+      "pan-left": () => nudgeStrip((x) => ({ ...x, pan: Math.max(-1, Math.round((x.pan - 0.1) * 100) / 100) })),
+      "pan-right": () => nudgeStrip((x) => ({ ...x, pan: Math.min(1, Math.round((x.pan + 0.1) * 100) / 100) })),
+      "pan-centre": () => nudgeStrip((x) => ({ ...x, pan: 0 })),
+      "send-down": () => nudgeStrip((x) => ({ ...x, monitor: levelWithin(x.monitor - 1) })),
+      "send-up": () => nudgeStrip((x) => ({ ...x, monitor: levelWithin(x.monitor + 1) })),
+      rename: () => {
+        if (board().strips[selected()]?.kind === "input") void renameChannel(selected());
+      },
+      "main-up": () => patchMaster((m) => ({ ...m, main: levelWithin(m.main + step) })),
+      "main-down": () => patchMaster((m) => ({ ...m, main: levelWithin(m.main - step) })),
+      "monitor-up": () => patchMaster((m) => ({ ...m, monitor: levelWithin(m.monitor + step) })),
+      "monitor-down": () => patchMaster((m) => ({ ...m, monitor: levelWithin(m.monitor - step) })),
+      limiter: () => patchMaster((m) => ({ ...m, limiter: !m.limiter })),
+      inspector: () => showInspector(!inspect()),
+      "inspector-tab": nextTab,
+      clear: () => void guard(() => ResetMeters()),
+      reset: () => void resetAll(),
+      "scene-save": () => void saveAs(),
+      "scene-update": () => {
+        if (active().id !== 0 && active().modified) void updateActive();
+      },
+      "scene-rename": () => void renameActive(),
+      "scene-delete": () => void removeActive(),
+      scene: () => {
+        const target = scenes()[at];
+        if (target) recall(target.id);
+      },
+    };
+    actions[name]?.();
+  }
+
+  onMount(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!panelShown("mixer")) return;
+      const hit = pressedCommand(e, "workspace", "mixer");
+      if (hit) runMixerKey(hit.id.split(".")[1], hit.at);
+    };
+    window.addEventListener("keydown", onKey);
+    onCleanup(() => window.removeEventListener("keydown", onKey));
+  });
+
   return (
     <section class="panel ws-panel mixer-panel" data-panel="mixer" aria-label="Mixer">
       <header class="panel-head" data-drag="true">
@@ -523,6 +605,7 @@ export function MixerPanel() {
             type="button"
             aria-label="Clear clip lights"
             data-tip="Clear clip lights and peaks"
+            data-command="mixer.clear"
             onClick={() => guard(() => ResetMeters())}
           >
             <Icon name="lucide:eraser" />
@@ -532,6 +615,7 @@ export function MixerPanel() {
             type="button"
             aria-label="Reset the mixer"
             data-tip="Reset every channel"
+            data-command="mixer.reset"
             onClick={resetAll}
           >
             <Icon name="lucide:rotate-ccw" />
@@ -541,6 +625,7 @@ export function MixerPanel() {
             type="button"
             aria-label="Channel settings"
             data-tip="Show or hide the inspector"
+            data-command="mixer.inspector"
             data-on={inspect() ? "true" : "false"}
             onClick={() => showInspector(!inspect())}
           >
@@ -649,6 +734,7 @@ export function MixerPanel() {
                     aria-pressed={s.main > -60}
                     aria-label={"Send " + s.name + " to the speakers"}
                     data-tip="Send this channel to your speakers with the music"
+                    data-command="mixer.listen"
                     onClick={() => toggleListen(s.index)}
                   >
                     <Icon name="lucide:volume-2" />
@@ -663,6 +749,7 @@ export function MixerPanel() {
                       aria-pressed={s.mute}
                       aria-label={"Mute " + s.name}
                       data-tip="Mute"
+                      data-command="mixer.mute"
                       onClick={() => patchStrip(s.index, (x) => ({ ...x, mute: !x.mute }))}
                     >
                       M
@@ -675,6 +762,7 @@ export function MixerPanel() {
                       aria-pressed={s.solo}
                       aria-label={"Solo " + s.name}
                       data-tip="Solo"
+                      data-command="mixer.solo"
                       onClick={() => patchStrip(s.index, (x) => ({ ...x, solo: !x.solo }))}
                     >
                       S
@@ -805,6 +893,7 @@ export function MixerPanel() {
                 data-on={board().master.limiter ? "true" : "false"}
                 aria-pressed={board().master.limiter}
                 data-tip="Master limiter. The ceiling is set under Routing."
+                data-command="mixer.limiter"
                 onClick={() => patchMaster((m) => ({ ...m, limiter: !m.limiter }))}
               >
                 <span class="led" data-on={board().master.limiter ? "true" : "false"} />

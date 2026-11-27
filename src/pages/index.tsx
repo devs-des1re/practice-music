@@ -1,6 +1,7 @@
 import { createSignal, createEffect, onMount, onCleanup } from "@krate/runtime";
 import { Topbar } from "../components/blocks/topbar";
-import { ShortcutsDialog } from "../components/blocks/shortcuts-dialog";
+import { ShortcutsHost } from "../components/blocks/shortcuts-dialog";
+import { chordOf, commandFor, popupOpen, pressedCommand } from "../lib/keymap";
 import { ServiceNotice } from "../components/blocks/service-notice";
 import { PlayerDeck } from "../components/blocks/player-deck";
 import { MetronomeDeck } from "../components/blocks/metronome-deck";
@@ -29,7 +30,7 @@ import {
   type PresetName,
   type Zone,
 } from "../lib/layout";
-import { defaultPanels, isTyping, loadPanels, savePanels, type PanelKey, type PanelSet } from "../lib/workspace";
+import { defaultPanels, loadPanels, savePanels, type PanelKey, type PanelSet } from "../lib/workspace";
 import { ModalHost } from "../components/blocks/modal-host";
 import { ContextHost } from "../components/blocks/context-host";
 import { TooltipHost } from "../components/ui/tooltip";
@@ -42,6 +43,8 @@ const MIN_HEIGHT = 150;
 const STACK_WIDTH = 1000;
 const MOVE_THRESHOLD = 6;
 const GUTTER = 8;
+const REVEAL_MS = 120;
+const ALL_FOLDS: PanelId[] = ["player", "metronome", "library", "mixer", "downloads", "browser"];
 
 interface GutterView {
   path: string;
@@ -102,7 +105,6 @@ export default function Workspace() {
   const [chipTitle, setChipTitle] = createSignal("");
   const [hintOn, setHintOn] = createSignal(false);
   const [resizePath, setResizePath] = createSignal(NOT_RESIZING);
-  const [shortcuts, setShortcuts] = createSignal(false);
   const [folds, setFolds] = createSignal<PanelId[]>([]);
   const [stage, setStage] = createSignal({ w: 0, h: 0 });
 
@@ -307,24 +309,47 @@ export default function Workspace() {
     if (commit && d.target) setLayout(move(layout(), d.id, d.target, d.zone));
   }
 
+  function runWorkspaceKey(name: string, at: number) {
+    if (name === "library" || name === "mixer" || name === "downloads" || name === "browser") {
+      setPanel(name, !panels()[name]);
+    } else if (name === "practice" || name === "mixing") {
+      applyPreset(name);
+    } else if (name === "reset") {
+      resetLayout();
+    } else if (name === "fold") {
+      toggleFold(ALL_FOLDS[at]);
+    }
+  }
+
+  function revealPanel(e: KeyboardEvent) {
+    if (e.defaultPrevented || popupOpen()) return;
+    if (e.target instanceof Element && e.target.matches("input, textarea, select")) return;
+    const hit = commandFor(chordOf(e), "workspace");
+    const area = hit ? hit.id.split(".")[0] : "";
+    if (area !== "library" && area !== "mixer" && area !== "downloads" && area !== "browser") return;
+    if (panels()[area]) return;
+    e.preventDefault();
+    setPanel(area, true);
+    const again = {
+      key: e.key,
+      code: e.code,
+      ctrlKey: e.ctrlKey,
+      metaKey: e.metaKey,
+      altKey: e.altKey,
+      shiftKey: e.shiftKey,
+      cancelable: true,
+    };
+    window.setTimeout(() => window.dispatchEvent(new KeyboardEvent("keydown", again)), REVEAL_MS);
+  }
+
   onMount(() => {
     const up = () => finish(true);
     const cancel = () => finish(false);
     const key = (e: KeyboardEvent) => {
       if (e.key === "Escape") finish(false);
-      if (e.altKey && !e.ctrlKey && !e.metaKey) {
-        const panel: Record<string, PanelKey> = { "1": "library", "2": "mixer", "3": "downloads", "4": "browser" };
-        const target = panel[e.key];
-        if (target) {
-          e.preventDefault();
-          setPanel(target, !panels()[target]);
-        }
-        return;
-      }
-      if (e.key === "?" && !isTyping(e)) {
-        e.preventDefault();
-        setShortcuts(!shortcuts());
-      }
+      const hit = pressedCommand(e, "workspace", "workspace");
+      if (hit) runWorkspaceKey(hit.id.split(".")[1], hit.at);
+      else revealPanel(e);
     };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", up);
@@ -348,7 +373,6 @@ export default function Workspace() {
         onToggle={(key) => setPanel(key, !panels()[key])}
         onPreset={applyPreset}
         onReset={resetLayout}
-        onShortcuts={() => setShortcuts(true)}
       />
       <ServiceNotice />
       <main class="ws">
@@ -392,7 +416,7 @@ export default function Workspace() {
           ))}
         </div>
       </main>
-      <ShortcutsDialog open={shortcuts()} onClose={() => setShortcuts(false)} />
+      <ShortcutsHost scope="workspace" />
       <div class="drop-hint" data-on={hintOn() ? "true" : "false"} />
       <div class="drag-chip" data-on={dragId() ? "true" : "false"}>
         {chipTitle()}

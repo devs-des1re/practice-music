@@ -7,7 +7,6 @@ export interface TopbarProps {
   onToggle?: (key: PanelKey) => void;
   onPreset?: (name: string) => void;
   onReset?: () => void;
-  onShortcuts?: () => void;
 }
 
 export function Topbar(props: TopbarProps) {
@@ -27,7 +26,7 @@ export function Topbar(props: TopbarProps) {
     if (props.onReset) props.onReset();
   };
   const shortcuts = () => {
-    if (props.onShortcuts) props.onShortcuts();
+    window.dispatchEvent(new CustomEvent("pm:help"));
   };
   const openLayout = (e: MouseEvent) => {
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -52,7 +51,7 @@ export function Topbar(props: TopbarProps) {
           type="button"
           aria-pressed={props.panels && props.panels.library ? "true" : "false"}
           data-tip="Show or hide the library"
-          data-keys="Alt+1"
+          data-command="workspace.library"
           onClick={() => toggle("library")}
         >
           <Icon name="lucide:library-big" />
@@ -63,7 +62,7 @@ export function Topbar(props: TopbarProps) {
           type="button"
           aria-pressed={props.panels && props.panels.mixer ? "true" : "false"}
           data-tip="Show or hide the mixer"
-          data-keys="Alt+2"
+          data-command="workspace.mixer"
           onClick={() => toggle("mixer")}
         >
           <Icon name="lucide:sliders-vertical" />
@@ -74,7 +73,7 @@ export function Topbar(props: TopbarProps) {
           type="button"
           aria-pressed={props.panels && props.panels.downloads ? "true" : "false"}
           data-tip="Show or hide downloads"
-          data-keys="Alt+3"
+          data-command="workspace.downloads"
           onClick={() => toggle("downloads")}
         >
           <Icon name="lucide:download" />
@@ -85,7 +84,7 @@ export function Topbar(props: TopbarProps) {
           type="button"
           aria-pressed={props.panels && props.panels.browser ? "true" : "false"}
           data-tip="Show or hide the browser"
-          data-keys="Alt+4"
+          data-command="workspace.browser"
           onClick={() => toggle("browser")}
         >
           <Icon name="lucide:globe" />
@@ -117,9 +116,8 @@ export function Topbar(props: TopbarProps) {
           class="krate-button krate-button-ghost krate-button-icon"
           type="button"
           aria-label="Keyboard shortcuts"
-          showIf={!!props.panels}
           data-tip="Keyboard shortcuts"
-          data-keys="?"
+          data-command="app.help"
           onClick={shortcuts}
         >
           <Icon name="lucide:keyboard" />
@@ -129,6 +127,7 @@ export function Topbar(props: TopbarProps) {
           href="/drums"
           aria-label="MIDI drums"
           data-tip="MIDI drums and kit settings"
+          data-command="app.drums"
         >
           <Icon name="lucide:drum" />
           <span>Drums</span>
@@ -138,6 +137,7 @@ export function Topbar(props: TopbarProps) {
           href="/latency"
           aria-label="Latency"
           data-tip="Latency tools"
+          data-command="app.latency"
         >
           <Icon name="lucide:timer" />
         </Link>
@@ -146,6 +146,7 @@ export function Topbar(props: TopbarProps) {
           href="/settings"
           aria-label="Settings"
           data-tip="Settings"
+          data-command="app.settings"
         >
           <Icon name="lucide:settings" />
         </Link>

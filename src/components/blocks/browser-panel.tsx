@@ -1,4 +1,6 @@
-import { createSignal, createEffect, onCleanup } from "@krate/runtime";
+import { createSignal, createEffect, onMount, onCleanup } from "@krate/runtime";
+import { pressedCommand } from "../../lib/keymap";
+import { panelShown } from "../../lib/workspace";
 import { EnqueueDownload } from "../../../api/downloads.go";
 import { OpenBrowser, BrowserGo, CloseBrowser, BrowserState } from "../../../api/browser.go";
 import { Select } from "../ui/select";
@@ -89,6 +91,24 @@ export function BrowserPanel(props: BrowserPanelProps) {
     }
   }
 
+  onMount(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!props.open || !panelShown("browser")) return;
+      const hit = pressedCommand(e, "workspace", "browser");
+      if (!hit) return;
+      if (hit.id === "browser.address") {
+        const box = document.getElementById("browser-address") as HTMLInputElement | null;
+        box?.focus();
+        box?.select();
+      } else if (!pane().open) return;
+      else if (hit.id === "browser.home") void go(HOME);
+      else if (hit.id === "browser.reload") void go(page());
+      else if (hit.id === "browser.download") void download();
+    };
+    window.addEventListener("keydown", onKey);
+    onCleanup(() => window.removeEventListener("keydown", onKey));
+  });
+
   return (
     <section class="panel ws-panel" data-panel="browser" aria-label="Browser">
       <header class="panel-head" data-drag="true">
@@ -124,6 +144,7 @@ export function BrowserPanel(props: BrowserPanelProps) {
           <div class="search-box grow">
             <Icon name="lucide:globe" />
             <input
+              id="browser-address"
               class="krate-input"
               type="text"
               aria-label="Address"

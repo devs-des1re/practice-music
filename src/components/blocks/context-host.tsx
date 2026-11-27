@@ -69,13 +69,12 @@ function pageItems(): ContextItem[] {
   const items: ContextItem[] = [];
   if (selected)
     items.push({ label: "Copy", keys: "Ctrl+C", onSelect: () => void document.execCommand("copy") }, DIVIDER);
-  if (onWorkspace)
-    items.push({
-      label: "Keyboard shortcuts",
-      keys: "?",
-      onSelect: () => press('.topbar [aria-label="Keyboard shortcuts"]'),
-    });
-  else items.push({ label: "Back to the workspace", onSelect: () => press('.topbar a[href="/"]') });
+  items.push({
+    label: "Keyboard shortcuts",
+    keys: "?",
+    onSelect: () => press('.topbar [aria-label="Keyboard shortcuts"]'),
+  });
+  if (!onWorkspace) items.push({ label: "Back to the workspace", onSelect: () => press('.topbar a[href="/"]') });
   items.push({ label: "Settings", onSelect: () => press('.topbar a[href="/settings"]') });
   items.push({ label: "Latency tools", onSelect: () => press('.topbar a[href="/latency"]') });
   return items;

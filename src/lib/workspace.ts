@@ -34,8 +34,7 @@ export function lowerCount(panels: PanelSet): number {
   return (Object.keys(panels) as PanelKey[]).filter((k) => panels[k]).length;
 }
 
-export function isTyping(e: KeyboardEvent): boolean {
-  const target = e.target as HTMLElement | null;
-  const tag = target ? target.tagName : "";
-  return tag === "INPUT" || tag === "SELECT" || tag === "TEXTAREA" || e.ctrlKey || e.metaKey || e.altKey;
+export function panelShown(name: string): boolean {
+  const el = document.querySelector('[data-tile="' + name + '"]');
+  return !!el && el.getClientRects().length > 0;
 }

@@ -17,6 +17,8 @@ import {
 import { AudioStream } from "../../api/audio.go";
 import { GetMixer, SetMixerStrip } from "../../api/session.go";
 import { Topbar } from "../components/blocks/topbar";
+import { ShortcutsHost } from "../components/blocks/shortcuts-dialog";
+import { pressedCommand } from "../lib/keymap";
 import { ServiceNotice } from "../components/blocks/service-notice";
 import { ModalHost } from "../components/blocks/modal-host";
 import { ContextHost } from "../components/blocks/context-host";
@@ -229,6 +231,16 @@ export default function DrumsPage() {
   onMount(() => {
     loadDrumPage().catch(drumFail("the drum settings could not be read"));
     DrumStatusNow().catch((e) => logFailure("drum status", e));
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && drumLearning()) {
+        setDrumLearning("");
+        return;
+      }
+      const hit = pressedCommand(e, "drums", "drums");
+      if (hit) runDrumKey(hit.id.split(".")[1]);
+    };
+    window.addEventListener("keydown", onKey);
+    onCleanup(() => window.removeEventListener("keydown", onKey));
     onCleanup(() => {
       for (const timer of Object.values(flashTimers)) window.clearTimeout(timer);
     });
@@ -452,6 +464,51 @@ export default function DrumsPage() {
     }
   }
 
+  function stepPad(delta: number) {
+    const ids = drumDraft()?.pads.map((x) => x.id) || [];
+    if (ids.length === 0) return;
+    const at = Math.max(0, ids.indexOf(drumSelected()));
+    setDrumSelected(ids[(at + delta + ids.length) % ids.length]);
+  }
+
+  function stepDrumLevel(delta: number) {
+    editDrumStrip((x) => ({ ...x, gain: Math.min(12, Math.max(-60, x.gain + delta)) }));
+  }
+
+  function stepPadLevel(delta: number) {
+    editPad((x) => ({ ...x, gainDb: Math.min(12, Math.max(-24, x.gainDb + delta)) }));
+  }
+
+  function runDrumKey(name: string) {
+    const id = drumSelected();
+    const installed = !!drumStatus().kit.installed;
+    const actions: Record<string, () => void> = {
+      previous: () => stepPad(-1),
+      next: () => stepPad(1),
+      play: () => playPad(id, 110),
+      "play-soft": () => playPad(id, 45),
+      learn: () => setDrumLearning(drumLearning() ? "" : id),
+      files: () => void chooseFiles(id),
+      "pad-down": () => stepPadLevel(-1),
+      "pad-up": () => stepPadLevel(1),
+      "pad-reset": () => void restorePad(id),
+      mute: () => editDrumStrip((x) => ({ ...x, mute: !x.mute })),
+      quieter: () => stepDrumLevel(-1),
+      louder: () => stepDrumLevel(1),
+      enable: () => editDrums((x) => ({ ...x, enabled: !x.enabled })),
+      listen: () => void stopListening(),
+      clear: () => setDrumHits([]),
+      download: () => {
+        if (!installed) void downloadKit();
+      },
+      remove: () => {
+        if (installed) void removeKit();
+      },
+      reset: () => void restoreAll(),
+    };
+    actions[name]?.();
+  }
+
   function padMenu(e: MouseEvent, id: string) {
     setDrumSelected(id);
     openContextMenu(e, [
@@ -470,6 +527,7 @@ export default function DrumsPage() {
       <ModalHost />
       <ContextHost />
       <TooltipHost />
+      <ShortcutsHost scope="drums" />
       <Topbar />
       <ServiceNotice />
       <div class="viewport">

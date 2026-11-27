@@ -1,5 +1,7 @@
 import { createSignal, createEffect, createMemo, onMount, onCleanup } from "@krate/runtime";
 import { Topbar } from "../components/blocks/topbar";
+import { ShortcutsHost } from "../components/blocks/shortcuts-dialog";
+import { pressedCommand } from "../lib/keymap";
 import { Devices, GetSettings, SaveSettings } from "../../api/host.go";
 import {
   AudioStream,
@@ -169,7 +171,34 @@ export default function LatencyPage() {
       .then((doc) => setModeSetting(doc.settings.audio.mode))
       .catch((e) => logger.error("could not read settings", e));
     syncClock().catch((e) => logger.error("clock sync failed", e));
+    const onShortcut = (e: KeyboardEvent) => {
+      const hit = pressedCommand(e, "latency", "latency");
+      if (hit && !(e.repeat && hit.id === "latency.press")) runLatencyKey(hit.id.split(".")[1], e);
+    };
+    window.addEventListener("keydown", onShortcut);
+    onCleanup(() => window.removeEventListener("keydown", onShortcut));
   });
+
+  function runLatencyKey(name: string, e: KeyboardEvent) {
+    const live = audio().running;
+    const actions: Record<string, () => void> = {
+      audio: () => {
+        if (!busy()) void toggleAudio();
+      },
+      press: () => onPress(e),
+      batch: () => {
+        if (live && !batch()) void runBatch();
+      },
+      reset: () => void ResetLatency(),
+      metronome: () => {
+        if (live) void applyMetronome(!audio().metronome.running);
+      },
+      loopback: () => {
+        if (!loopBusy()) void runLoopback();
+      },
+    };
+    actions[name]?.();
+  }
 
   async function toggleAudio() {
     setBusy(true);
@@ -298,6 +327,7 @@ export default function LatencyPage() {
   return (
     <div class="screen">
       <ModalHost />
+      <ShortcutsHost scope="latency" />
       <ContextHost />
       <TooltipHost />
       <Topbar />

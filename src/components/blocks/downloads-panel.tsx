@@ -1,4 +1,6 @@
-import { createSignal, createEffect, createMemo, onMount } from "@krate/runtime";
+import { createSignal, createEffect, createMemo, onMount, onCleanup } from "@krate/runtime";
+import { pressedCommand } from "../../lib/keymap";
+import { panelShown } from "../../lib/workspace";
 import {
   EnqueueDownload,
   CancelDownload,
@@ -58,6 +60,16 @@ export function DownloadsPanel() {
     ToolStatus()
       .then((st) => setTools(st))
       .catch((e) => logFailure("tool status failed", e));
+    const onKey = (e: KeyboardEvent) => {
+      if (!panelShown("downloads")) return;
+      const hit = pressedCommand(e, "workspace", "downloads");
+      if (!hit) return;
+      if (hit.id === "downloads.new") void add();
+      else if (hit.id === "downloads.clear" && jobs().length > 0) void clearFinished();
+      else if (hit.id === "downloads.check" && !tools().ytDlp.busy) void guard(() => CheckTools());
+    };
+    window.addEventListener("keydown", onKey);
+    onCleanup(() => window.removeEventListener("keydown", onKey));
   });
 
   async function guard(action: () => Promise<unknown>) {
@@ -146,12 +158,20 @@ export function DownloadsPanel() {
             class="krate-button krate-button-secondary krate-button-sm"
             type="button"
             disabled={jobs().length === 0}
+            data-tip="Remove finished downloads from the list"
+            data-command="downloads.clear"
             onClick={clearFinished}
           >
             <Icon name="lucide:eraser" />
             Clear finished
           </button>
-          <button class="krate-button krate-button-primary krate-button-sm" type="button" onClick={add}>
+          <button
+            class="krate-button krate-button-primary krate-button-sm"
+            type="button"
+            data-tip="Download from a link"
+            data-command="downloads.new"
+            onClick={add}
+          >
             <Icon name="lucide:plus" />
             New download
           </button>

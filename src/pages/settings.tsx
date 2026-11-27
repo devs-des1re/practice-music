@@ -1,4 +1,4 @@
-import { createSignal, createEffect, createMemo, onMount } from "@krate/runtime";
+import { createSignal, createEffect, createMemo, onMount, onCleanup } from "@krate/runtime";
 import { openFile, openFolder, saveFile } from "@krate/app/dialog";
 import { LowLatencyDevices } from "../../api/audio.go";
 import { Engine, GetSettings, RestartEngine, SaveSettings } from "../../api/host.go";
@@ -12,6 +12,8 @@ import { Readout } from "../components/ui/readout";
 import { StatusDot } from "../components/ui/status-dot";
 import { LiveText } from "../components/ui/live-text";
 import { Topbar } from "../components/blocks/topbar";
+import { ShortcutsHost } from "../components/blocks/shortcuts-dialog";
+import { pressedCommand } from "../lib/keymap";
 import { applyScale } from "../lib/appearance";
 import { applyPrefs } from "../lib/prefs";
 import { DOWNLOAD_CHOICES, FALLBACK_PREFERENCES } from "../lib/prefs-model";
@@ -155,7 +157,39 @@ export default function SettingsPage() {
       logger.error("could not read settings", e);
       setError(describe(e));
     });
+    const onKey = (e: KeyboardEvent) => {
+      const hit = pressedCommand(e, "settings", "settings");
+      if (hit) runSettingsKey(hit.id.split(".")[1], hit.at);
+    };
+    window.addEventListener("keydown", onKey);
+    onCleanup(() => window.removeEventListener("keydown", onKey));
   });
+
+  function runSettingsKey(name: string, at: number) {
+    const sections = [
+      "audio",
+      "engine",
+      "library",
+      "appearance",
+      "mixer",
+      "player",
+      "metronome",
+      "downloads",
+      "backup",
+    ];
+    const actions: Record<string, () => void> = {
+      section: () => setSection(sections[at]),
+      devices: () => {
+        if (!devicesLoading()) rescan();
+      },
+      engine: () => void RestartEngine(),
+      folder: () => void addFolder(),
+      export: () => void exportAll(),
+      import: () => void importAll(),
+      reset: () => void resetPreferences(),
+    };
+    actions[name]?.();
+  }
 
   async function persist() {
     if (saving.running) {
@@ -389,6 +423,7 @@ export default function SettingsPage() {
       <ModalHost />
       <ContextHost />
       <TooltipHost />
+      <ShortcutsHost scope="settings" />
       <Topbar />
       <div class="viewport">
         <main class="page settings-page">

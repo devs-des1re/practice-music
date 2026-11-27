@@ -25,7 +25,7 @@ import { DIVIDER, openContextMenu } from "../../lib/context-menu";
 import { PlayerSetClick, PlayerStream } from "../../../api/player.go";
 import { currentPrefs } from "../../lib/prefs";
 import { SUBDIVISIONS, accentLabel, barCaption, cleanBpm, cycleAccent, polyLabel } from "../../lib/mixer";
-import { isTyping } from "../../lib/workspace";
+import { pressedCommand } from "../../lib/keymap";
 import { handleError, onRefresh, startAudioForUser, logFailure } from "../../lib/service";
 import type { AudioState, MetronomeSetup } from "../../lib/types";
 
@@ -308,6 +308,42 @@ export function MetronomeDeck() {
     });
   }
 
+  function stepClickVolume(delta: number) {
+    update({ volume: Math.min(1, Math.max(0, Math.round((cfg().volume + delta) * 100) / 100)) });
+  }
+
+  function stepBeats(delta: number) {
+    update({ beatsPerBar: Math.min(BEATS.length, Math.max(1, cfg().beatsPerBar + delta)) });
+  }
+
+  function nextSubdivision() {
+    const at = SUBDIVISIONS.findIndex((x) => x.value === String(cfg().subdivision));
+    update({ subdivision: Number(SUBDIVISIONS[(at + 1) % SUBDIVISIONS.length].value) });
+  }
+
+  function runMetroKey(name: string, at: number) {
+    const actions: Record<string, () => void> = {
+      run: toggleRun,
+      tap,
+      faster: () => nudge(1, false),
+      slower: () => nudge(-1, false),
+      "faster-big": () => nudge(1, true),
+      "slower-big": () => nudge(-1, true),
+      quieter: () => stepClickVolume(-0.05),
+      louder: () => stepClickVolume(0.05),
+      fewer: () => stepBeats(-1),
+      more: () => stepBeats(1),
+      subdivision: nextSubdivision,
+      accent: () => {
+        if (at < cfg().accents.length) cycle(at);
+      },
+      large: toggleLarge,
+      view: () => setView(view() === "play" ? "time" : view() === "time" ? "setup" : "play"),
+      silent: () => void editSilentBars(),
+    };
+    actions[name]?.();
+  }
+
   onMount(() => {
     setLarge(localStorage.getItem(LARGE_KEY) === "1");
     const off = onRefresh(() => {
@@ -317,18 +353,8 @@ export function MetronomeDeck() {
     });
     onCleanup(off);
     const onKey = (e: KeyboardEvent) => {
-      if (isTyping(e)) return;
-      if (e.key === "m" || e.key === "M") {
-        toggleRun();
-      } else if (e.key === "t" || e.key === "T") {
-        tap();
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        nudge(1, e.shiftKey);
-      } else if (e.key === "ArrowDown") {
-        e.preventDefault();
-        nudge(-1, e.shiftKey);
-      }
+      const hit = pressedCommand(e, "workspace", "metro");
+      if (hit) runMetroKey(hit.id.split(".")[1], hit.at);
     };
     window.addEventListener("keydown", onKey);
     onCleanup(() => window.removeEventListener("keydown", onKey));
@@ -353,7 +379,7 @@ export function MetronomeDeck() {
             type="button"
             aria-label="Start or stop the click"
             data-tip="Start or stop the click"
-            data-keys="M"
+            data-command="metro.run"
             data-on={audio().metronome.running ? "true" : "false"}
             onClick={toggleRun}
           >
@@ -403,6 +429,7 @@ export function MetronomeDeck() {
             type="button"
             aria-label="Large display"
             data-tip="Large display for playing along"
+            data-command="metro.large"
             data-on={large() ? "true" : "false"}
             onClick={toggleLarge}
           >
@@ -439,7 +466,7 @@ export function MetronomeDeck() {
               type="button"
               aria-label="Faster"
               data-tip="Faster. Hold Shift for the larger step."
-              data-keys="Up"
+              data-command="metro.faster"
               onClick={(e: MouseEvent) => nudge(1, e.shiftKey)}
             >
               <Icon name="lucide:plus" />
@@ -449,7 +476,7 @@ export function MetronomeDeck() {
               type="button"
               aria-label="Slower"
               data-tip="Slower. Hold Shift for the larger step."
-              data-keys="Down"
+              data-command="metro.slower"
               onClick={(e: MouseEvent) => nudge(-1, e.shiftKey)}
             >
               <Icon name="lucide:minus" />
@@ -477,7 +504,7 @@ export function MetronomeDeck() {
             class="krate-button krate-button-primary"
             type="button"
             data-tip="Start or stop the click"
-            data-keys="M"
+            data-command="metro.run"
             onClick={toggleRun}
           >
             <RunGlyph on={audio().metronome.running} offLabel="Start" onLabel="Stop" />
@@ -486,7 +513,7 @@ export function MetronomeDeck() {
             class="krate-button krate-button-secondary"
             type="button"
             data-tip="Tap the tempo"
-            data-keys="T"
+            data-command="metro.tap"
             onClick={tap}
           >
             <Icon name="lucide:hand" />
@@ -498,7 +525,7 @@ export function MetronomeDeck() {
             aria-pressed={songClick()}
             data-on={songClick() ? "true" : "false"}
             data-tip="Click in time with the loaded song, at its tempo"
-            data-keys="K"
+            data-command="player.click"
             disabled={!songLoaded()}
             onClick={() => guard(() => PlayerSetClick(!songClick()))}
           >

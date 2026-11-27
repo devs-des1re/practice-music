@@ -39,7 +39,8 @@ In place so far:
 - Console style mixer with a colour coded channel strip per source, a live level inside each fader with peak readouts, a Listen button that sends a channel to your speakers, pan, mute, solo, a headphone monitor send, a master section with its own limiter, and an adjustable inspector for EQ, compressor and routing
 - Metronome that can collapse into a compact control bar or switch to a large display for playing along
 - Library table with sortable columns, a playlist and tag rail, keyboard browsing and a right click menu for song actions
-- Keyboard shortcuts for the transport, metronome and panels (press ? in the app for the full list) and tooltips on every control
+- Keyboard shortcuts on every page (press ? in the app for the list for that page) and tooltips on every control
+- Volume numbers you can type into, and imports that join the playlist you have open
 - Sampled drums played from an e-kit over MIDI, with velocity layers, choking, your own sound files, per-pad settings, a hit monitor and a Drums mixer channel
 
 ## Requirements
@@ -94,6 +95,19 @@ Build the installers for the system you are on: NSIS on Windows (needs NSIS on y
 ```sh
 npm run package
 ```
+
+## Keyboard
+
+Press `?` or `F1` on any page to see its shortcuts. Shortcuts pause while you type or while a popup is open.
+
+| Keys               | What they do                                                                  |
+| ------------------ | ----------------------------------------------------------------------------- |
+| `Space`, `Enter`   | Play or pause, stop                                                           |
+| `M`, `T`, up, down | Start the click, tap the tempo, change the tempo                              |
+| `Alt` and arrows   | Choose a mixer channel and change its level                                   |
+| `J`, `/`, `Ctrl+O` | Go to the song list, search, import                                           |
+| `Ctrl+1` to `4`    | Workspace, Drums, Latency tools, Settings                                     |
+| `Tab`              | Reach any other control, then press `Space` or `Enter`, or use the arrow keys |
 
 ## Drums over MIDI
 
