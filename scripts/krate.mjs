@@ -22,11 +22,16 @@ const resolved = goroot();
 if (resolved) env.GOROOT = resolved;
 else delete env.GOROOT;
 
+const pathKey = Object.keys(env).find((key) => key.toUpperCase() === "PATH") || "PATH";
+env[pathKey] = path.join(root, "node_modules", ".bin") + path.delimiter + (env[pathKey] || "");
+
 const result = spawnSync("krate", process.argv.slice(2), {
   cwd: root,
   env,
   stdio: "inherit",
   shell: process.platform === "win32",
 });
+
+if (result.error) console.error("krate could not be started: " + result.error.message);
 
 process.exit(result.status ?? 1);
