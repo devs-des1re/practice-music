@@ -7,6 +7,8 @@ use crate::audio::{self, AudioHandle};
 use crate::devices;
 use crate::loopback;
 use crate::metronome_api;
+use crate::midi;
+use crate::midi_api;
 use crate::mixer_api;
 use crate::player_api::{self, Loaded};
 
@@ -52,6 +54,7 @@ pub struct Session {
     pub audio: Option<AudioHandle>,
     pub loaded: Option<Loaded>,
     pub events: Option<Sender<String>>,
+    pub midi: Option<midi::Link>,
 }
 
 impl Session {
@@ -61,6 +64,7 @@ impl Session {
             audio: None,
             loaded: None,
             events: Some(events),
+            midi: None,
         }
     }
 }
@@ -218,6 +222,10 @@ fn dispatch(session: &mut Session, request: &Request, recv_us: u64) -> Result<Va
             handle.shared.meters.reset_clips();
             Ok(json!({ "ok": true }))
         }),
+        "midi_ports" => require_greeted(session).and_then(|_| midi_api::ports(session)),
+        "midi_open" => {
+            require_greeted(session).and_then(|_| midi_api::open(session, &request.params))
+        }
         "shutdown" => Ok(json!({ "bye": true })),
         other => Err(ProtoError::new(
             "unknown_method",
@@ -393,7 +401,14 @@ mod tests {
     fn click_and_metronome_need_running_audio() {
         let mut session = Session::default();
         run(&mut session, r#"{"v":1,"id":1,"method":"hello"}"#);
-        for method in ["click", "metronome_set", "mixer_set", "mixer_get", "meters_reset", "metronome_sound"] {
+        for method in [
+            "click",
+            "metronome_set",
+            "mixer_set",
+            "mixer_get",
+            "meters_reset",
+            "metronome_sound",
+        ] {
             let line = format!(r#"{{"v":1,"id":2,"method":"{method}","params":{{"bpm":120}}}}"#);
             let reply = run(&mut session, &line);
             assert_eq!(reply["error"]["code"], "audio_not_started", "{method}");

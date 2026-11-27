@@ -7,6 +7,8 @@ mod fx;
 mod guide;
 mod loopback;
 mod metronome_api;
+mod midi;
+mod midi_api;
 mod mixer;
 mod mixer_api;
 mod player;
