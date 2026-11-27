@@ -4751,3 +4751,12 @@ input[type="number"].krate-input {
   box-shadow: inset 0 0 0 1px var(--color-song);
 }
 
+.deck-foot .foot-body .segmented {
+  gap: var(--space-0);
+  padding: 2px;
+  border-radius: var(--radius);
+}
+
+.deck-foot .foot-body .segment {
+  border-radius: var(--radius-sm);
+}
