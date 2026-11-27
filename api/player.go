@@ -404,5 +404,11 @@ func reloadPlayer() {
 	if st.Pitch != 0 {
 		_ = PlayerSetPitch(st.Pitch)
 	}
+	if err := PlayerSetVolume(st.Volume); err != nil {
+		logger.Warnf("the song volume was not restored: %v", err)
+	}
+	if st.CountIn != 0 {
+		_ = PlayerSetCountIn(st.CountIn)
+	}
 	_ = PlayerSeek(st.PositionMs)
 }
