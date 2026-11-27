@@ -23,6 +23,7 @@ import { emptyDevices } from "../lib/devices";
 import { formatMs } from "../lib/format";
 import { logger } from "../lib/logger";
 import type { AudioState, DeviceList, LatencyState, LoopbackResult } from "../lib/types";
+import { NumberInput } from "../components/ui/number-input";
 
 const emptyAudio: AudioState = {
   running: false,
@@ -313,31 +314,31 @@ export default function LatencyPage() {
             <PanelBody>
               <div class="field-row">
                 <Field label="Tempo" htmlFor="metro-bpm">
-                  <input
+                  <NumberInput
                     id="metro-bpm"
                     class="krate-input"
-                    type="number"
-                    min="20"
-                    max="400"
-                    step="1"
-                    value={String(bpm())}
-                    onChange={(e: Event) => {
-                      setBpm(Number((e.target as HTMLInputElement).value));
+                    label="Tempo"
+                    value={bpm()}
+                    min={20}
+                    max={400}
+                    decimals={1}
+                    onCommit={(v) => {
+                      setBpm(v);
                       applyMetronome(audio().metronome.running);
                     }}
                   />
                 </Field>
                 <Field label="Beats per bar" htmlFor="metro-beats">
-                  <input
+                  <NumberInput
                     id="metro-beats"
                     class="krate-input"
-                    type="number"
-                    min="1"
-                    max="32"
-                    step="1"
-                    value={String(beats())}
-                    onChange={(e: Event) => {
-                      setBeats(Number((e.target as HTMLInputElement).value));
+                    label="Beats per bar"
+                    value={beats()}
+                    min={1}
+                    max={32}
+                    decimals={0}
+                    onCommit={(v) => {
+                      setBeats(v);
                       applyMetronome(audio().metronome.running);
                     }}
                   />

@@ -18,6 +18,7 @@ import { emptyEngine } from "../lib/engine";
 import type { AppSettings, DeviceList, EngineStatus } from "../lib/types";
 import { bufferLatencyMs, formatRate, formatRates, stateLabel, stateTone } from "../lib/format";
 import { logger } from "../lib/logger";
+import { askConfirm } from "../lib/modal";
 
 interface LowDevice {
   id: string;
@@ -180,6 +181,11 @@ export default function SettingsPage() {
     }
     return "Supported: " + min + " to " + max + " frames (" + bufferLatencyMs(min, rate) + " to " + bufferLatencyMs(max, rate) + ").";
   });
+
+  async function removeFolder(folder: string, index: number) {
+    const yes = await askConfirm({ title: "Remove library folder", message: "Stop watching " + folder + "? The files stay on disk. Save settings to keep this change.", confirmLabel: "Remove folder", danger: true });
+    if (yes) edit((s) => s.library.folders.splice(index, 1));
+  }
 
   async function addFolder() {
     try {
@@ -495,7 +501,7 @@ export default function SettingsPage() {
                     class="krate-button krate-button-ghost krate-button-icon krate-button-sm"
                     type="button"
                     aria-label={"Remove " + f}
-                    onClick={() => edit((s) => s.library.folders.splice(i, 1))}
+                    onClick={() => removeFolder(f, i)}
                   >
                     <Icon name="lucide:x" />
                   </button>

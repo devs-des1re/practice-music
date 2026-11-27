@@ -16,7 +16,6 @@ export function Topbar(props: TopbarProps) {
   const [layoutX, setLayoutX] = createSignal(0);
   const [layoutY, setLayoutY] = createSignal(0);
 
-  const on = (key: PanelKey) => (props.panels ? props.panels[key] : false);
   const toggle = (key: PanelKey) => {
     if (props.onToggle) props.onToggle(key);
     setMenu(false);
@@ -48,19 +47,19 @@ export function Topbar(props: TopbarProps) {
       </Link>
 
       <nav class="nav-tabs" aria-label="Panels" showIf={!!props.panels}>
-        <button class="tab" type="button" aria-pressed={on("library") ? "true" : "false"} data-tip="Show or hide the library" data-keys="Alt+1" onClick={() => toggle("library")}>
+        <button class="tab" type="button" aria-pressed={props.panels && props.panels.library ? "true" : "false"} data-tip="Show or hide the library" data-keys="Alt+1" onClick={() => toggle("library")}>
           <Icon name="lucide:library-big" />
           <span>Library</span>
         </button>
-        <button class="tab" type="button" aria-pressed={on("mixer") ? "true" : "false"} data-tip="Show or hide the mixer" data-keys="Alt+2" onClick={() => toggle("mixer")}>
+        <button class="tab" type="button" aria-pressed={props.panels && props.panels.mixer ? "true" : "false"} data-tip="Show or hide the mixer" data-keys="Alt+2" onClick={() => toggle("mixer")}>
           <Icon name="lucide:sliders-vertical" />
           <span>Mixer</span>
         </button>
-        <button class="tab" type="button" aria-pressed={on("downloads") ? "true" : "false"} data-tip="Show or hide downloads" data-keys="Alt+3" onClick={() => toggle("downloads")}>
+        <button class="tab" type="button" aria-pressed={props.panels && props.panels.downloads ? "true" : "false"} data-tip="Show or hide downloads" data-keys="Alt+3" onClick={() => toggle("downloads")}>
           <Icon name="lucide:download" />
           <span>Downloads</span>
         </button>
-        <button class="tab" type="button" aria-pressed={on("browser") ? "true" : "false"} data-tip="Show or hide the browser" data-keys="Alt+4" onClick={() => toggle("browser")}>
+        <button class="tab" type="button" aria-pressed={props.panels && props.panels.browser ? "true" : "false"} data-tip="Show or hide the browser" data-keys="Alt+4" onClick={() => toggle("browser")}>
           <Icon name="lucide:globe" />
           <span>Browser</span>
         </button>

@@ -1,5 +1,4 @@
 import { createSignal, createEffect, onMount, onCleanup } from "@krate/runtime";
-import { confirm } from "@krate/app/dialog";
 import { AudioStream } from "../../../api/audio.go";
 import {
   GetMixer,
@@ -11,7 +10,7 @@ import {
   ActiveScene,
 } from "../../../api/session.go";
 import { PlayerStream } from "../../../api/player.go";
-import { Scenes, SaveScene, RecallScene, DeleteScene, SceneRevision } from "../../../api/scenes.go";
+import { Scenes, SaveScene, RecallScene, RenameScene, DeleteScene, SceneRevision } from "../../../api/scenes.go";
 import { GainReduction, Meter, PeakReadout } from "./meter";
 import { Fader } from "../ui/fader";
 import { Field } from "../ui/field";
@@ -21,6 +20,8 @@ import { Select } from "../ui/select";
 import { FoldButton } from "../ui/fold-button";
 import { Notice } from "../ui/notice";
 import { LiveText } from "../ui/live-text";
+import { Menu, type MenuItem } from "../ui/menu";
+import { askConfirm, askText } from "../../lib/modal";
 import { channelPairs, formatDb, sourceOptions } from "../../lib/mixer";
 import { formatClock } from "../../lib/waveform";
 import { handleError, onRefresh, logFailure } from "../../lib/service";
@@ -104,7 +105,10 @@ export function MixerPanel() {
   const [audio, setAudio] = createSignal<AudioState>(emptyAudio);
   const [scenes, setScenes] = createSignal<SceneInfo[]>([]);
   const [active, setActive] = createSignal<SceneStatus>({ id: 0, name: "", modified: false });
-  const [sceneName, setSceneName] = createSignal("");
+  const [sceneMenu, setSceneMenu] = createSignal(false);
+  const [sceneMenuX, setSceneMenuX] = createSignal(0);
+  const [sceneMenuY, setSceneMenuY] = createSignal(0);
+  const [sceneItems, setSceneItems] = createSignal<MenuItem[]>([]);
   const [latOut, setLatOut] = createSignal("audio stopped");
   const [latMode, setLatMode] = createSignal("-");
   const [latInputs, setLatInputs] = createSignal("no input device chosen");
@@ -311,46 +315,81 @@ export function MixerPanel() {
     });
   }
 
-  function saveAs() {
-    const name = sceneName().trim();
-    if (!name) {
-      setError("Give the scene a name first.");
-      return;
+  async function saveAs() {
+    const name = await askText({ title: "Save scene", label: "Scene name", confirmLabel: "Save scene", placeholder: "Rehearsal mix", maxLength: 40 });
+    if (!name) return;
+    if (scenes().some((sc) => sc.name.toLowerCase() === name.toLowerCase())) {
+      const replace = await askConfirm({ title: "Replace scene", message: "A scene called " + name + " already exists. Replace it with the current mix?", confirmLabel: "Replace", danger: true });
+      if (!replace) return;
     }
     guard(async () => {
       const scene = await SaveScene(name);
-      setSceneName("");
       setInfo("Scene " + scene.name + " saved.");
     });
   }
 
-  function updateActive() {
+  async function updateActive() {
     const name = active().name;
     if (!name) return;
+    const yes = await askConfirm({ title: "Update scene", message: "Overwrite the scene " + name + " with the current mix?", confirmLabel: "Update" });
+    if (!yes) return;
     guard(async () => {
       const scene = await SaveScene(name);
       setInfo("Scene " + scene.name + " updated.");
     });
   }
 
-  function removeActive() {
+  async function renameActive() {
     const current = active();
     if (current.id === 0) return;
+    const name = await askText({ title: "Rename scene", label: "Scene name", confirmLabel: "Rename", value: current.name, maxLength: 40 });
+    if (!name || name === current.name) return;
     guard(async () => {
-      const yes = await confirm("Delete scene", "Delete the scene " + current.name + "? This cannot be undone.");
-      if (!yes) return;
+      await RenameScene(current.id, name);
+      setInfo("Scene renamed to " + name + ".");
+    });
+  }
+
+  async function removeActive() {
+    const current = active();
+    if (current.id === 0) return;
+    const yes = await askConfirm({ title: "Delete scene", message: "Delete the scene " + current.name + "? This cannot be undone.", confirmLabel: "Delete scene", danger: true });
+    if (!yes) return;
+    guard(async () => {
       await DeleteScene(current.id);
       setInfo("Scene deleted.");
     });
   }
 
-  function resetAll() {
+  async function resetAll() {
+    const yes = await askConfirm({ title: "Reset mixer", message: "Put every fader, send, EQ and compressor back to its default?", confirmLabel: "Reset mixer", danger: true });
+    if (!yes) return;
     guard(async () => {
-      const yes = await confirm("Reset mixer", "Put every fader, send, EQ and compressor back to its default?");
-      if (!yes) return;
       await ResetMixer();
       setInfo("Mixer reset.");
     });
+  }
+
+  async function renameChannel(index: number) {
+    const current = board().strips[index];
+    if (!current) return;
+    const name = await askText({ title: "Rename channel", label: "Channel name", confirmLabel: "Rename", value: current.name, maxLength: 24 });
+    if (name) patchStrip(index, (x) => ({ ...x, name }));
+  }
+
+  function openSceneMenu(e: MouseEvent) {
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const none = active().id === 0;
+    setSceneItems([
+      { label: "Save as new scene", onSelect: () => saveAs() },
+      { label: "Update current scene", disabled: none || !active().modified, onSelect: () => updateActive() },
+      { label: "Rename current scene", disabled: none, onSelect: () => renameActive() },
+      { label: "", separator: true },
+      { label: "Delete current scene", tone: "danger", disabled: none, onSelect: () => removeActive() },
+    ]);
+    setSceneMenuX(r.left);
+    setSceneMenuY(r.bottom + 2);
+    setSceneMenu(!sceneMenu());
   }
 
   return (
@@ -370,26 +409,10 @@ export function MixerPanel() {
               if (Number(v)) recall(Number(v));
             }}
           />
-          <input
-            class="krate-input scene-name"
-            type="text"
-            placeholder="Scene name"
-            aria-label="Scene name"
-            maxLength={40}
-            value={sceneName()}
-            onInput={(e: Event) => setSceneName((e.target as HTMLInputElement).value)}
-            onKeyDown={(e: KeyboardEvent) => {
-              if (e.key === "Enter") saveAs();
-            }}
-          />
-          <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Save as a new scene" data-tip="Save as a new scene" onClick={saveAs}>
-            <Icon name="lucide:save" />
-          </button>
-          <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Update the current scene" data-tip="Update the current scene" disabled={active().id === 0 || !active().modified} onClick={updateActive}>
-            <Icon name="lucide:refresh-cw" />
-          </button>
-          <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Delete the current scene" data-tip="Delete the current scene" disabled={active().id === 0} onClick={removeActive}>
-            <Icon name="lucide:trash-2" />
+          <button class="krate-button krate-button-secondary krate-button-sm" type="button" aria-haspopup="menu" data-tip="Save, rename or delete scenes" onClick={openSceneMenu}>
+            <Icon name="lucide:bookmark" />
+            Scenes
+            <Icon name="lucide:chevron-down" />
           </button>
           <span class="tool-divider" />
           <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Clear clip lights" data-tip="Clear clip lights and peaks" onClick={() => guard(() => ResetMeters())}>
@@ -531,14 +554,9 @@ export function MixerPanel() {
 
               <div class="strip-foot">
                 {s.kind === "input" ? (
-                  <input
-                    class="strip-name"
-                    type="text"
-                    maxLength={24}
-                    aria-label={"Name of channel " + (s.index + 1)}
-                    value={s.name}
-                    onChange={(e: Event) => patchStrip(s.index, (x) => ({ ...x, name: (e.target as HTMLInputElement).value }))}
-                  />
+                  <button class="strip-name strip-rename" type="button" aria-label={"Rename " + s.name} data-tip="Rename channel" onClick={() => renameChannel(s.index)}>
+                    {s.name}
+                  </button>
                 ) : (
                   <span class="strip-name">{s.name}</span>
                 )}
@@ -799,6 +817,7 @@ export function MixerPanel() {
           </div>
         </aside>
       </div>
+      <Menu id="scene-menu" open={sceneMenu()} x={sceneMenuX()} y={sceneMenuY()} items={sceneItems()} onClose={() => setSceneMenu(false)} />
     </section>
   );
 }

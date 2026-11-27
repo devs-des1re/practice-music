@@ -18,7 +18,7 @@ function markText(db: number): string {
 
 export function Fader(props: FaderProps) {
   return (
-    <div class="fader">
+    <div class="fader" style={"--fill:" + Math.round(((props.value - props.min) / (props.max - props.min)) * 1000) / 10 + "%"}>
       <div class="fader-scale" aria-hidden="true">
         {props.marks.map((m) => (
           <span class="fader-mark" key={m} style={"--p:" + (props.max - m) / (props.max - props.min)}>

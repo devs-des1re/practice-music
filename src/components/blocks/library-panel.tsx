@@ -1,5 +1,5 @@
 import { createSignal, createEffect, onMount, onCleanup } from "@krate/runtime";
-import { openFile, confirm } from "@krate/app/dialog";
+import { openFile } from "@krate/app/dialog";
 import {
   Songs,
   SetSongMeta,
@@ -21,12 +21,13 @@ import {
   ImportState,
 } from "../../../api/library.go";
 import { PlayerOpen, PlayerStream } from "../../../api/player.go";
-import { Field } from "../ui/field";
 import { Menu, type MenuItem } from "../ui/menu";
 import { Select } from "../ui/select";
 import { FoldButton } from "../ui/fold-button";
 import { Notice } from "../ui/notice";
 import { formatDurationMs } from "../../lib/format";
+import { askConfirm, askForm, askText } from "../../lib/modal";
+import { splitTags, tagChanges } from "../../lib/tags";
 import { setQueue } from "../../lib/queue";
 import { handleError, onRefresh, logFailure } from "../../lib/service";
 import type { ImportProgress, Playlist, Song, TagCount } from "../../lib/types";
@@ -43,19 +44,12 @@ export function LibraryPanel() {
   const [sort, setSort] = createSignal("added");
   const [revision, setRevision] = createSignal(0);
   const [selected, setSelected] = createSignal(0);
-  const [editing, setEditing] = createSignal(false);
   const [loadedId, setLoadedId] = createSignal(0);
   const [loadingId, setLoadingId] = createSignal(0);
   const [thumbs, setThumbs] = createSignal<Record<number, string>>({});
   const [error, setError] = createSignal("");
   const [info, setInfo] = createSignal("");
   const [importing, setImporting] = createSignal<ImportProgress>(emptyImport);
-  const [title, setTitle] = createSignal("");
-  const [artist, setArtist] = createSignal("");
-  const [album, setAlbum] = createSignal("");
-  const [newTag, setNewTag] = createSignal("");
-  const [newList, setNewList] = createSignal("");
-  const [renameTo, setRenameTo] = createSignal("");
   const [ready, setReady] = createSignal(false);
   const [menuOpen, setMenuOpen] = createSignal(false);
   const [menuX, setMenuX] = createSignal(0);
@@ -114,14 +108,7 @@ export function LibraryPanel() {
 
   createEffect(() => {
     const id = selected();
-    const song = songs().find((s) => s.id === id);
-    if (id && !song) {
-      setSelected(0);
-      setEditing(false);
-    }
-    setTitle(song ? song.title : "");
-    setArtist(song ? song.artist : "");
-    setAlbum(song ? song.album : "");
+    if (id && !songs().some((s) => s.id === id)) setSelected(0);
   });
 
   onMount(() => {
@@ -145,7 +132,11 @@ export function LibraryPanel() {
       items.push({ label: "Add to " + p.name, disabled: !song, onSelect: () => addToList(String(p.id)) });
     }
     if (lists.length > 0) items.push({ label: "", separator: true });
-    if (inList) items.push({ label: "Remove from this playlist", disabled: !song, onSelect: () => removeFromList() });
+    if (inList) {
+      items.push({ label: "Move up", disabled: !song, onSelect: () => move(-1) });
+      items.push({ label: "Move down", disabled: !song, onSelect: () => move(1) });
+      items.push({ label: "Remove from this playlist", disabled: !song, onSelect: () => removeFromList() });
+    }
     items.push({ label: "Remove from library", disabled: !song, onSelect: () => forget() });
     items.push({ label: "Delete file from disk", tone: "danger", disabled: !song, onSelect: () => removeSong() });
     setMenuList(items);
@@ -157,6 +148,7 @@ export function LibraryPanel() {
 
   function openMenu(e: MouseEvent, id: number) {
     e.preventDefault();
+    e.stopPropagation();
     setSelected(id);
     setMenuX(e.clientX);
     setMenuY(e.clientY);
@@ -195,9 +187,29 @@ export function LibraryPanel() {
     guard(() => PlayerOpen(id)).finally(() => setLoadingId(0));
   }
 
-  function edit(id: number) {
+  async function edit(id: number) {
     setSelected(id);
-    setEditing(true);
+    const song = songs().find((x) => x.id === id);
+    if (!song) return;
+    const before = song.tags || [];
+    const values = await askForm({
+      title: "Edit song details",
+      message: song.path,
+      confirmLabel: "Save details",
+      fields: [
+        { key: "title", label: "Title", value: song.title, required: true },
+        { key: "artist", label: "Artist", value: song.artist },
+        { key: "album", label: "Album", value: song.album },
+        { key: "tags", label: "Tags, separated by commas", value: before.join(", ") },
+      ],
+    });
+    if (!values) return;
+    const changes = tagChanges(before, splitTags(values.tags));
+    await guard(async () => {
+      await SetSongMeta(id, values.title, values.artist, values.album);
+      for (const name of changes.removed) await RemoveSongTag(id, name);
+      for (const name of changes.added) await AddSongTag(id, name);
+    });
   }
 
   async function chooseFiles() {
@@ -218,67 +230,51 @@ export function LibraryPanel() {
     });
   }
 
-  async function saveMeta() {
-    const song = selectedSong();
-    if (!song) return;
-    await guard(() => SetSongMeta(song.id, title(), artist(), album()));
-  }
-
-  async function addTag() {
-    const song = selectedSong();
-    const name = newTag().trim();
-    if (!song || !name) return;
-    await guard(async () => {
-      await AddSongTag(song.id, name);
-      setNewTag("");
-    });
-  }
-
   async function removeSong() {
     const song = selectedSong();
     if (!song) return;
-    const sure = await confirm("Delete song", "Delete \"" + song.title + "\" and its file from disk? This cannot be undone.");
+    const sure = await askConfirm({ title: "Delete file", message: "Delete " + song.title + " and its file from disk? This cannot be undone.", confirmLabel: "Delete file", danger: true });
     if (!sure) return;
     await guard(async () => {
       await DeleteSong(song.id, true);
       setSelected(0);
-      setEditing(false);
     });
   }
 
   async function forget() {
     const song = selectedSong();
     if (!song) return;
+    const sure = await askConfirm({ title: "Remove from library", message: "Remove " + song.title + " from the library? The file stays on disk.", confirmLabel: "Remove", danger: true });
+    if (!sure) return;
     await guard(async () => {
       await DeleteSong(song.id, false);
       setSelected(0);
-      setEditing(false);
     });
   }
 
   async function createList() {
-    const name = newList().trim();
+    const name = await askText({ title: "New playlist", label: "Playlist name", confirmLabel: "Create playlist", placeholder: "Warm up", maxLength: 60 });
     if (!name) return;
     await guard(async () => {
       const made = await CreatePlaylist(name);
-      setNewList("");
       setPlaylistId(made.id);
     });
   }
 
   async function renameList() {
-    const name = renameTo().trim();
-    if (!playlistId() || !name) return;
-    await guard(async () => {
-      await RenamePlaylist(playlistId(), name);
-      setRenameTo("");
-    });
+    const id = playlistId();
+    const current = playlists().find((x) => x.id === id);
+    if (!current) return;
+    const name = await askText({ title: "Rename playlist", label: "Playlist name", confirmLabel: "Rename", value: current.name, maxLength: 60 });
+    if (!name || name === current.name) return;
+    await guard(() => RenamePlaylist(id, name));
   }
 
   async function deleteList() {
     const id = playlistId();
-    if (!id) return;
-    const sure = await confirm("Delete playlist", "Delete this playlist? The songs stay in your library.");
+    const current = playlists().find((x) => x.id === id);
+    if (!current) return;
+    const sure = await askConfirm({ title: "Delete playlist", message: "Delete the playlist " + current.name + "? The songs stay in your library.", confirmLabel: "Delete playlist", danger: true });
     if (!sure) return;
     await guard(async () => {
       await DeletePlaylist(id);
@@ -295,8 +291,11 @@ export function LibraryPanel() {
 
   async function removeFromList() {
     const song = selectedSong();
-    if (!song || !playlistId()) return;
-    await guard(() => RemoveFromPlaylist(playlistId(), song.id));
+    const id = playlistId();
+    if (!song || !id) return;
+    const sure = await askConfirm({ title: "Remove from playlist", message: "Remove " + song.title + " from this playlist? It stays in your library.", confirmLabel: "Remove", danger: true });
+    if (!sure) return;
+    await guard(() => RemoveFromPlaylist(id, song.id));
   }
 
   async function move(delta: number) {
@@ -354,12 +353,32 @@ export function LibraryPanel() {
             options={[{ value: "0", label: "All songs" }].concat(playlists().map((p) => ({ value: String(p.id), label: p.name })))}
             onChange={(v) => setPlaylistId(Number(v))}
           />
+          <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="New playlist" data-tip="New playlist" onClick={createList}>
+            <Icon name="lucide:list-plus" />
+          </button>
+          <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Rename playlist" data-tip="Rename the open playlist" disabled={!playlistId()} onClick={renameList}>
+            <Icon name="lucide:pencil" />
+          </button>
+          <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Delete playlist" data-tip="Delete the open playlist" disabled={!playlistId()} onClick={deleteList}>
+            <Icon name="lucide:trash-2" />
+          </button>
         </div>
       </div>
 
-      <div class="lib" data-editing={editing() ? "true" : "false"}>
+      <div class="lib">
         <aside class="lib-rail" aria-label="Playlists and tags">
-          <span class="rail-title">Playlists</span>
+          <div class="rail-head">
+            <span class="rail-title">Playlists</span>
+            <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="New playlist" data-tip="New playlist" onClick={createList}>
+              <Icon name="lucide:plus" />
+            </button>
+            <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Rename playlist" data-tip="Rename the open playlist" disabled={!playlistId()} onClick={renameList}>
+              <Icon name="lucide:pencil" />
+            </button>
+            <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Delete playlist" data-tip="Delete the open playlist" disabled={!playlistId()} onClick={deleteList}>
+              <Icon name="lucide:trash-2" />
+            </button>
+          </div>
           <button class="rail-item" type="button" data-active={playlistId() === 0 ? "true" : "false"} onClick={() => setPlaylistId(0)}>
             <span class="rail-label">
               <Icon name="lucide:music" />
@@ -375,38 +394,6 @@ export function LibraryPanel() {
               <span class="rail-count">{p.count}</span>
             </button>
           ))}
-          <div class="inline-form">
-            <input
-              class="krate-input"
-              type="text"
-              placeholder="New playlist"
-              aria-label="New playlist name"
-              value={newList()}
-              onInput={(e: Event) => setNewList((e.target as HTMLInputElement).value)}
-              onKeyDown={(e: KeyboardEvent) => {
-                if (e.key === "Enter") createList();
-              }}
-            />
-            <button class="krate-button krate-button-secondary krate-button-icon" type="button" aria-label="Create playlist" data-tip="Create playlist" onClick={createList}>
-              <Icon name="lucide:plus" />
-            </button>
-          </div>
-          <div class="inline-form" showIf={!!playlistId()}>
-            <input
-              class="krate-input"
-              type="text"
-              placeholder="Rename"
-              aria-label="Rename playlist"
-              value={renameTo()}
-              onInput={(e: Event) => setRenameTo((e.target as HTMLInputElement).value)}
-              onKeyDown={(e: KeyboardEvent) => {
-                if (e.key === "Enter") renameList();
-              }}
-            />
-            <button class="krate-button krate-button-destructive krate-button-icon" type="button" aria-label="Delete playlist" data-tip="Delete this playlist" onClick={deleteList}>
-              <Icon name="lucide:trash-2" />
-            </button>
-          </div>
           <span class="rail-title" showIf={tags().length > 0}>
             Tags
           </span>
@@ -493,6 +480,9 @@ export function LibraryPanel() {
                   <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label={"Edit " + s.title} data-tip="Edit details" onClick={() => edit(s.id)}>
                     <Icon name="lucide:pencil" />
                   </button>
+                  <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label={"More actions for " + s.title} data-tip="Add to a playlist, remove or delete" onClick={(e: MouseEvent) => openMenu(e, s.id)}>
+                    <Icon name="lucide:ellipsis" />
+                  </button>
                   <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label={"Load " + s.title} data-tip="Load into the player" data-keys="Enter" onClick={() => loadSong(s.id)}>
                     <Icon name="lucide:play" />
                   </button>
@@ -502,81 +492,6 @@ export function LibraryPanel() {
           </div>
         </div>
 
-        <aside class="lib-details" aria-label="Song details" showIf={editing() && !!selected()}>
-          <div class="details-head">
-            <span class="setup-title">Details</span>
-            <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Close details" onClick={() => setEditing(false)}>
-              <Icon name="lucide:x" />
-            </button>
-          </div>
-          <div class="details-body">
-            <Field label="Title" htmlFor="song-title">
-              <input id="song-title" class="krate-input" type="text" value={title()} onInput={(e: Event) => setTitle((e.target as HTMLInputElement).value)} />
-            </Field>
-            <div class="field-row compact">
-              <Field label="Artist" htmlFor="song-artist">
-                <input id="song-artist" class="krate-input" type="text" value={artist()} onInput={(e: Event) => setArtist((e.target as HTMLInputElement).value)} />
-              </Field>
-              <Field label="Album" htmlFor="song-album">
-                <input id="song-album" class="krate-input" type="text" value={album()} onInput={(e: Event) => setAlbum((e.target as HTMLInputElement).value)} />
-              </Field>
-            </div>
-            <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={saveMeta}>
-              <Icon name="lucide:save" />
-              Save details
-            </button>
-            <Field label="Tags" htmlFor="song-new-tag">
-              <div class="tag-row">
-                {(selectedSong()?.tags || []).map((t) => (
-                  <button class="tag-button" type="button" key={t} aria-label={"Remove tag " + t} onClick={() => guard(() => RemoveSongTag(selected(), t))}>
-                    {t}
-                    <Icon name="lucide:x" />
-                  </button>
-                ))}
-              </div>
-              <input
-                id="song-new-tag"
-                class="krate-input"
-                type="text"
-                placeholder="Add a tag and press Enter"
-                value={newTag()}
-                onInput={(e: Event) => setNewTag((e.target as HTMLInputElement).value)}
-                onKeyDown={(e: KeyboardEvent) => {
-                  if (e.key === "Enter") addTag();
-                }}
-              />
-            </Field>
-            <Field label="Playlist" htmlFor="song-add-list">
-              <Select
-                id="song-add-list"
-                value=""
-                options={[{ value: "", label: "Add to a playlist" }].concat(playlists().map((p) => ({ value: String(p.id), label: p.name })))}
-                onChange={(v) => addToList(v)}
-              />
-            </Field>
-            <div class="detail-actions" showIf={!!playlistId()}>
-              <button class="krate-button krate-button-secondary krate-button-icon krate-button-sm" type="button" aria-label="Move up" onClick={() => move(-1)}>
-                <Icon name="lucide:arrow-up" />
-              </button>
-              <button class="krate-button krate-button-secondary krate-button-icon krate-button-sm" type="button" aria-label="Move down" onClick={() => move(1)}>
-                <Icon name="lucide:arrow-down" />
-              </button>
-              <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={removeFromList}>
-                Remove from playlist
-              </button>
-            </div>
-            <p class="field-hint mono path">{selectedSong()?.path || ""}</p>
-            <div class="detail-actions">
-              <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={forget}>
-                Remove from library
-              </button>
-              <button class="krate-button krate-button-destructive krate-button-sm" type="button" onClick={removeSong}>
-                <Icon name="lucide:trash-2" />
-                Delete file
-              </button>
-            </div>
-          </div>
-        </aside>
       </div>
 
       <Menu id="song-menu" open={menuOpen()} x={menuX()} y={menuY()} items={menuList()} onClose={() => setMenuOpen(false)} />

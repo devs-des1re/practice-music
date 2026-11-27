@@ -11,34 +11,28 @@ import {
   DownloadList,
   ToolsInfo,
 } from "../../../api/downloads.go";
-import { Select } from "../ui/select";
 import { FoldButton } from "../ui/fold-button";
 import { Notice } from "../ui/notice";
 import { StatusDot } from "../ui/status-dot";
 import { jobTone } from "../../lib/format";
+import { askConfirm, askForm } from "../../lib/modal";
 import { handleError, logFailure } from "../../lib/service";
 import type { Job, ToolsState } from "../../lib/types";
 
-const FORMATS = [
-  { value: "mp3", label: "MP3 audio" },
-  { value: "mp4", label: "MP4 video" },
+const CHOICES = [
+  { value: "mp3:best", label: "MP3 audio, best quality" },
+  { value: "mp3:320", label: "MP3 audio, 320 kbps" },
+  { value: "mp3:256", label: "MP3 audio, 256 kbps" },
+  { value: "mp3:192", label: "MP3 audio, 192 kbps" },
+  { value: "mp3:128", label: "MP3 audio, 128 kbps" },
+  { value: "mp4:best", label: "MP4 video, best quality" },
+  { value: "mp4:1080", label: "MP4 video, 1080p" },
+  { value: "mp4:720", label: "MP4 video, 720p" },
+  { value: "mp4:480", label: "MP4 video, 480p" },
+  { value: "mp4:360", label: "MP4 video, 360p" },
 ];
 
-const MP3_QUALITY = [
-  { value: "best", label: "Best" },
-  { value: "320", label: "320 kbps" },
-  { value: "256", label: "256 kbps" },
-  { value: "192", label: "192 kbps" },
-  { value: "128", label: "128 kbps" },
-];
-
-const MP4_QUALITY = [
-  { value: "best", label: "Best" },
-  { value: "1080", label: "1080p" },
-  { value: "720", label: "720p" },
-  { value: "480", label: "480p" },
-  { value: "360", label: "360p" },
-];
+const CHOICE_KEY = "pm.download.choice";
 
 const emptyTools: ToolsState = {
   ytDlp: { source: "missing", path: "", version: "", latest: "", updateAvailable: false, busy: "", error: "", checkedAt: 0 },
@@ -50,9 +44,6 @@ const emptyTools: ToolsState = {
 export function DownloadsPanel() {
   const [jobs, setJobs] = createSignal<Job[]>([]);
   const [tools, setTools] = createSignal<ToolsState>(emptyTools);
-  const [url, setUrl] = createSignal("");
-  const [format, setFormat] = createSignal("mp3");
-  const [quality, setQuality] = createSignal("best");
   const [error, setError] = createSignal("");
   const [info, setInfo] = createSignal("");
 
@@ -69,13 +60,7 @@ export function DownloadsPanel() {
     ToolStatus()
       .then((st) => setTools(st))
       .catch((e) => logFailure("tool status failed", e));
-    const savedFormat = localStorage.getItem("pm.download.format");
-    const savedQuality = localStorage.getItem("pm.download.quality");
-    if (savedFormat) setFormat(savedFormat);
-    if (savedQuality) setQuality(savedQuality);
   });
-
-  const qualityOptions = createMemo(() => (format() === "mp4" ? MP4_QUALITY : MP3_QUALITY));
 
   async function guard(action: () => Promise<unknown>) {
     setError("");
@@ -88,20 +73,37 @@ export function DownloadsPanel() {
   }
 
   async function add() {
-    const link = url().trim();
-    if (!link) return;
+    const saved = localStorage.getItem(CHOICE_KEY);
+    const values = await askForm({
+      title: "New download",
+      confirmLabel: "Download",
+      fields: [
+        { key: "url", label: "Link", type: "url", placeholder: "Paste a link", required: true },
+        { key: "choice", label: "Format and quality", type: "select", options: CHOICES, value: CHOICES.some((c) => c.value === saved) ? String(saved) : CHOICES[0].value },
+      ],
+    });
+    if (!values) return;
+    const [format, quality] = values.choice.split(":");
     await guard(async () => {
-      await EnqueueDownload(link, format(), quality());
-      localStorage.setItem("pm.download.format", format());
-      localStorage.setItem("pm.download.quality", quality());
-      setUrl("");
+      await EnqueueDownload(values.url, format, quality);
+      localStorage.setItem(CHOICE_KEY, values.choice);
       setInfo("Added to the queue.");
     });
   }
 
-  function chooseFormat(value: string) {
-    setFormat(value);
-    setQuality("best");
+  async function clearFinished() {
+    const yes = await askConfirm({ title: "Clear finished downloads", message: "Remove every finished download from this list? Saved files stay in your library.", confirmLabel: "Clear list", danger: true });
+    if (yes) await guard(() => ClearDownloads());
+  }
+
+  async function cancelJob(job: Job) {
+    const yes = await askConfirm({ title: "Cancel download", message: "Stop downloading " + (job.title || job.url) + "?", confirmLabel: "Stop download", danger: true });
+    if (yes) await guard(() => CancelDownload(job.id));
+  }
+
+  async function removeJob(job: Job) {
+    const yes = await askConfirm({ title: "Remove download", message: "Remove " + (job.title || job.url) + " from this list?", confirmLabel: "Remove", danger: true });
+    if (yes) await guard(() => RemoveDownload(job.id));
   }
 
   const ytVersion = createMemo(() => tools().ytDlp.version || "-");
@@ -121,33 +123,17 @@ export function DownloadsPanel() {
           Downloads
         </h2>
         <div class="panel-tools">
-          <button class="krate-button krate-button-ghost krate-button-sm" type="button" onClick={() => guard(() => ClearDownloads())}>
+          <button class="krate-button krate-button-ghost krate-button-sm" type="button" disabled={jobs().length === 0} onClick={clearFinished}>
             <Icon name="lucide:eraser" />
             Clear finished
+          </button>
+          <button class="krate-button krate-button-primary krate-button-sm" type="button" onClick={add}>
+            <Icon name="lucide:plus" />
+            New download
           </button>
           <FoldButton />
         </div>
       </header>
-
-      <div class="dl-form">
-        <input
-          class="krate-input"
-          type="url"
-          placeholder="Paste a link"
-          aria-label="Link to download"
-          value={url()}
-          onInput={(e: Event) => setUrl((e.target as HTMLInputElement).value)}
-          onKeyDown={(e: KeyboardEvent) => {
-            if (e.key === "Enter") add();
-          }}
-        />
-        <Select id="dl-format" label="Format" value={format()} options={FORMATS} onChange={(v) => chooseFormat(v)} />
-        <Select id="dl-quality" label="Quality" value={quality()} options={qualityOptions()} onChange={(v) => setQuality(v)} />
-        <button class="krate-button krate-button-primary" type="button" onClick={add}>
-          <Icon name="lucide:download" />
-          Download
-        </button>
-      </div>
 
       <div class="panel-notices">
         <div showIf={!!error()}>
@@ -195,7 +181,7 @@ export function DownloadsPanel() {
               </div>
               <div class="detail-actions">
                 {(j.state === "queued" || j.state === "running") && (
-                  <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={() => guard(() => CancelDownload(j.id))}>
+                  <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={() => cancelJob(j)}>
                     Cancel
                   </button>
                 )}
@@ -206,7 +192,7 @@ export function DownloadsPanel() {
                   </button>
                 )}
                 {(j.state === "done" || j.state === "failed" || j.state === "cancelled") && (
-                  <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Remove from the list" onClick={() => guard(() => RemoveDownload(j.id))}>
+                  <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Remove from the list" onClick={() => removeJob(j)}>
                     <Icon name="lucide:x" />
                   </button>
                 )}

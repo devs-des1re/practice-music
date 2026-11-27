@@ -2,7 +2,7 @@ import { createSignal, createEffect, onMount, onCleanup } from "@krate/runtime";
 import { AudioStream } from "../../../api/audio.go";
 import { MeterStream, ResetMeters } from "../../../api/session.go";
 import { LiveText } from "../ui/live-text";
-import { dbFraction, peakText, scaleFraction, toDb } from "../../lib/mixer";
+import { dbFraction, peakText, peakZone, scaleFraction, toDb } from "../../lib/mixer";
 
 export interface MeterProps {
   which: string;
@@ -155,6 +155,7 @@ export interface PeakReadoutProps {
 export function PeakReadout(props: PeakReadoutProps) {
   const [text, setText] = createSignal("-inf");
   const [hot, setHot] = createSignal(false);
+  const [zone, setZone] = createSignal("none");
   const state = { peak: 0, clip: false };
 
   createEffect(() => {
@@ -167,6 +168,7 @@ export function PeakReadout(props: PeakReadoutProps) {
     state.peak = Math.max(state.peak, lv.l, lv.r);
     setText(peakText(state.peak));
     setHot(toDb(state.peak) > 0);
+    setZone(peakZone(state.peak));
   });
 
   return (
@@ -174,12 +176,14 @@ export function PeakReadout(props: PeakReadoutProps) {
       class="strip-peak mono"
       type="button"
       data-hot={hot() ? "true" : "false"}
+      data-zone={zone()}
       aria-label="Peak level. Click to reset."
       data-tip="Peak hold. Click to reset."
       onClick={() => {
         state.peak = 0;
         setText("-inf");
         setHot(false);
+        setZone("none");
         ResetMeters().catch(() => undefined);
       }}
     >

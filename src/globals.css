@@ -1,9 +1,9 @@
 @font-face {
-  font-family: "Geist";
+  font-family: "IBM Plex Sans";
   font-style: normal;
-  font-weight: 100 900;
+  font-weight: 400;
   font-display: swap;
-  src: url("/fonts/geist-latin-ext-wght-normal.woff2") format("woff2-variations");
+  src: url("/fonts/ibm-plex-sans-latin-ext-400-normal.woff2") format("woff2");
   unicode-range:
     U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
     U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
@@ -11,11 +11,11 @@
 }
 
 @font-face {
-  font-family: "Geist";
+  font-family: "IBM Plex Sans";
   font-style: normal;
-  font-weight: 100 900;
+  font-weight: 400;
   font-display: swap;
-  src: url("/fonts/geist-latin-wght-normal.woff2") format("woff2-variations");
+  src: url("/fonts/ibm-plex-sans-latin-400-normal.woff2") format("woff2");
   unicode-range:
     U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
     U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
@@ -23,11 +23,11 @@
 }
 
 @font-face {
-  font-family: "Geist Mono";
+  font-family: "IBM Plex Sans";
   font-style: normal;
-  font-weight: 100 900;
+  font-weight: 500;
   font-display: swap;
-  src: url("/fonts/geist-mono-latin-ext-wght-normal.woff2") format("woff2-variations");
+  src: url("/fonts/ibm-plex-sans-latin-ext-500-normal.woff2") format("woff2");
   unicode-range:
     U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
     U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
@@ -35,56 +35,199 @@
 }
 
 @font-face {
-  font-family: "Geist Mono";
+  font-family: "IBM Plex Sans";
   font-style: normal;
-  font-weight: 100 900;
+  font-weight: 500;
   font-display: swap;
-  src: url("/fonts/geist-mono-latin-wght-normal.woff2") format("woff2-variations");
+  src: url("/fonts/ibm-plex-sans-latin-500-normal.woff2") format("woff2");
   unicode-range:
     U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
     U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
     U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-sans-latin-ext-600-normal.woff2") format("woff2");
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
+    U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-sans-latin-600-normal.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-sans-latin-ext-700-normal.woff2") format("woff2");
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
+    U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-sans-latin-700-normal.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-mono-latin-ext-400-normal.woff2") format("woff2");
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
+    U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-mono-latin-400-normal.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-mono-latin-ext-500-normal.woff2") format("woff2");
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
+    U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-mono-latin-500-normal.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-mono-latin-ext-600-normal.woff2") format("woff2");
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
+    U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-mono-latin-600-normal.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-mono-latin-ext-700-normal.woff2") format("woff2");
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
+    U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/ibm-plex-mono-latin-700-normal.woff2") format("woff2");
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
 
 :root {
-  --color-bg: #0e1013;
-  --color-surface: #14171c;
-  --color-surface-raised: #1a1e24;
-  --color-surface-hover: #222730;
-  --color-surface-inset: #0b0d10;
-  --color-border: #262b34;
-  --color-border-strong: #3a414d;
-  --color-text: #e8eaee;
-  --color-text-muted: #a9b0bc;
-  --color-text-dim: #818998;
+  --color-bg: #050506;
+  --color-surface: #0b0b0c;
+  --color-surface-raised: #111113;
+  --color-surface-hover: #1c1c20;
+  --color-surface-inset: #000000;
+  --color-border: #212126;
+  --color-border-strong: #35353c;
+  --color-text: #ffffff;
+  --color-text-muted: #cbcbd3;
+  --color-text-dim: #9494a0;
   --color-accent: #f59e0b;
   --color-accent-hover: #fbb22e;
   --color-accent-text: #14100a;
-  --color-accent-soft: #2b2110;
+  --color-accent-soft: #291c04;
   --color-accent-line: #7f5510;
-  --color-danger: #e5484d;
-  --color-danger-hover: #ee6a6e;
+  --color-danger: #ef4444;
+  --color-danger-hover: #f26464;
   --color-danger-soft: #2b1517;
-  --color-success: #46c26a;
+  --color-success: #22c55e;
   --color-success-soft: #14261a;
-  --color-warning: #e0b13a;
-  --color-warning-soft: #2a2412;
+  --color-warning: #facc15;
+  --color-warning-soft: #292304;
   --color-info: #5b9bd5;
   --color-info-soft: #14202b;
-  --color-wave-rest: #4b5870;
-  --color-wave-grid: #1b1f26;
-  --color-meter-green: #3fb866;
-  --color-meter-amber: #f59e0b;
-  --color-meter-red: #e5484d;
-  --color-meter-off: #161a20;
-  --color-channel-1: #d09a3f;
-  --color-channel-2: #5a92c4;
-  --color-channel-3: #4aa56a;
-  --color-channel-4: #9a82d6;
-  --color-channel-5: #cc6d66;
-  --color-channel-6: #3fa8a0;
-  --color-channel-ink: #0b0d10;
+  --color-wave-rest: #56647d;
+  --color-wave-grid: #161619;
+  --color-meter-green: #22c55e;
+  --color-meter-amber: #facc15;
+  --color-meter-red: #ef4444;
+  --color-meter-off: #131315;
+  --color-channel-1: #f59e0b;
+  --color-channel-2: #38bdf8;
+  --color-channel-3: #4ade80;
+  --color-channel-4: #a78bfa;
+  --color-channel-5: #fb7185;
+  --color-channel-6: #2dd4bf;
+  --color-channel-ink: #050506;
   --color-scrim: #000000a6;
 
   --space-0: 0.125rem;
@@ -101,10 +244,10 @@
   --radius-lg: 0.375rem;
 
   --font-sans:
-    "Geist", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial,
+    "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial,
     sans-serif;
   --font-mono:
-    "Geist Mono", "Cascadia Mono", ui-monospace, "SF Mono", Consolas,
+    "IBM Plex Mono", "Cascadia Mono", ui-monospace, "SF Mono", Consolas,
     monospace;
 
   --text-2xs: 0.6875rem;
@@ -512,6 +655,7 @@ input[type="number"].krate-input {
 .tab[data-active="true"],
 .tab[aria-pressed="true"] {
   border-bottom-color: var(--color-accent);
+  background: var(--color-surface-hover);
   color: var(--color-text);
 }
 
@@ -693,6 +837,73 @@ input[type="number"].krate-input {
   height: 1px;
   margin: var(--space-1) 0;
   background: var(--color-border);
+}
+
+.pm-modal {
+  display: contents;
+}
+
+.pm-modal .pm-modal-content {
+  --krate-card-bg: var(--color-surface-raised);
+  --krate-border: var(--color-border-strong);
+  --krate-backdrop: var(--color-scrim);
+  gap: var(--space-4);
+  width: min(26rem, calc(100vw - 2rem));
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  color: var(--color-text);
+  animation: none;
+  box-shadow: 0 0 0 100vmax var(--color-scrim);
+}
+
+.pm-modal-title {
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.pm-modal-message {
+  color: var(--color-text-muted);
+  font-size: var(--text-md);
+  line-height: 1.5;
+}
+
+.pm-modal-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.pm-modal-select {
+  appearance: auto;
+}
+
+.pm-modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.pm-modal-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.pm-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.pm-modal-confirm[data-danger="true"] {
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  color: var(--color-text);
+}
+
+.pm-modal-confirm[data-danger="true"]:hover {
+  background: var(--color-danger-hover);
+  border-color: var(--color-danger-hover);
 }
 
 .dialog-scrim {
@@ -1012,6 +1223,7 @@ input[type="number"].krate-input {
 
 .lib-toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2);
@@ -1020,7 +1232,7 @@ input[type="number"].krate-input {
 }
 
 .lib-toolbar .search-box {
-  flex: 1 1 8rem;
+  flex: 1 1 100%;
   min-width: 0;
 }
 
@@ -1030,8 +1242,13 @@ input[type="number"].krate-input {
   font-size: var(--text-sm);
 }
 
+.lib-toolbar .narrow-only {
+  flex: 1 1 100%;
+}
+
 .lib-toolbar .narrow-only .krate-native-select {
-  width: auto;
+  flex: 1;
+  width: 100%;
   min-width: 6rem;
 }
 
@@ -1041,10 +1258,6 @@ input[type="number"].krate-input {
 
 .panel-tools .search-box .krate-input {
   width: 100%;
-}
-
-.panel-tools .scene-name {
-  width: 7.5rem;
 }
 
 .panel-tools .divider,
@@ -1539,15 +1752,6 @@ input[type="number"].krate-input {
   padding-left: 1.75rem;
 }
 
-.inline-form {
-  display: flex;
-  gap: var(--space-1);
-}
-
-.inline-form .krate-input {
-  min-width: 0;
-}
-
 .tag-row {
   display: flex;
   flex-wrap: wrap;
@@ -1781,20 +1985,6 @@ input[type="number"].krate-input {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.dl-form {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 8rem 6.5rem auto;
-  gap: var(--space-1);
-  padding: var(--space-2);
-}
-
-.dl-form .krate-input,
-.dl-form .krate-native-select,
-.dl-form .krate-button {
-  min-height: var(--control-height-sm);
-  font-size: var(--text-sm);
 }
 
 .dl-body {
@@ -2081,9 +2271,6 @@ input[type="number"].krate-input {
   background: var(--color-surface);
   color: var(--color-text-muted);
   font-size: 1.15rem;
-  box-shadow:
-    inset 0 1px 0 var(--color-surface-hover),
-    inset 0 -3px 0 var(--color-surface-inset);
   cursor: pointer;
   transition:
     background-color var(--ease),
@@ -2096,17 +2283,10 @@ input[type="number"].krate-input {
   color: var(--color-text);
 }
 
-.tp-btn:active:not(:disabled) {
-  box-shadow: inset 0 1px 0 var(--color-surface-inset);
-}
-
 .tp-btn[data-on="true"] {
   background: var(--color-accent-soft);
   border-color: var(--color-accent-line);
   color: var(--color-accent);
-  box-shadow:
-    inset 0 1px 0 var(--color-accent-line),
-    inset 0 -3px 0 var(--color-accent);
 }
 
 .tp-btn:disabled {
@@ -2120,9 +2300,6 @@ input[type="number"].krate-input {
   background: var(--color-accent);
   color: var(--color-accent-text);
   font-size: 1.35rem;
-  box-shadow:
-    inset 0 1px 0 var(--color-accent-hover),
-    inset 0 -3px 0 var(--color-accent-line);
 }
 
 .tp-play:hover:not(:disabled),
@@ -2150,7 +2327,6 @@ input[type="number"].krate-input {
   border: 1px solid var(--color-border-strong);
   border-radius: var(--radius);
   background: var(--color-surface-inset);
-  box-shadow: inset 0 1px 0 var(--color-bg);
 }
 
 .lcd-cell {
@@ -2453,35 +2629,9 @@ input[type="number"].krate-input {
   font-size: var(--text-xs);
 }
 
-.foot-body .inline-form .krate-input {
-  width: 9rem;
-}
-
 .foot-body .krate-button {
   min-height: var(--control-height-xs);
   font-size: var(--text-xs);
-}
-
-.grid-fields {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-2);
-}
-
-.grid-field {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  color: var(--color-text-dim);
-  font-size: var(--text-2xs);
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.grid-field .krate-input {
-  width: 4.5rem;
 }
 
 .metro-panel {
@@ -2926,20 +3076,6 @@ input[type="number"].krate-input {
   background: var(--color-surface);
 }
 
-.lib-rail .inline-form {
-  margin: var(--space-1) var(--space-1) 0;
-}
-
-.lib-rail .inline-form .krate-input {
-  min-height: var(--control-height-sm);
-  font-size: var(--text-sm);
-}
-
-.lib-rail .inline-form .krate-button-icon {
-  width: var(--control-height-sm);
-  height: var(--control-height-sm);
-}
-
 .lib-songs {
   display: flex;
   flex-direction: column;
@@ -3137,36 +3273,6 @@ input[type="number"].krate-input {
 .song-row:hover .song-actions .krate-button,
 .song-row[data-selected="true"] .song-actions .krate-button {
   opacity: 1;
-}
-
-.lib-details {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  border-left: 1px solid var(--color-border);
-  background: var(--color-surface);
-}
-
-.details-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 1.75rem;
-  padding: 0 var(--space-1) 0 var(--space-3);
-  border-bottom: 1px solid var(--color-border);
-}
-
-.details-body {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  min-height: 0;
-  padding: var(--space-3);
-  overflow-y: auto;
-}
-
-.details-body .krate-native-select {
-  min-height: var(--control-height-sm);
 }
 
 .narrow-only {
@@ -3437,7 +3543,7 @@ input[type="number"].krate-input {
   width: 6px;
   border: 1px solid var(--color-border-strong);
   border-radius: 3px;
-  background: var(--color-bg);
+  background: linear-gradient(to top, var(--tone, var(--color-text-muted)) var(--fill, 0%), var(--color-bg) var(--fill, 0%));
 }
 
 .fader-input::-webkit-slider-thumb {
@@ -3453,7 +3559,6 @@ input[type="number"].krate-input {
   background-position: center;
   background-repeat: no-repeat;
   background-size: calc(100% - 10px) 9px;
-  box-shadow: inset 0 1px 0 var(--color-border-strong);
 }
 
 .fader-input:hover::-webkit-slider-thumb {
@@ -3564,12 +3669,17 @@ input[type="number"].krate-input {
   white-space: nowrap;
 }
 
-input.strip-name:hover {
+.strip-rename {
+  border: 0;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.strip-rename:hover {
   box-shadow: inset 0 0 0 1px var(--color-channel-ink);
 }
 
-input.strip-name:focus {
-  outline: none;
+.strip-rename:focus-visible {
   box-shadow: inset 0 0 0 2px var(--color-channel-ink);
 }
 
@@ -3623,6 +3733,80 @@ input.strip-name:focus {
   justify-content: flex-start;
   width: 100%;
   min-height: var(--control-height);
+  font-size: var(--text-sm);
+}
+
+.strip-peak[data-zone="low"] {
+  color: var(--color-meter-green);
+}
+
+.strip-peak[data-zone="high"] {
+  color: var(--color-meter-amber);
+}
+
+.strip-peak[data-zone="top"] {
+  color: var(--color-meter-red);
+}
+
+.menu-item[data-tone="danger"]:disabled {
+  color: var(--color-text-dim);
+}
+
+.ctrl-line {
+  display: grid;
+  grid-template-columns: 5rem minmax(0, 1fr) 3rem;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ctrl-label {
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.ctrl-value {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-align: right;
+}
+
+.rail-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-0);
+}
+
+.rail-head .rail-title {
+  flex: 1;
+}
+
+.foot-action {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.grid-summary {
+  min-width: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.grid-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.setup-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.setup-summary {
+  color: var(--color-text-muted);
   font-size: var(--text-sm);
 }
 
@@ -3926,19 +4110,9 @@ input.strip-name:focus {
   }
 
   .narrow-only {
-    display: block;
-  }
-
-  .lib-details {
-    border-left: 0;
-  }
-
-  .dl-form {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
-  }
-
-  .dl-form > .krate-input {
-    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
   }
 
   .dl-body {

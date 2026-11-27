@@ -18,6 +18,9 @@ import { Select } from "../ui/select";
 import { RunGlyph } from "../ui/glyphs";
 import { Notice } from "../ui/notice";
 import { LiveText } from "../ui/live-text";
+import { NumberInput } from "../ui/number-input";
+import { askConfirm, askForm } from "../../lib/modal";
+import { clampNumber } from "../../lib/numbers";
 import { SUBDIVISIONS, accentLabel, barCaption, cleanBpm, cycleAccent, polyLabel } from "../../lib/mixer";
 import { isTyping } from "../../lib/workspace";
 import { handleError, onRefresh, startAudioForUser, logFailure } from "../../lib/service";
@@ -85,6 +88,7 @@ export function MetronomeDeck() {
   const [polyShown, setPolyShown] = createSignal(80);
   const [captionText, setCaptionText] = createSignal("Stopped");
   const [view, setView] = createSignal("play");
+  const [silentText, setSilentText] = createSignal("Off");
   const [large, setLarge] = createSignal(false);
   createEffect(() => {
     const next = AudioStream();
@@ -97,6 +101,7 @@ export function MetronomeDeck() {
     setVolumeShown(Math.round(c.volume * 100));
     setSubShown(Math.round(c.subLevel * 100));
     setPolyShown(Math.round(c.polyLevel * 100));
+    setSilentText(c.silentBars > 0 ? "Play " + c.playBars + ", then " + c.silentBars + " silent" : "Off");
   });
 
   createEffect(() => {
@@ -200,10 +205,32 @@ export function MetronomeDeck() {
     });
   }
 
-  function resetSound(role: string) {
+  async function resetSound(role: string) {
+    const label = ROLES.find((r) => r.role === role)?.label;
+    const yes = await askConfirm({
+      title: label ? "Remove custom sound" : "Remove all custom sounds",
+      message: label ? "Go back to the built-in sound for " + label.toLowerCase() + "?" : "Go back to the built-in sound for every beat?",
+      confirmLabel: "Use built-in",
+      danger: true,
+    });
+    if (!yes) return;
     guard(async () => {
       setCfg(await ClearMetronomeSound(role));
     });
+  }
+
+  async function editSilentBars() {
+    const values = await askForm({
+      title: "Silent bars",
+      message: "The click plays for some bars, then goes quiet so you can hold the time yourself. Use 0 silent bars to turn this off.",
+      confirmLabel: "Apply",
+      fields: [
+        { key: "play", label: "Bars with the click (1 to 64)", type: "decimal", value: String(cfg().playBars), required: true },
+        { key: "silent", label: "Silent bars (0 to 64)", type: "decimal", value: String(cfg().silentBars), required: true },
+      ],
+    });
+    if (!values) return;
+    update({ playBars: clampNumber(values.play, 1, 64, 0) ?? cfg().playBars, silentBars: clampNumber(values.silent, 0, 64, 0) ?? cfg().silentBars });
   }
 
   onMount(() => {
@@ -275,15 +302,7 @@ export function MetronomeDeck() {
       <div class="metro-body" showIf={view() === "play"}>
         <div class="metro-top">
           <label class="bpm-lcd" data-tip="Tempo. Up and Down keys nudge it.">
-            <input
-              class="bpm-input"
-              type="number"
-              step="0.1"
-              aria-label="Tempo in beats per minute"
-              value={bpmText()}
-              onInput={(e: Event) => setBpmText((e.target as HTMLInputElement).value)}
-              onChange={(e: Event) => setTempo(Number((e.target as HTMLInputElement).value))}
-            />
+            <NumberInput id="metro-tempo" class="bpm-input" label="Tempo in beats per minute" value={cfg().bpm} min={20} max={400} decimals={1} onCommit={setTempo} />
             <span class="bpm-unit">BPM</span>
           </label>
           <div class="bpm-steps">
@@ -367,15 +386,7 @@ export function MetronomeDeck() {
 
       <div class="metro-setup" showIf={view() === "setup"}>
         <div class="setup-block">
-          <span class="setup-title">Bar</span>
-          <div class="field-row compact">
-            <Field label="Beats" htmlFor="beats">
-              <Select id="beats" label="Beats per bar" value={String(cfg().beatsPerBar)} options={BEATS} onChange={(v) => update({ beatsPerBar: Number(v) })} />
-            </Field>
-            <Field label="Subdivision" htmlFor="subdivision">
-              <Select id="subdivision" label="Subdivision" value={String(cfg().subdivision)} options={SUBDIVISIONS} onChange={(v) => update({ subdivision: Number(v) })} />
-            </Field>
-          </div>
+          <span class="setup-title">Subdivision</span>
           <div class="ctrl-line">
             <span class="ctrl-label">Sub level</span>
             <input
@@ -390,14 +401,6 @@ export function MetronomeDeck() {
               onChange={(e: Event) => update({ subLevel: Number((e.target as HTMLInputElement).value) / 100 })}
             />
             <LiveText class="ctrl-value" text={subShown() + "%"} />
-          </div>
-          <div class="accent-row">
-            {cfg().accents.map((level, i) => (
-              <button class="accent-button" type="button" key={i} data-level={String(level)} aria-label={"Beat " + (i + 1) + ": " + accentLabel(level)} title={accentLabel(level)} onClick={() => cycle(i)}>
-                <span class="accent-bar" />
-                <span class="accent-index">{String(i + 1)}</span>
-              </button>
-            ))}
           </div>
         </div>
 
@@ -425,13 +428,12 @@ export function MetronomeDeck() {
 
         <div class="setup-block">
           <span class="setup-title">Silent bars</span>
-          <div class="field-row compact">
-            <Field label="Play bars" htmlFor="play-bars">
-              <input id="play-bars" class="krate-input" type="number" min="1" max="64" step="1" value={String(cfg().playBars)} onChange={(e: Event) => update({ playBars: Number((e.target as HTMLInputElement).value) })} />
-            </Field>
-            <Field label="Then silent" htmlFor="silent-bars">
-              <input id="silent-bars" class="krate-input" type="number" min="0" max="64" step="1" value={String(cfg().silentBars)} onChange={(e: Event) => update({ silentBars: Number((e.target as HTMLInputElement).value) })} />
-            </Field>
+          <div class="setup-row">
+            <LiveText class="setup-summary" text={silentText()} />
+            <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={editSilentBars}>
+              <Icon name="lucide:pencil" />
+              Edit
+            </button>
           </div>
         </div>
 

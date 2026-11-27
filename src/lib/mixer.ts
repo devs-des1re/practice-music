@@ -130,3 +130,11 @@ export function peakText(linear: number): string {
   if (db <= SCALE_FLOOR_DB) return "-inf";
   return formatDb(db);
 }
+
+export function peakZone(linear: number): string {
+  if (linear <= 0) return "none";
+  const db = toDb(linear);
+  if (db > -3) return "top";
+  if (db > -12) return "high";
+  return "low";
+}

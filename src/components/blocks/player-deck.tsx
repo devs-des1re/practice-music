@@ -14,6 +14,7 @@ import {
   PlayerDetectGrid,
   PlayerSections,
   PlayerSaveSection,
+  PlayerRenameSection,
   PlayerDeleteSection,
   PlayerStream,
 } from "../../../api/player.go";
@@ -22,6 +23,8 @@ import { FoldButton } from "../ui/fold-button";
 import { Select } from "../ui/select";
 import { Notice } from "../ui/notice";
 import { LiveText } from "../ui/live-text";
+import { askConfirm, askForm, askText } from "../../lib/modal";
+import { clampNumber } from "../../lib/numbers";
 import { PlayGlyph } from "../ui/glyphs";
 import { barAndBeat, formatClock, type SnapMode } from "../../lib/waveform";
 import { emptyPlayer } from "../../lib/player";
@@ -57,15 +60,11 @@ export function PlayerDeck(props: PlayerDeckProps) {
   const [error, setError] = createSignal("");
   const [info, setInfo] = createSignal("");
   const [snap, setSnap] = createSignal<SnapMode>("beat");
+  const [gridText, setGridText] = createSignal("No beat grid yet");
   const [sections, setSections] = createSignal<Section[]>([]);
-  const [sectionName, setSectionName] = createSignal("");
   const [speedShown, setSpeedShown] = createSignal(100);
   const [pitchShown, setPitchShown] = createSignal(0);
   const [volumeShown, setVolumeShown] = createSignal(90);
-  const [bpmEdit, setBpmEdit] = createSignal(120);
-  const [offsetEdit, setOffsetEdit] = createSignal(0);
-  const [beatsEdit, setBeatsEdit] = createSignal(4);
-  const [downbeatEdit, setDownbeatEdit] = createSignal(0);
   const [side, setSide] = createSignal("sections");
   const [reading, setReading] = createSignal(false);
   const [titleText, setTitleText] = createSignal("");
@@ -103,6 +102,11 @@ export function PlayerDeck(props: PlayerDeckProps) {
   });
 
   createEffect(() => {
+    const s = st();
+    setGridText(s.loaded && s.grid.bpm > 0 ? s.grid.bpm.toFixed(1) + " BPM, " + (s.grid.beatsPerBar || 4) + " beats per bar, beat one at " + Math.round(s.grid.offsetMs) + " ms" : "No beat grid yet");
+  });
+
+  createEffect(() => {
     const p = pitchShown();
     setSpeedText(speedShown() + "%");
     setPitchText((p > 0 ? "+" : "") + p + " st");
@@ -123,7 +127,6 @@ export function PlayerDeck(props: PlayerDeckProps) {
     PlayerCurrent()
       .then(async (restored) => {
         setPeaks(restored.peaks);
-        syncGridFields(restored.grid);
         setInfo("");
         await loadSections();
       })
@@ -150,13 +153,6 @@ export function PlayerDeck(props: PlayerDeckProps) {
     } catch (e) {
       logFailure("sections failed", e);
     }
-  }
-
-  function syncGridFields(g: PlayerState["grid"]) {
-    if (g.bpm > 0) setBpmEdit(Math.round(g.bpm * 100) / 100);
-    setOffsetEdit(Math.round(g.offsetMs));
-    setBeatsEdit(g.beatsPerBar || 4);
-    setDownbeatEdit(g.downbeat || 0);
   }
 
   function startOfPlay(): number {
@@ -274,27 +270,69 @@ export function PlayerDeck(props: PlayerDeckProps) {
   }
 
   async function saveSection() {
-    const name = sectionName().trim();
     const l = st().loop;
-    if (!name) {
-      setError("Give the section a name.");
-      return;
-    }
     if (l.endMs <= l.startMs) {
       setError("Choose a loop first, then save it as a section.");
       return;
     }
+    const name = await askText({
+      title: "Save loop",
+      message: formatClock(l.startMs) + " to " + formatClock(l.endMs),
+      label: "Section name",
+      confirmLabel: "Save loop",
+      placeholder: "Chorus",
+      suggestions: SECTION_NAMES,
+      maxLength: 40,
+    });
+    if (!name) return;
     await guard(async () => {
       await PlayerSaveSection(name, l.startMs, l.endMs);
-      setSectionName("");
       await loadSections();
     });
   }
 
-  function applyGrid() {
+  async function renameSection(section: Section) {
+    const name = await askText({ title: "Rename section", label: "Section name", confirmLabel: "Rename", value: section.name, suggestions: SECTION_NAMES, maxLength: 40 });
+    if (!name || name === section.name) return;
+    await guard(async () => {
+      await PlayerRenameSection(section.id, name);
+      await loadSections();
+    });
+  }
+
+  async function deleteSection(section: Section) {
+    const yes = await askConfirm({ title: "Delete section", message: "Delete the section " + section.name + "? The song is not changed.", confirmLabel: "Delete section", danger: true });
+    if (!yes) return;
+    await guard(async () => {
+      await PlayerDeleteSection(section.id);
+      await loadSections();
+    });
+  }
+
+  async function editGrid() {
+    if (!st().loaded) return;
+    const g = st().grid;
+    const values = await askForm({
+      title: "Edit beat grid",
+      confirmLabel: "Apply",
+      fields: [
+        { key: "bpm", label: "Tempo in BPM (20 to 400)", type: "decimal", value: g.bpm > 0 ? String(Math.round(g.bpm * 100) / 100) : "120", required: true },
+        { key: "offset", label: "Beat one position in milliseconds", type: "decimal", value: String(Math.round(g.offsetMs)) },
+        { key: "beats", label: "Beats per bar (1 to 32)", type: "decimal", value: String(g.beatsPerBar || 4) },
+        { key: "downbeat", label: "Downbeat", type: "decimal", value: String(g.downbeat || 0) },
+      ],
+    });
+    if (!values) return;
+    const bpm = clampNumber(values.bpm, 20, 400, 2);
+    if (bpm === null) {
+      setError("Enter the tempo as a number.");
+      return;
+    }
+    const beats = clampNumber(values.beats, 1, 32, 0) ?? 4;
+    const offset = clampNumber(values.offset, 0, 3600000, 0) ?? 0;
+    const downbeat = clampNumber(values.downbeat, 0, beats - 1, 0) ?? 0;
     guard(async () => {
-      const g = await PlayerSetGrid(bpmEdit(), offsetEdit(), beatsEdit(), downbeatEdit());
-      syncGridFields(g);
+      await PlayerSetGrid(bpm, offset, beats, downbeat);
       setInfo("Beat grid saved.");
     });
   }
@@ -302,15 +340,21 @@ export function PlayerDeck(props: PlayerDeckProps) {
   function detectGrid() {
     guard(async () => {
       const g = await PlayerDetectGrid();
-      syncGridFields(g);
       setInfo("Tempo detected: " + g.bpm.toFixed(1) + " BPM.");
     });
   }
 
   function markBeatOne() {
-    const beat = 60000 / Math.max(1, bpmEdit());
-    setOffsetEdit(Math.round(st().positionMs % beat));
-    setInfo("Beat one moved to the playhead. Press Apply to keep it.");
+    const g = st().grid;
+    if (g.bpm <= 0) {
+      setError("Set or detect the tempo first.");
+      return;
+    }
+    const offset = Math.round(st().positionMs % (60000 / g.bpm));
+    guard(async () => {
+      await PlayerSetGrid(g.bpm, offset, g.beatsPerBar || 4, g.downbeat || 0);
+      setInfo("Beat one moved to the playhead.");
+    });
   }
 
   return (
@@ -504,79 +548,35 @@ export function PlayerDeck(props: PlayerDeckProps) {
                 <button class="section-chip-main" type="button" data-tip={formatClock(s.startMs) + " to " + formatClock(s.endMs)} onClick={() => applySection(s)}>
                   {s.name}
                 </button>
-                <button
-                  class="section-chip-x"
-                  type="button"
-                  aria-label={"Delete " + s.name}
-                  data-tip="Delete this section"
-                  onClick={() =>
-                    guard(async () => {
-                      await PlayerDeleteSection(s.id);
-                      await loadSections();
-                    })
-                  }
-                >
-                  <Icon name="lucide:x" />
+                <button class="section-chip-x" type="button" aria-label={"Rename " + s.name} data-tip="Rename this section" onClick={() => renameSection(s)}>
+                  <Icon name="lucide:pencil" />
+                </button>
+                <button class="section-chip-x" type="button" aria-label={"Delete " + s.name} data-tip="Delete this section" onClick={() => deleteSection(s)}>
+                  <Icon name="lucide:trash-2" />
                 </button>
               </span>
             ))}
           </div>
-          <div class="inline-form">
-            <input
-              class="krate-input"
-              type="text"
-              list="section-names"
-              placeholder="Name this loop"
-              aria-label="Section name"
-              value={sectionName()}
-              onInput={(e: Event) => setSectionName((e.target as HTMLInputElement).value)}
-              onKeyDown={(e: KeyboardEvent) => {
-                if (e.key === "Enter") saveSection();
-              }}
-            />
-            <datalist id="section-names">
-              {SECTION_NAMES.map((n) => (
-                <option value={n} key={n} />
-              ))}
-            </datalist>
-            <button class="krate-button krate-button-secondary" type="button" disabled={!st().loop.enabled} onClick={saveSection}>
-              <Icon name="lucide:bookmark" />
-              Save section
-            </button>
-          </div>
+          <button class="krate-button krate-button-secondary krate-button-sm foot-action" type="button" disabled={!st().loop.enabled} data-tip="Save the current loop as a section" onClick={saveSection}>
+            <Icon name="lucide:bookmark-plus" />
+            Save loop
+          </button>
         </div>
 
         <div class="foot-body" showIf={side() === "grid"}>
-          <div class="grid-fields">
-            <label class="grid-field">
-              BPM
-              <input class="krate-input" type="number" min="20" max="400" step="0.1" aria-label="Beats per minute" value={String(bpmEdit())} onInput={(e: Event) => setBpmEdit(Number((e.target as HTMLInputElement).value))} />
-            </label>
-            <label class="grid-field">
-              Beat one ms
-              <input class="krate-input" type="number" min="0" step="1" aria-label="Beat one position in milliseconds" value={String(offsetEdit())} onInput={(e: Event) => setOffsetEdit(Number((e.target as HTMLInputElement).value))} />
-            </label>
-            <label class="grid-field">
-              Beats
-              <input class="krate-input" type="number" min="1" max="32" step="1" aria-label="Beats per bar" value={String(beatsEdit())} onInput={(e: Event) => setBeatsEdit(Number((e.target as HTMLInputElement).value))} />
-            </label>
-            <label class="grid-field">
-              Downbeat
-              <input class="krate-input" type="number" min="0" max="31" step="1" aria-label="Downbeat" value={String(downbeatEdit())} onInput={(e: Event) => setDownbeatEdit(Number((e.target as HTMLInputElement).value))} />
-            </label>
-          </div>
-          <div class="grid-fields">
-            <button class="krate-button krate-button-secondary" type="button" disabled={!st().loaded} onClick={detectGrid}>
+          <LiveText class="grid-summary mono" text={gridText()} />
+          <div class="grid-actions">
+            <button class="krate-button krate-button-ghost krate-button-sm" type="button" disabled={!st().loaded} data-tip="Find the tempo from the audio" onClick={detectGrid}>
               <Icon name="lucide:scan-search" />
               Detect
             </button>
-            <button class="krate-button krate-button-secondary" type="button" disabled={!st().loaded} onClick={markBeatOne}>
+            <button class="krate-button krate-button-ghost krate-button-sm" type="button" disabled={!st().loaded} data-tip="Move beat one to the playhead" onClick={markBeatOne}>
               <Icon name="lucide:flag" />
               Beat one here
             </button>
-            <button class="krate-button krate-button-primary" type="button" disabled={!st().loaded} onClick={applyGrid}>
-              <Icon name="lucide:check" />
-              Apply
+            <button class="krate-button krate-button-secondary krate-button-sm" type="button" disabled={!st().loaded} onClick={editGrid}>
+              <Icon name="lucide:pencil" />
+              Edit grid
             </button>
           </div>
         </div>
