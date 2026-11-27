@@ -3,6 +3,7 @@ import { copyFileSync, existsSync, readFileSync, readdirSync, rmSync, writeFileS
 import { delimiter } from "node:path";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { setNativeVersion } from "./package-options.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const windows = process.platform === "win32";
@@ -78,7 +79,7 @@ try {
     if (!/^\d+\.\d+\.\d+([-.][0-9A-Za-z.]+)?$/.test(version)) {
       throw new Error("PM_VERSION is not a version number: " + version);
     }
-    writeFileSync(configPath, originalConfig.replace(/version: '[^']*'/, "version: '" + version + "'"));
+    writeFileSync(configPath, setNativeVersion(originalConfig, version));
   }
   run("node", [
     path.join("scripts", "krate.mjs"),
