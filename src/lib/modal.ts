@@ -15,6 +15,7 @@ export interface ModalField {
   suggestions?: string[];
   maxLength?: number;
   required?: boolean;
+  check?: (value: string) => string;
 }
 
 export type ModalValues = Record<string, string>;
@@ -51,6 +52,7 @@ export interface TextOptions {
   placeholder?: string;
   suggestions?: string[];
   maxLength?: number;
+  check?: (value: string) => string;
 }
 
 interface ModalShared {
@@ -92,6 +94,14 @@ export function subscribeModal(fn: (request: ModalRequest | null) => void): () =
 export function missingField(fields: ModalField[], values: ModalValues): string {
   const gap = fields.find((f) => f.required && !(values[f.key] || "").trim());
   return gap ? gap.key : "";
+}
+
+export function fieldProblem(fields: ModalField[], values: ModalValues): { key: string; message: string } | null {
+  for (const field of fields) {
+    const message = field.check ? field.check((values[field.key] || "").trim()) : "";
+    if (message) return { key: field.key, message };
+  }
+  return null;
 }
 
 export function settleModal(answer: ModalValues | null) {
@@ -141,6 +151,7 @@ export async function askText(options: TextOptions): Promise<string | null> {
         suggestions: options.suggestions,
         maxLength: options.maxLength,
         required: true,
+        check: options.check,
       },
     ],
   });

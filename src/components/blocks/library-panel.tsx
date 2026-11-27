@@ -29,6 +29,7 @@ import { formatDurationMs } from "../../lib/format";
 import { askConfirm, askForm, askText } from "../../lib/modal";
 import { splitTags, tagChanges } from "../../lib/tags";
 import { setQueue } from "../../lib/queue";
+import { takenName } from "../../lib/names";
 import { pressedCommand } from "../../lib/keymap";
 import { panelShown } from "../../lib/workspace";
 import { handleError, onRefresh, logFailure, startAudioForUser } from "../../lib/service";
@@ -388,6 +389,12 @@ export function LibraryPanel() {
       confirmLabel: "Create playlist",
       placeholder: "Warm up",
       maxLength: 60,
+      check: (wanted) =>
+        takenName(
+          wanted,
+          playlists().map((x) => x.name),
+          "playlist",
+        ),
     });
     if (!name) return;
     await guard(async () => {
@@ -406,6 +413,14 @@ export function LibraryPanel() {
       confirmLabel: "Rename",
       value: current.name,
       maxLength: 60,
+      check: (wanted) =>
+        takenName(
+          wanted,
+          playlists()
+            .filter((x) => x.id !== id)
+            .map((x) => x.name),
+          "playlist",
+        ),
     });
     if (!name || name === current.name) return;
     await guard(() => RenamePlaylist(id, name));

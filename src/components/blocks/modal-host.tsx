@@ -1,7 +1,14 @@
 import { createSignal, onMount, onCleanup } from "@krate/runtime";
 import { Dialog } from "@krate/components/dialog";
 import { LiveText } from "../ui/live-text";
-import { missingField, settleModal, subscribeModal, type ModalField, type ModalValues } from "../../lib/modal";
+import {
+  fieldProblem,
+  missingField,
+  settleModal,
+  subscribeModal,
+  type ModalField,
+  type ModalValues,
+} from "../../lib/modal";
 
 const FOCUS_DELAY_MS = 40;
 
@@ -16,6 +23,7 @@ export function ModalHost() {
   const [modalConfirm, setModalConfirm] = createSignal("OK");
   const [modalDanger, setModalDanger] = createSignal(false);
   const [modalRows, setModalRows] = createSignal<ModalRow[]>([]);
+  const [modalProblem, setModalProblem] = createSignal("");
 
   const modalControl = (id: string) => document.getElementById(id) as HTMLInputElement | HTMLSelectElement | null;
 
@@ -28,6 +36,14 @@ export function ModalHost() {
       if (row) modalControl(row.id)?.focus();
       return;
     }
+    const problem = fieldProblem(modalRows(), values);
+    setModalProblem(problem?.message || "");
+    if (problem) {
+      const el = modalControl(modalRows().find((r) => r.key === problem.key)?.id || "");
+      el?.focus();
+      if (el instanceof HTMLInputElement) el.select();
+      return;
+    }
     settleModal(values);
   }
 
@@ -36,6 +52,7 @@ export function ModalHost() {
     if (!el) return;
     el.value = value;
     el.focus();
+    setModalProblem("");
   }
 
   function fillModal(next: ModalRow[]) {
@@ -60,6 +77,7 @@ export function ModalHost() {
       setModalConfirm(request.confirmLabel);
       setModalDanger(request.danger);
       setModalRows(next);
+      setModalProblem("");
       setModalOpen(true);
       window.setTimeout(() => fillModal(next), FOCUS_DELAY_MS);
     });
@@ -107,6 +125,7 @@ export function ModalHost() {
                   placeholder={row.placeholder || ""}
                   maxLength={row.maxLength || 400}
                   autocomplete="off"
+                  onInput={() => setModalProblem("")}
                   onKeyDown={(e: KeyboardEvent) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
@@ -131,6 +150,9 @@ export function ModalHost() {
               )}
             </div>
           ))}
+        </div>
+        <div class="pm-modal-problem" role="alert" showIf={!!modalProblem()}>
+          <LiveText class="field-warn" text={modalProblem()} />
         </div>
         <div class="pm-modal-actions">
           <button class="krate-button krate-button-secondary" type="button" onClick={() => settleModal(null)}>

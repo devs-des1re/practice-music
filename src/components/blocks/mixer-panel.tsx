@@ -26,6 +26,7 @@ import { Menu, type MenuItem } from "../ui/menu";
 import { askConfirm, askText } from "../../lib/modal";
 import { DIVIDER, openContextMenu } from "../../lib/context-menu";
 import { pressedCommand } from "../../lib/keymap";
+import { takenName } from "../../lib/names";
 import { panelShown } from "../../lib/workspace";
 import { channelPairs, inDisplayOrder, isListening, listenSend, sourceOptions } from "../../lib/mixer";
 import { formatClock } from "../../lib/waveform";
@@ -423,6 +424,14 @@ export function MixerPanel() {
       confirmLabel: "Rename",
       value: current.name,
       maxLength: 40,
+      check: (wanted) =>
+        takenName(
+          wanted,
+          scenes()
+            .filter((sc) => sc.id !== current.id)
+            .map((sc) => sc.name),
+          "scene",
+        ),
     });
     if (!name || name === current.name) return;
     guard(async () => {
