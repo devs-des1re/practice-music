@@ -62,6 +62,7 @@ export function PlayerDeck(props: PlayerDeckProps) {
   const [snap, setSnap] = createSignal<SnapMode>("beat");
   const [gridText, setGridText] = createSignal("No beat grid yet");
   const [showGrid, setShowGrid] = createSignal(true);
+  const [selecting, setSelecting] = createSignal(false);
   const [sections, setSections] = createSignal<Section[]>([]);
   const [speedShown, setSpeedShown] = createSignal(100);
   const [pitchShown, setPitchShown] = createSignal(0);
@@ -220,7 +221,7 @@ export function PlayerDeck(props: PlayerDeckProps) {
   function toggleLoop() {
     const l = st().loop;
     if (l.endMs <= l.startMs) {
-      setError("Drag on the timeline to choose a loop first.");
+      setError("Press Select loop and drag on the timeline first.");
       return;
     }
     guard(() => PlayerSetLoop(l.startMs, l.endMs, !l.enabled));
@@ -255,6 +256,10 @@ export function PlayerDeck(props: PlayerDeckProps) {
       } else if (e.key === "ArrowRight" && !onWave) {
         e.preventDefault();
         seekBy(1000 * (e.shiftKey ? currentPrefs().seekLargeSeconds : currentPrefs().seekSeconds));
+      } else if (e.key === "s" || e.key === "S") {
+        if (st().loaded) setSelecting(!selecting());
+      } else if (e.key === "Escape" && selecting()) {
+        setSelecting(false);
       } else if (e.key === "l" || e.key === "L") {
         toggleLoop();
       } else if (e.key === "n" || e.key === "N") {
@@ -385,6 +390,10 @@ export function PlayerDeck(props: PlayerDeckProps) {
             <Icon name="lucide:skip-forward" />
           </button>
           <span class="tp-gap" />
+          <button class="tp-btn tp-select" type="button" aria-label="Select a loop" aria-pressed={selecting()} data-tip="Select a loop, then drag on the timeline. Esc cancels." data-keys="S" data-on={selecting() ? "true" : "false"} disabled={!st().loaded} onClick={() => setSelecting(!selecting())}>
+            <Icon name="lucide:scan-line" />
+            Select loop
+          </button>
           <button class="tp-btn" type="button" aria-label="Loop on or off" data-tip="Loop on or off" data-keys="L" data-on={st().loop.enabled ? "true" : "false"} disabled={!st().loaded} onClick={toggleLoop}>
             <Icon name="lucide:repeat" />
           </button>
@@ -526,6 +535,8 @@ export function PlayerDeck(props: PlayerDeckProps) {
             gridDownbeat={st().grid.downbeat}
             snap={snap()}
             showGrid={showGrid()}
+            selecting={selecting()}
+            onSelected={() => setSelecting(false)}
             markers={sections().map((s) => ({ name: s.name, startMs: s.startMs, endMs: s.endMs }))}
             onSeek={(ms) => guard(() => PlayerSeek(ms))}
             onLoop={(s, e) => guard(() => PlayerSetLoop(s, e, true))}
@@ -553,7 +564,7 @@ export function PlayerDeck(props: PlayerDeckProps) {
         <div class="foot-body" showIf={side() === "sections"}>
           <div class="section-chips">
             <span class="field-hint" showIf={sections().length === 0}>
-              Drag on the timeline to make a loop, then save it here.
+              Press Select loop, drag on the timeline, then save it here.
             </span>
             {sections().map((s) => (
               <span class="section-chip" key={s.id}>

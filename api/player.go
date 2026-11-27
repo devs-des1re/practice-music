@@ -201,8 +201,17 @@ func PlayerPause() error {
 	return playerControl(engine.PlayerControl{Action: "pause"})
 }
 
+func leavesLoop(loop LoopRegion, ms float64) bool {
+	return loop.Enabled && (ms < loop.StartMs-1 || ms >= loop.EndMs)
+}
+
 func PlayerSeek(ms float64) error {
 	boot()
+	if loop := playerSnapshot().Loop; leavesLoop(loop, ms) {
+		if err := PlayerSetLoop(loop.StartMs, loop.EndMs, false); err != nil {
+			return err
+		}
+	}
 	return playerControl(engine.PlayerControl{SeekMs: f(ms)})
 }
 

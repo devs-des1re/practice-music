@@ -15,6 +15,8 @@ export interface WaveformProps {
   gridDownbeat: number;
   snap: SnapMode;
   showGrid: boolean;
+  selecting: boolean;
+  onSelected: () => void;
   onSeek: (ms: number) => void;
   markers: WaveMarker[];
   onLoop: (start: number, end: number) => void;
@@ -32,7 +34,8 @@ export function Waveform(props: WaveformProps) {
   const [size, setSize] = createSignal(0);
   const [dragStart, setDragStart] = createSignal(-1);
   const [dragEnd, setDragEnd] = createSignal(-1);
-  const drag = { mode: "none" as "none" | "select" | "start" | "end", anchor: 0, moved: false, startX: 0 };
+  const [scrubAt, setScrubAt] = createSignal(-1);
+  const drag = { mode: "none" as "none" | "seek" | "select" | "start" | "end", anchor: 0, moved: false, startX: 0 };
   let flags: Flag[] = [];
 
   function canvas(): HTMLCanvasElement | null {
@@ -57,7 +60,7 @@ export function Waveform(props: WaveformProps) {
     size();
     const peaks = props.peaks;
     const duration = props.durationMs;
-    const position = props.positionMs;
+    const position = scrubAt() >= 0 ? scrubAt() : props.positionMs;
     const reg = region();
     const gridKey = props.gridOffset + props.gridBeats + props.gridDownbeat;
     if (Number.isNaN(gridKey)) return;
@@ -107,11 +110,16 @@ export function Waveform(props: WaveformProps) {
         return;
       }
     }
-    const reg = region();
-    const handle = hitHandle(x, (reg.start / props.durationMs) * width, (reg.end / props.durationMs) * width, reg.on, GRAB);
     drag.startX = x;
     drag.moved = false;
     const mode: SnapMode = e.altKey ? "off" : props.snap;
+    if (!props.selecting) {
+      drag.mode = "seek";
+      setScrubAt(snapTime(toMs(x, width), grid(), mode, props.durationMs));
+      return;
+    }
+    const reg = region();
+    const handle = hitHandle(x, (reg.start / props.durationMs) * width, (reg.end / props.durationMs) * width, reg.on, GRAB);
     if (handle) {
       drag.mode = handle;
       setDragStart(reg.start);
@@ -129,16 +137,18 @@ export function Waveform(props: WaveformProps) {
     const x = pointerX(e);
     const reg = region();
     if (drag.mode === "none") {
-      const near = hitHandle(x, (reg.start / props.durationMs) * width, (reg.end / props.durationMs) * width, reg.on, GRAB);
+      const near = props.selecting && hitHandle(x, (reg.start / props.durationMs) * width, (reg.end / props.durationMs) * width, reg.on, GRAB);
       const py = pointerY(e);
       const overFlag = props.markers.length > 0 && py >= RULER && py < RULER + LANE && flags.some((f) => x >= f.x0 && x <= f.x1);
-      el.style.cursor = overFlag ? "pointer" : near ? "col-resize" : "crosshair";
+      el.style.cursor = overFlag ? "pointer" : near ? "col-resize" : props.selecting ? "crosshair" : "pointer";
       return;
     }
     const mode: SnapMode = e.altKey ? "off" : props.snap;
     const ms = snapTime(toMs(x, width), grid(), mode, props.durationMs);
     if (Math.abs(x - drag.startX) > 4) drag.moved = true;
-    if (drag.mode === "select" && drag.moved) {
+    if (drag.mode === "seek") {
+      setScrubAt(ms);
+    } else if (drag.mode === "select" && drag.moved) {
       const r = orderRegion(drag.anchor, ms);
       setDragStart(r.start);
       setDragEnd(r.end);
@@ -157,6 +167,12 @@ export function Waveform(props: WaveformProps) {
     const mode = drag.mode;
     drag.mode = "none";
     if (mode === "none") return;
+    if (mode === "seek") {
+      const target = scrubAt();
+      setScrubAt(-1);
+      if (target >= 0) props.onSeek(target);
+      return;
+    }
     const s = dragStart();
     const en = dragEnd();
     setDragStart(-1);
@@ -166,7 +182,10 @@ export function Waveform(props: WaveformProps) {
       props.onSeek(snapTime(toMs(pointerX(e), width), grid(), snapMode, props.durationMs));
       return;
     }
-    if (s >= 0 && en - s >= MIN_LOOP_MS) props.onLoop(s, en);
+    if (s >= 0 && en - s >= MIN_LOOP_MS) {
+      props.onLoop(s, en);
+      props.onSelected();
+    }
   }
 
   function onKey(e: KeyboardEvent) {
@@ -183,7 +202,7 @@ export function Waveform(props: WaveformProps) {
   onMount(() => {
     const el = canvas();
     if (!el) return;
-    el.style.cursor = "crosshair";
+    el.style.cursor = "pointer";
     const observer = new ResizeObserver(() => setSize(el.clientWidth * 10000 + el.clientHeight));
     observer.observe(el);
     onCleanup(() => observer.disconnect());
@@ -191,13 +210,13 @@ export function Waveform(props: WaveformProps) {
   });
 
   return (
-    <div class="wave-box">
+    <div class="wave-box" data-selecting={props.selecting ? "true" : "false"}>
       <canvas
         id="waveform"
         class="waveform"
         tabindex={0}
         role="img"
-        aria-label="Song waveform. Drag to choose a loop, click to move the playhead, arrow keys to step."
+        aria-label="Song waveform. Click or drag to move the playhead, arrow keys to step. Turn on Select loop to drag out a loop."
         onPointerDown={onDown}
         onPointerMove={onMove}
         onPointerUp={onUp}
