@@ -1,6 +1,6 @@
 # PracticeMusic
 
-![License](https://img.shields.io/badge/license-MIT-e8a33d)
+![License](https://img.shields.io/badge/license-MIT-555555)
 ![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20Linux-3d3d44)
 ![Status](https://img.shields.io/badge/status-early%20development-3d3d44)
 

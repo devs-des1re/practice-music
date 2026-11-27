@@ -132,7 +132,7 @@ export function peakText(linear: number): string {
 }
 
 export function peakZone(linear: number): string {
-  if (linear <= 0) return "none";
+  if (peakText(linear) === "-inf") return "none";
   const db = toDb(linear);
   if (db > -3) return "top";
   if (db > -12) return "high";

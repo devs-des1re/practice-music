@@ -191,21 +191,29 @@
 }
 
 :root {
-  --color-bg: #050506;
-  --color-surface: #0b0b0c;
-  --color-surface-raised: #111113;
-  --color-surface-hover: #1c1c20;
+  --color-bg: #050505;
+  --color-surface: #0b0b0b;
+  --color-surface-raised: #121212;
+  --color-surface-hover: #1e1e1e;
   --color-surface-inset: #000000;
-  --color-border: #212126;
-  --color-border-strong: #35353c;
+  --color-border: #232323;
+  --color-border-strong: #3a3a3a;
   --color-text: #ffffff;
-  --color-text-muted: #cbcbd3;
-  --color-text-dim: #9494a0;
-  --color-accent: #f59e0b;
-  --color-accent-hover: #fbb22e;
-  --color-accent-text: #14100a;
-  --color-accent-soft: #291c04;
-  --color-accent-line: #7f5510;
+  --color-text-muted: #cccccc;
+  --color-text-dim: #969696;
+  --color-accent: #e5e5e5;
+  --color-accent-hover: #ffffff;
+  --color-accent-text: #0a0a0a;
+  --color-accent-soft: #262626;
+  --color-accent-line: #5e5e5e;
+  --color-song: #38bdf8;
+  --color-song-hover: #6bcdfa;
+  --color-song-soft: #082331;
+  --color-song-line: #1a5f7f;
+  --color-click: #a78bfa;
+  --color-click-hover: #bfaafc;
+  --color-click-soft: #1b1531;
+  --color-click-line: #54448a;
   --color-danger: #ef4444;
   --color-danger-hover: #f26464;
   --color-danger-soft: #2b1517;
@@ -215,19 +223,19 @@
   --color-warning-soft: #292304;
   --color-info: #5b9bd5;
   --color-info-soft: #14202b;
-  --color-wave-rest: #56647d;
-  --color-wave-grid: #161619;
+  --color-wave-rest: #4a4a4a;
+  --color-wave-grid: #171717;
   --color-meter-green: #22c55e;
   --color-meter-amber: #facc15;
   --color-meter-red: #ef4444;
-  --color-meter-off: #131315;
-  --color-channel-1: #f59e0b;
-  --color-channel-2: #38bdf8;
+  --color-meter-off: #141414;
+  --color-channel-1: var(--color-song);
+  --color-channel-2: var(--color-click);
   --color-channel-3: #4ade80;
-  --color-channel-4: #a78bfa;
-  --color-channel-5: #fb7185;
+  --color-channel-4: #818cf8;
+  --color-channel-5: #f472b6;
   --color-channel-6: #2dd4bf;
-  --color-channel-ink: #050506;
+  --color-channel-ink: #050505;
   --color-scrim: #000000a6;
 
   --space-0: 0.125rem;
@@ -345,6 +353,21 @@ a {
 
 svg {
   flex-shrink: 0;
+}
+
+.player-panel,
+.song-row[data-loaded="true"] {
+  --color-accent: var(--color-song);
+  --color-accent-hover: var(--color-song-hover);
+  --color-accent-soft: var(--color-song-soft);
+  --color-accent-line: var(--color-song-line);
+}
+
+.metro-panel {
+  --color-accent: var(--color-click);
+  --color-accent-hover: var(--color-click-hover);
+  --color-accent-soft: var(--color-click-soft);
+  --color-accent-line: var(--color-click-line);
 }
 
 ::selection {
@@ -805,8 +828,8 @@ input[type="number"].krate-input {
 }
 
 .menu-item:hover:not(:disabled) {
-  background: var(--color-accent);
-  color: var(--color-accent-text);
+  background: var(--color-surface-hover);
+  color: var(--color-text);
 }
 
 .menu-item:disabled {
@@ -3355,7 +3378,7 @@ input[type="number"].krate-input {
 }
 
 .strip[data-selected="true"]::before {
-  background: var(--color-accent);
+  background: var(--tone);
 }
 
 .strip[data-muted="true"] .strip-main,
@@ -3416,9 +3439,9 @@ input[type="number"].krate-input {
 }
 
 .strip-edit[data-on="true"] {
-  border-color: var(--color-accent-line);
-  background: var(--color-accent-soft);
-  color: var(--color-accent);
+  border-color: var(--tone, var(--color-accent-line));
+  background: var(--color-surface-hover);
+  color: var(--tone, var(--color-accent));
 }
 
 .strip-pan,
@@ -3640,9 +3663,9 @@ input[type="number"].krate-input {
 }
 
 .strip-toggle[data-on="true"][data-kind="solo"] {
-  background: var(--color-accent-soft);
-  border-color: var(--color-accent);
-  color: var(--color-accent);
+  background: var(--color-warning-soft);
+  border-color: var(--color-warning);
+  color: var(--color-warning);
 }
 
 .strip-foot {
@@ -3831,11 +3854,11 @@ input[type="number"].krate-input {
 }
 
 .gr-readout[data-active="true"] {
-  border-color: var(--color-accent-line);
+  border-color: var(--color-meter-amber);
 }
 
 .gr-readout[data-active="true"] .gr-value {
-  color: var(--color-accent);
+  color: var(--color-meter-amber);
 }
 
 .info-row {
@@ -3861,6 +3884,10 @@ input[type="number"].krate-input {
   font-size: var(--text-sm);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.limiter-button .led[data-on="true"] {
+  background: var(--color-success);
 }
 
 .limiter-button .limiter-ceiling {

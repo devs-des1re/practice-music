@@ -117,6 +117,7 @@ test("peak readouts show minus infinity until there is a signal", () => {
 test("the peak colour zone follows the meter colours", async () => {
   const { peakZone } = await import("../../src/lib/mixer.ts");
   assert.equal(peakZone(0), "none");
+  assert.equal(peakZone(0.000001), "none");
   assert.equal(peakZone(0.1), "low");
   assert.equal(peakZone(0.5), "high");
   assert.equal(peakZone(0.9), "top");

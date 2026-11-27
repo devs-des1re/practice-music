@@ -63,7 +63,7 @@ export function drawWaveform(ctx: CanvasRenderingContext2D, width: number, HEIGH
   ctx.fillRect(0, 0, width, HEIGHT);
 
   if (reg.on) {
-    ctx.fillStyle = token("--color-accent-soft");
+    ctx.fillStyle = token("--color-song-soft");
     ctx.fillRect(xOf(reg.start), top, Math.max(1, xOf(reg.end) - xOf(reg.start)), body);
   }
 
@@ -91,7 +91,7 @@ export function drawWaveform(ctx: CanvasRenderingContext2D, width: number, HEIGH
     const bucket = Math.min(pairs - 1, Math.floor((x / width) * pairs));
     const lo = peaks[bucket * 2] * scale;
     const hi = peaks[bucket * 2 + 1] * scale;
-    ctx.fillStyle = x < playedX ? token("--color-accent") : token("--color-wave-rest");
+    ctx.fillStyle = x < playedX ? token("--color-song") : token("--color-wave-rest");
     const y0 = mid - Math.max(hi, 0.5);
     const y1 = mid - Math.min(lo, -0.5);
     ctx.fillRect(x, y0, 1, Math.max(1, y1 - y0));
@@ -119,9 +119,9 @@ export function drawWaveform(ctx: CanvasRenderingContext2D, width: number, HEIGH
   if (reg.on) {
     const x0 = Math.round(xOf(reg.start));
     const x1 = Math.round(xOf(reg.end));
-    ctx.fillStyle = token("--color-accent-soft");
+    ctx.fillStyle = token("--color-song-soft");
     ctx.fillRect(x0, 0, Math.max(2, x1 - x0), RULER - 1);
-    ctx.fillStyle = token("--color-accent");
+    ctx.fillStyle = token("--color-song");
     ctx.fillRect(x0, RULER - 3, Math.max(2, x1 - x0), 2);
     const label = "LOOP " + rulerLabel(reg.start) + " - " + rulerLabel(reg.end) + "  (" + rulerLabel(reg.end - reg.start) + ")";
     if (x1 - x0 > ctx.measureText(label).width + 12) ctx.fillText(label, x0 + 6, 9);
@@ -138,15 +138,15 @@ export function drawWaveform(ctx: CanvasRenderingContext2D, width: number, HEIGH
       const x0 = Math.round(xOf(m.startMs));
       const x1 = Math.max(x0 + 28, Math.round(xOf(m.endMs)));
       const active = reg.on && Math.abs(m.startMs - reg.start) < 60 && Math.abs(m.endMs - reg.end) < 60;
-      ctx.fillStyle = active ? token("--color-accent-soft") : token("--color-surface-raised");
+      ctx.fillStyle = active ? token("--color-song-soft") : token("--color-surface-raised");
       ctx.fillRect(x0 + 1, RULER + 2, x1 - x0 - 1, lane - 4);
-      ctx.fillStyle = active ? token("--color-accent") : token("--color-text-dim");
+      ctx.fillStyle = active ? token("--color-song") : token("--color-text-dim");
       ctx.fillRect(x0, RULER + 2, 2, lane - 4);
       ctx.save();
       ctx.beginPath();
       ctx.rect(x0 + 4, RULER, Math.max(0, x1 - x0 - 6), lane);
       ctx.clip();
-      ctx.fillStyle = active ? token("--color-accent") : token("--color-text-muted");
+      ctx.fillStyle = active ? token("--color-song") : token("--color-text-muted");
       ctx.font = "11px " + token("--font-sans");
       ctx.fillText(m.name, x0 + 7, RULER + lane / 2 + 0.5);
       ctx.restore();
@@ -155,7 +155,7 @@ export function drawWaveform(ctx: CanvasRenderingContext2D, width: number, HEIGH
   }
 
   if (reg.on) {
-    ctx.fillStyle = token("--color-accent");
+    ctx.fillStyle = token("--color-song");
     for (const ms of [reg.start, reg.end]) {
       const x = Math.round(xOf(ms));
       ctx.fillRect(x - 1, top, 2, body);
