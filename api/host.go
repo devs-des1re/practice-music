@@ -54,6 +54,7 @@ func boot() {
 		store = settings.NewStore(configDir(), home)
 		bootMedia(configDir())
 		loadSession(configDir())
+		loadDrums(configDir())
 		sup = engine.New(engine.Config{Path: engine.ResolveDefault})
 		sup.OnStatus(func(st engine.Status) { Engine.Set(st) })
 		startEvents()

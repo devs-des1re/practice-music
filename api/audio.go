@@ -135,6 +135,14 @@ func handleEvent(ev engine.Event) {
 		if frame, err := engine.DecodeMeters(ev.Data); err == nil {
 			MeterStream.Set(frame)
 		}
+	case "midi":
+		if frame, err := engine.DecodeMidi(ev.Data); err == nil {
+			MidiStream.Set(frame)
+		}
+	case "drum_kit":
+		if frame, err := engine.DecodeDrumKit(ev.Data); err == nil {
+			handleDrumKitEvent(frame)
+		}
 	case "beat":
 		if frame, err := engine.DecodeBeat(ev.Data); err == nil {
 			BeatStream.Set(frame)
@@ -156,6 +164,7 @@ func onEngineStatus(st engine.Status) {
 	if st.State != engine.StateRunning {
 		if st.State != engine.StateStarting {
 			setAudio(func(a *AudioState) { a.Running = false })
+			drumEngineGone()
 		}
 		return
 	}
@@ -165,6 +174,9 @@ func onEngineStatus(st engine.Status) {
 	fresh := pid != lastRunningPid
 	lastRunningPid = pid
 	audioMu.Unlock()
+	if fresh && !want {
+		go openDrumPort()
+	}
 	if want && fresh {
 		go func() {
 			if _, err := startAudioNow(); err != nil {
@@ -221,6 +233,7 @@ func startAudioNow() (AudioState, error) {
 	if !suppressReload.Load() {
 		go reloadPlayer()
 	}
+	go pushDrums()
 	logger.Infof("audio started on %s at %d Hz (%s)", info.Device, info.SampleRate, info.Mode)
 	return AudioStream.Get(), nil
 }
@@ -250,6 +263,7 @@ func StopAudio() (AudioState, error) {
 		a.Running = false
 		a.Metronome.Running = false
 	})
+	loadDrumKit()
 	return AudioStream.Get(), err
 }
 
