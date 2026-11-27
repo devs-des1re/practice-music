@@ -25,34 +25,35 @@ interface Shared {
   listeners: Set<(s: ServiceState) => void>;
 }
 
-const scope = globalThis as unknown as { __pmService?: Shared };
-
-if (!scope.__pmService) {
-  scope.__pmService = {
-    state: { audio: "idle", message: "", attempts: 0, retryAt: 0, offline: false },
-    current: null,
-    timer: 0,
-    lastAttempt: 0,
-    listeners: new Set(),
-  };
+function serviceShared(): Shared {
+  const holder = globalThis as unknown as { __pmService?: Shared };
+  if (!holder.__pmService) {
+    holder.__pmService = {
+      state: { audio: "idle", message: "", attempts: 0, retryAt: 0, offline: false },
+      current: null,
+      timer: 0,
+      lastAttempt: 0,
+      listeners: new Set(),
+    };
+  }
+  return holder.__pmService;
 }
 
-const shared = scope.__pmService;
-
 function publish(patch: Partial<ServiceState>) {
-  shared.state = { ...shared.state, ...patch };
-  for (const fn of shared.listeners) fn(shared.state);
+  const store = serviceShared();
+  store.state = { ...store.state, ...patch };
+  for (const fn of store.listeners) fn(store.state);
 }
 
 export function serviceState(): ServiceState {
-  return shared.state;
+  return serviceShared().state;
 }
 
 export function subscribeService(fn: (s: ServiceState) => void): () => void {
-  shared.listeners.add(fn);
-  fn(shared.state);
+  serviceShared().listeners.add(fn);
+  fn(serviceShared().state);
   return () => {
-    shared.listeners.delete(fn);
+    serviceShared().listeners.delete(fn);
   };
 }
 
@@ -62,8 +63,8 @@ export function onRefresh(fn: () => void): () => void {
 }
 
 async function attempt(automatic: boolean): Promise<boolean> {
-  shared.lastAttempt = Date.now();
-  window.clearTimeout(shared.timer);
+  serviceShared().lastAttempt = Date.now();
+  window.clearTimeout(serviceShared().timer);
   publish({ audio: "starting", retryAt: 0 });
   try {
     await StartAudio();
@@ -74,7 +75,7 @@ async function attempt(automatic: boolean): Promise<boolean> {
       publish({ audio: "idle", retryAt: 0, offline: true });
       return false;
     }
-    const attempts = shared.state.attempts + 1;
+    const attempts = serviceShared().state.attempts + 1;
     const message = describeError(e);
     logger.warn("audio did not start: " + message);
     if (automatic && attempts >= AUTO_RETRIES) {
@@ -83,7 +84,7 @@ async function attempt(automatic: boolean): Promise<boolean> {
     }
     const delay = retryDelayMs(attempts - 1);
     publish({ audio: "failed", message, attempts, retryAt: Date.now() + delay });
-    shared.timer = window.setTimeout(() => {
+    serviceShared().timer = window.setTimeout(() => {
       void begin(true);
     }, delay);
     return false;
@@ -91,47 +92,49 @@ async function attempt(automatic: boolean): Promise<boolean> {
 }
 
 function begin(automatic: boolean): Promise<boolean> {
-  if (shared.current) return shared.current;
+  const pending = serviceShared().current;
+  if (pending) return pending;
   const run = attempt(automatic).finally(() => {
-    shared.current = null;
+    serviceShared().current = null;
   });
-  shared.current = run;
+  serviceShared().current = run;
   return run;
 }
 
 export function requestAudio() {
-  if (shared.state.audio !== "idle" || shared.current !== null) return;
-  if (Date.now() - shared.lastAttempt < MIN_GAP_MS) return;
+  if (serviceShared().state.audio !== "idle" || serviceShared().current !== null) return;
+  if (Date.now() - serviceShared().lastAttempt < MIN_GAP_MS) return;
   void begin(true);
 }
 
 export function noteAudioRunning(running: boolean) {
-  if (running && shared.state.audio !== "ready") {
-    window.clearTimeout(shared.timer);
+  if (running && serviceShared().state.audio !== "ready") {
+    window.clearTimeout(serviceShared().timer);
     publish({ audio: "ready", message: "", attempts: 0, retryAt: 0 });
-  } else if (!running && shared.state.audio === "ready") {
+  } else if (!running && serviceShared().state.audio === "ready") {
     publish({ audio: "idle" });
   }
 }
 
 export function retryAudio(): Promise<boolean> {
-  if (shared.current) return shared.current;
+  const pending = serviceShared().current;
+  if (pending) return pending;
   publish({ attempts: 0 });
   return begin(false);
 }
 
 export async function startAudioForUser(): Promise<void> {
   const ok = await retryAudio();
-  if (!ok) throw new ReportedError(shared.state.offline ? "The PracticeMusic host is not reachable." : shared.state.message);
+  if (!ok) throw new ReportedError(serviceShared().state.offline ? "The PracticeMusic host is not reachable." : serviceShared().state.message);
 }
 
 export function reportOffline() {
-  if (!shared.state.offline) publish({ offline: true });
+  if (!serviceShared().state.offline) publish({ offline: true });
 }
 
 export function reportOnline() {
-  if (!shared.state.offline) return;
-  publish({ offline: false, audio: shared.state.audio === "starting" ? "idle" : shared.state.audio });
+  if (!serviceShared().state.offline) return;
+  publish({ offline: false, audio: serviceShared().state.audio === "starting" ? "idle" : serviceShared().state.audio });
   window.dispatchEvent(new CustomEvent(REFRESH_EVENT));
 }
 

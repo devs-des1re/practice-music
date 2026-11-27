@@ -53,40 +53,39 @@ export interface TextOptions {
   maxLength?: number;
 }
 
-interface Shared {
+interface ModalShared {
   serial: number;
   request: ModalRequest | null;
   resolve: ((answer: ModalValues | null) => void) | null;
   listeners: Set<(request: ModalRequest | null) => void>;
 }
 
-const scope = globalThis as unknown as { __pmModal?: Shared };
-
-if (!scope.__pmModal) {
-  scope.__pmModal = { serial: 0, request: null, resolve: null, listeners: new Set() };
+function modalState(): ModalShared {
+  const holder = globalThis as unknown as { __pmModal?: ModalShared };
+  if (!holder.__pmModal) holder.__pmModal = { serial: 0, request: null, resolve: null, listeners: new Set() };
+  return holder.__pmModal;
 }
 
-const shared = scope.__pmModal;
-
-function publish(request: ModalRequest | null) {
-  shared.request = request;
-  for (const fn of shared.listeners) fn(request);
+function publishModal(request: ModalRequest | null) {
+  const store = modalState();
+  store.request = request;
+  for (const fn of store.listeners) fn(request);
 }
 
-function ask(request: Omit<ModalRequest, "serial">): Promise<ModalValues | null> {
-  if (shared.resolve) shared.resolve(null);
-  shared.serial += 1;
+function openModal(request: Omit<ModalRequest, "serial">): Promise<ModalValues | null> {
+  modalState().resolve?.(null);
+  modalState().serial += 1;
   return new Promise((resolve) => {
-    shared.resolve = resolve;
-    publish({ ...request, serial: shared.serial });
+    modalState().resolve = resolve;
+    publishModal({ ...request, serial: modalState().serial });
   });
 }
 
 export function subscribeModal(fn: (request: ModalRequest | null) => void): () => void {
-  shared.listeners.add(fn);
-  fn(shared.request);
+  modalState().listeners.add(fn);
+  fn(modalState().request);
   return () => {
-    shared.listeners.delete(fn);
+    modalState().listeners.delete(fn);
   };
 }
 
@@ -96,15 +95,15 @@ export function missingField(fields: ModalField[], values: ModalValues): string 
 }
 
 export function settleModal(answer: ModalValues | null) {
-  const resolve = shared.resolve;
+  const resolve = modalState().resolve;
   if (!resolve) return;
-  shared.resolve = null;
-  publish(null);
+  modalState().resolve = null;
+  publishModal(null);
   resolve(answer);
 }
 
 export async function askConfirm(options: ConfirmOptions): Promise<boolean> {
-  const answer = await ask({
+  const answer = await openModal({
     title: options.title,
     message: options.message,
     confirmLabel: options.confirmLabel,
@@ -115,7 +114,7 @@ export async function askConfirm(options: ConfirmOptions): Promise<boolean> {
 }
 
 export async function askForm(options: FormOptions): Promise<ModalValues | null> {
-  const answer = await ask({
+  const answer = await openModal({
     title: options.title,
     message: options.message || "",
     confirmLabel: options.confirmLabel,

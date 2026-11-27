@@ -30,7 +30,10 @@ import {
   type Zone,
 } from "../lib/layout";
 import { defaultPanels, isTyping, loadPanels, savePanels, type PanelKey, type PanelSet } from "../lib/workspace";
+import { ModalHost } from "../components/blocks/modal-host";
+import { TooltipHost } from "../components/ui/tooltip";
 
+const NOT_RESIZING = "none";
 const LAYOUT_KEY = "pm.workspace.layout";
 const FOLD_KEY = "pm.workspace.collapsed";
 const MIN_WIDTH = 240;
@@ -97,7 +100,7 @@ export default function Workspace() {
   const [dragId, setDragId] = createSignal("");
   const [chipTitle, setChipTitle] = createSignal("");
   const [hintOn, setHintOn] = createSignal(false);
-  const [resizePath, setResizePath] = createSignal("");
+  const [resizePath, setResizePath] = createSignal(NOT_RESIZING);
   const [shortcuts, setShortcuts] = createSignal(false);
   const [folds, setFolds] = createSignal<PanelId[]>([]);
   const [stage, setStage] = createSignal({ w: 0, h: 0 });
@@ -274,7 +277,7 @@ export default function Workspace() {
   function finish(commit: boolean) {
     if (resizing) {
       resizing = null;
-      setResizePath("");
+      setResizePath(NOT_RESIZING);
       return;
     }
     const d = drag;
@@ -318,10 +321,12 @@ export default function Workspace() {
 
   return (
     <div class="screen">
+      <ModalHost />
+      <TooltipHost />
       <Topbar panels={panels()} onToggle={(key) => setPanel(key, !panels()[key])} onPreset={applyPreset} onReset={resetLayout} onShortcuts={() => setShortcuts(true)} />
       <ServiceNotice />
       <main class="ws">
-        <div class="ws-stage" data-dragging={dragId() ? "true" : "false"} data-resizing={resizePath() ? "true" : "false"} onPointerDown={onStageDown} onClick={onStageClick}>
+        <div class="ws-stage" data-dragging={dragId() ? "true" : "false"} data-resizing={resizePath() !== NOT_RESIZING ? "true" : "false"} onPointerDown={onStageDown} onClick={onStageClick}>
           <div class="cell" data-tile="player">
             <PlayerDeck onShowLibrary={() => setPanel("library", true)} />
           </div>

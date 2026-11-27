@@ -5,45 +5,45 @@ import { missingField, settleModal, subscribeModal, type ModalField, type ModalV
 
 const FOCUS_DELAY_MS = 40;
 
-interface Row extends ModalField {
+interface ModalRow extends ModalField {
   id: string;
 }
 
 export function ModalHost() {
-  const [open, setOpen] = createSignal(false);
-  const [title, setTitle] = createSignal("");
-  const [message, setMessage] = createSignal("");
-  const [confirmLabel, setConfirmLabel] = createSignal("OK");
-  const [danger, setDanger] = createSignal(false);
-  const [rows, setRows] = createSignal<Row[]>([]);
+  const [modalOpen, setModalOpen] = createSignal(false);
+  const [modalTitle, setModalTitle] = createSignal("");
+  const [modalMessage, setModalMessage] = createSignal("");
+  const [modalConfirm, setModalConfirm] = createSignal("OK");
+  const [modalDanger, setModalDanger] = createSignal(false);
+  const [modalRows, setModalRows] = createSignal<ModalRow[]>([]);
 
-  const control = (id: string) => document.getElementById(id) as HTMLInputElement | HTMLSelectElement | null;
+  const modalControl = (id: string) => document.getElementById(id) as HTMLInputElement | HTMLSelectElement | null;
 
-  function submit() {
+  function submitModal() {
     const values: ModalValues = {};
-    for (const row of rows()) values[row.key] = control(row.id)?.value || "";
-    const gap = missingField(rows(), values);
+    for (const row of modalRows()) values[row.key] = modalControl(row.id)?.value || "";
+    const gap = missingField(modalRows(), values);
     if (gap) {
-      const row = rows().find((r) => r.key === gap);
-      if (row) control(row.id)?.focus();
+      const row = modalRows().find((r) => r.key === gap);
+      if (row) modalControl(row.id)?.focus();
       return;
     }
     settleModal(values);
   }
 
-  function pick(id: string, value: string) {
-    const el = control(id);
+  function pickSuggestion(id: string, value: string) {
+    const el = modalControl(id);
     if (!el) return;
     el.value = value;
     el.focus();
   }
 
-  function fill(next: Row[]) {
+  function fillModal(next: ModalRow[]) {
     for (const row of next) {
-      const el = control(row.id);
+      const el = modalControl(row.id);
       if (el) el.value = row.value || "";
     }
-    const first = next.length > 0 ? control(next[0].id) : document.getElementById("pm-modal-confirm");
+    const first = next.length > 0 ? modalControl(next[0].id) : document.getElementById("pm-modal-confirm");
     first?.focus();
     if (first instanceof HTMLInputElement) first.select();
   }
@@ -51,17 +51,17 @@ export function ModalHost() {
   onMount(() => {
     const stop = subscribeModal((request) => {
       if (!request) {
-        setOpen(false);
+        setModalOpen(false);
         return;
       }
-      const next = request.fields.map((f) => ({ ...f, id: "pm-field-" + request.serial + "-" + f.key }));
-      setTitle(request.title);
-      setMessage(request.message);
-      setConfirmLabel(request.confirmLabel);
-      setDanger(request.danger);
-      setRows(next);
-      setOpen(true);
-      window.setTimeout(() => fill(next), FOCUS_DELAY_MS);
+      const next: ModalRow[] = request.fields.map((f) => ({ ...f, id: "pm-field-" + request.serial + "-" + f.key }));
+      setModalTitle(request.title);
+      setModalMessage(request.message);
+      setModalConfirm(request.confirmLabel);
+      setModalDanger(request.danger);
+      setModalRows(next);
+      setModalOpen(true);
+      window.setTimeout(() => fillModal(next), FOCUS_DELAY_MS);
     });
     onCleanup(stop);
   });
@@ -71,21 +71,21 @@ export function ModalHost() {
       id="pm-modal"
       class="pm-modal"
       label="Dialog"
-      open={open()}
+      open={modalOpen()}
       onOpenChange={(next: boolean) => {
         if (!next) {
-          setOpen(false);
+          setModalOpen(false);
           settleModal(null);
         }
       }}
     >
       <Dialog.Content class="pm-modal-content">
-        <LiveText class="pm-modal-title" text={title()} />
-        <div showIf={!!message()}>
-          <LiveText class="pm-modal-message" text={message()} />
+        <LiveText class="pm-modal-title" text={modalTitle()} />
+        <div showIf={!!modalMessage()}>
+          <LiveText class="pm-modal-message" text={modalMessage()} />
         </div>
-        <div class="pm-modal-fields" showIf={rows().length > 0}>
-          {rows().map((row) => (
+        <div class="pm-modal-fields" showIf={modalRows().length > 0}>
+          {modalRows().map((row) => (
             <div class="pm-modal-field" key={row.id}>
               <label class="field-label" for={row.id}>
                 {row.label}
@@ -110,7 +110,7 @@ export function ModalHost() {
                   onKeyDown={(e: KeyboardEvent) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
-                      submit();
+                      submitModal();
                     }
                   }}
                 />
@@ -118,7 +118,7 @@ export function ModalHost() {
               {(row.suggestions || []).length > 0 && (
                 <div class="pm-modal-suggestions">
                   {(row.suggestions || []).map((name) => (
-                    <button class="krate-button krate-button-secondary krate-button-sm" type="button" key={name} onClick={() => pick(row.id, name)}>
+                    <button class="krate-button krate-button-secondary krate-button-sm" type="button" key={name} onClick={() => pickSuggestion(row.id, name)}>
                       {name}
                     </button>
                   ))}
@@ -131,8 +131,8 @@ export function ModalHost() {
           <button class="krate-button krate-button-ghost" type="button" onClick={() => settleModal(null)}>
             Cancel
           </button>
-          <button id="pm-modal-confirm" class="krate-button krate-button-primary pm-modal-confirm" type="button" data-danger={danger() ? "true" : "false"} onClick={submit}>
-            <LiveText class="pm-modal-confirm-text" text={confirmLabel()} />
+          <button id="pm-modal-confirm" class="krate-button krate-button-primary pm-modal-confirm" type="button" data-danger={modalDanger() ? "true" : "false"} onClick={submitModal}>
+            <LiveText class="pm-modal-confirm-text" text={modalConfirm()} />
           </button>
         </div>
       </Dialog.Content>
