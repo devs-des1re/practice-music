@@ -257,7 +257,7 @@ func handleDrumKitEvent(ev engine.DrumKitEvent) {
 			state = drumLoadIdle
 		}
 		problem := ev.Error
-		if problem == "" && state != drumLoadRunning {
+		if problem == "" {
 			problem = s.Load.Error
 		}
 		s.Load = DrumLoadState{State: state, Done: ev.Done, Total: ev.Total, Bytes: ev.Bytes, Error: problem}

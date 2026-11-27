@@ -130,3 +130,18 @@ func TestOnlyChangesToSoundsReloadTheKit(t *testing.T) {
 		t.Fatal("a new sound must load")
 	}
 }
+
+func TestAMissingFileWarningSurvivesTheProgressReports(t *testing.T) {
+	resetDrums(t)
+	drumUpdate(func(s *DrumState) {
+		s.Load = DrumLoadState{State: drumLoadRunning, Error: "These sound files were not found: gone.wav"}
+	})
+	drumMu.Lock()
+	drumToken = 9
+	drumMu.Unlock()
+	handleDrumKitEvent(engine.DrumKitEvent{Token: 9, State: drumLoadRunning, Done: 1, Total: 2})
+	handleDrumKitEvent(engine.DrumKitEvent{Token: 9, State: "ready", Done: 2, Total: 2})
+	if drumStatus.Load.Error != "These sound files were not found: gone.wav" {
+		t.Fatalf("the warning was lost: %+v", drumStatus.Load)
+	}
+}
