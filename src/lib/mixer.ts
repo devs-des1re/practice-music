@@ -128,23 +128,9 @@ export function stripSummary(gain: number, mute: boolean, solo: boolean): string
   return formatDb(gain);
 }
 
-export const SCALE_FLOOR_DB = -60;
-export const SCALE_CEIL_DB = 12;
-
-export function scaleFraction(linear: number): number {
-  const db = toDb(linear);
-  if (db <= SCALE_FLOOR_DB) return 0;
-  if (db >= SCALE_CEIL_DB) return 1;
-  return (db - SCALE_FLOOR_DB) / (SCALE_CEIL_DB - SCALE_FLOOR_DB);
-}
-
-export function dbFraction(db: number): number {
-  return Math.min(1, Math.max(0, (db - SCALE_FLOOR_DB) / (SCALE_CEIL_DB - SCALE_FLOOR_DB)));
-}
-
 export function peakText(linear: number): string {
   const db = toDb(linear);
-  if (db <= SCALE_FLOOR_DB) return "-inf";
+  if (db <= METER_FLOOR_DB) return "-inf";
   return formatDb(db);
 }
 

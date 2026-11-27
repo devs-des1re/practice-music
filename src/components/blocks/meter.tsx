@@ -2,7 +2,7 @@ import { createSignal, createEffect, onMount, onCleanup } from "@krate/runtime";
 import { AudioStream } from "../../../api/audio.go";
 import { MeterStream, ResetMeters } from "../../../api/session.go";
 import { LiveText } from "../ui/live-text";
-import { dbFraction, peakText, peakZone, scaleFraction, toDb } from "../../lib/mixer";
+import { meterFraction, peakText, peakZone, toDb } from "../../lib/mixer";
 import { LANE_WIDTH, drawLane } from "../../lib/meter-draw";
 import { currentPrefs } from "../../lib/prefs";
 
@@ -18,10 +18,6 @@ interface Level {
   gr: number;
 }
 
-const THUMB_HALF_REM = 0.5625;
-const GREEN_TOP = dbFraction(-12);
-const AMBER_TOP = dbFraction(-3);
-const UNITY = dbFraction(0);
 const quiet: Level = { l: 0, r: 0, clip: false, gr: 0 };
 
 function token(name: string): string {
@@ -62,7 +58,7 @@ export function Meter(props: MeterProps) {
     if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const now = performance.now();
-    const fraction = scaleFraction(Math.max(lv.l, lv.r));
+    const fraction = meterFraction(Math.max(lv.l, lv.r));
     const holdMs = currentPrefs().peakHoldMs;
     if (holdMs === 0) {
       hold.value = 0;
@@ -74,19 +70,14 @@ export function Meter(props: MeterProps) {
       const timer = window.setTimeout(() => setExpired(expired() + 1), Math.max(0, holdMs - (now - hold.at)) + 16);
       onCleanup(() => window.clearTimeout(timer));
     }
-    const rootPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
     drawLane(
       ctx,
       height,
       {
         level: fraction,
         hold: hold.value,
-        greenTop: GREEN_TOP,
-        yellowTop: AMBER_TOP,
-        unity: UNITY,
         clip: lv.clip,
         reduction: currentPrefs().reductionBars && lv.gr > 0.1 ? lv.gr / 24 : 0,
-        pad: Math.round(THUMB_HALF_REM * rootPx),
       },
       token,
     );
