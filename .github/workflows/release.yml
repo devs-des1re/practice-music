@@ -25,42 +25,19 @@ jobs:
           dev-branch: dev
           main-branch: main
 
-  installer:
+  assets:
     needs: release
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/download-artifact@v4
         with:
-          node-version: lts/*
-          cache: npm
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: engine
-      - name: Install NSIS
-        shell: pwsh
-        run: |
-          if (-not (Get-Command makensis -ErrorAction SilentlyContinue)) {
-            choco install nsis -y --no-progress
-          }
-          "C:\Program Files (x86)\NSIS" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
-      - run: npm ci
-      - run: npm run package
-        env:
-          PM_VERSION: ${{ github.ref_name }}
-      - name: Upload the installer to the release
-        shell: bash
+          pattern: installer-*
+          merge-multiple: true
+          path: installers
+      - name: Upload the installers to the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         run: |
-          ls -la dist-native/packages
-          files=$(find dist-native/packages -maxdepth 1 -type f -name '*.exe')
-          if [ -z "$files" ]; then
-            echo "No installer was produced"
-            exit 1
-          fi
-          gh release upload "$GITHUB_REF_NAME" $files --clobber
+          ls -la installers
+          gh release upload "$GITHUB_REF_NAME" installers/* --clobber

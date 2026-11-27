@@ -2,6 +2,7 @@ name: CI
 
 on:
   push:
+    branches: ["**"]
   workflow_call:
 
 permissions:
@@ -31,3 +32,93 @@ jobs:
       - run: npm run lint
       - run: npm test --if-present
       - run: npm run build
+
+  installers:
+    needs: ci
+    name: installers (${{ matrix.system }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - system: windows
+            runner: windows-latest
+            arch: ""
+            rust-targets: ""
+            installers: "*-windows-amd64-setup.exe"
+          - system: macos
+            runner: macos-latest
+            arch: universal
+            rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
+            installers: "*.dmg"
+          - system: linux
+            runner: ubuntu-22.04
+            arch: ""
+            rust-targets: ""
+            installers: "*.deb *.rpm"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-targets }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: engine
+      - name: Install the Linux audio headers
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev
+      - name: Install NSIS
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (-not (Get-Command makensis -ErrorAction SilentlyContinue)) {
+            choco install nsis -y --no-progress
+          }
+          "C:\Program Files (x86)\NSIS" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+      - run: npm ci
+      - name: Build the audio engine
+        if: runner.os != 'macOS'
+        run: npm run build:engine
+      - name: Build the audio engine for Apple silicon and Intel
+        if: runner.os == 'macOS'
+        run: |
+          for target in aarch64-apple-darwin x86_64-apple-darwin; do
+            cargo build --release --manifest-path engine/Cargo.toml --target "$target"
+          done
+          mkdir -p engine/target/release
+          lipo -create -output engine/target/release/pm-engine \
+            engine/target/aarch64-apple-darwin/release/pm-engine \
+            engine/target/x86_64-apple-darwin/release/pm-engine
+          lipo -info engine/target/release/pm-engine
+      - name: Build the installers
+        run: node scripts/package.mjs
+        env:
+          PM_ARCH: ${{ matrix.arch }}
+          PM_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+      - name: Collect the installers
+        shell: bash
+        env:
+          INSTALLERS: ${{ matrix.installers }}
+        run: |
+          mkdir -p installers
+          cd dist-native/packages
+          ls -la
+          set -f
+          for pattern in $INSTALLERS; do
+            set +f
+            cp -v $pattern ../../installers/
+            set -f
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-${{ matrix.system }}
+          path: installers/
+          if-no-files-found: error
+          retention-days: 14

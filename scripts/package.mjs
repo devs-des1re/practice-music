@@ -3,7 +3,7 @@ import { copyFileSync, existsSync, readFileSync, readdirSync, rmSync, writeFileS
 import { delimiter } from "node:path";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-import { setNativeVersion } from "./package-options.mjs";
+import { setNativeVersion, installerFormats, targetArch } from "./package-options.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const windows = process.platform === "win32";
@@ -13,7 +13,6 @@ const payloadDir = path.join(root, "api", "engine", "payload");
 const payloadFile = path.join(payloadDir, engineName);
 const configPath = path.join(root, "krate.config.ts");
 
-const format = process.argv[2] || (windows ? "nsis" : "zip");
 const version = (process.env.PM_VERSION || "").replace(/^v/, "");
 
 function run(command, args) {
@@ -23,14 +22,13 @@ function run(command, args) {
   }
 }
 
-function arch() {
-  return process.arch === "arm64" ? "arm64" : "amd64";
-}
-
 function platform() {
   if (windows) return "windows";
   return process.platform === "darwin" ? "darwin" : "linux";
 }
+
+const format = process.argv[2] || installerFormats(platform());
+const arch = targetArch(platform(), process.env.PM_ARCH, process.arch);
 
 function onPath(name) {
   const dirs = (process.env.PATH || process.env.Path || "").split(delimiter);
@@ -87,7 +85,7 @@ try {
     "build",
     "--release",
     "--target",
-    platform() + "/" + arch(),
+    platform() + "/" + arch,
     "--package",
     "--format",
     format,

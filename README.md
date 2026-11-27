@@ -1,7 +1,7 @@
 # PracticeMusic
 
 ![License](https://img.shields.io/badge/license-MIT-555555)
-![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20Linux-3d3d44)
+![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-3d3d44)
 ![Status](https://img.shields.io/badge/status-early%20development-3d3d44)
 
 A practice workstation for drummers. Download songs, loop the tricky parts, slow them down, play along with a click and mix everything out to your drum amp.
@@ -48,11 +48,24 @@ In place so far:
 - Go (the build uses the Go 1.26.1 toolchain and downloads it automatically when needed)
 - ffmpeg and ffprobe on your PATH
 - Rust stable
-- Windows with the WebView2 runtime, or Linux with WebKitGTK 4.1 and the ALSA development headers
+- Windows with the WebView2 runtime, macOS 12 or later with the Xcode command line tools, or Linux with WebKitGTK 4.1 and the ALSA development headers
 
 ## Install
 
-Every tagged release has a Windows installer attached. It contains the app and the audio engine in one executable. Downloading songs also needs ffmpeg and ffprobe on your PATH.
+Each tagged release has these installers attached. Each one contains the app and the audio engine.
+
+| System                                     | File         | Notes                                                  |
+| ------------------------------------------ | ------------ | ------------------------------------------------------ |
+| Windows 10 and 11, 64-bit                  | `-setup.exe` | Installs the WebView2 runtime if it is missing         |
+| macOS 12 or later, Apple silicon and Intel | `.dmg`       | One universal app                                      |
+| Debian, Ubuntu and similar, 64-bit         | `.deb`       | Needs WebKitGTK 4.1, for example Ubuntu 22.04 or later |
+| Fedora and similar, 64-bit                 | `.rpm`       | Needs WebKitGTK 4.1                                    |
+
+PracticeMusic is developed and tested on Windows. The macOS and Linux installers are built automatically and have not been tried on real machines yet, so treat them as experimental.
+
+The installers are not signed. Windows may show a SmartScreen warning. macOS will refuse to open the app until you allow it under System Settings, Privacy and Security.
+
+Downloading songs also needs ffmpeg and ffprobe on your PATH.
 
 ## Getting started
 
@@ -76,7 +89,7 @@ Build the app:
 npm run build
 ```
 
-Build the installer (on Windows this needs NSIS on your PATH):
+Build the installers for the system you are on: NSIS on Windows (needs NSIS on your PATH), a `.dmg` on macOS, and a `.deb` and `.rpm` on Linux. CI builds all of them on every push and keeps them as workflow artifacts.
 
 ```sh
 npm run package
