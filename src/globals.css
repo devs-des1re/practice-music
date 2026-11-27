@@ -3527,37 +3527,39 @@ input[type="number"].krate-input {
 }
 
 .fader-input {
+  --thumb-height: 1.125rem;
   position: relative;
-  z-index: 1;
   grid-area: 1 / 2;
   justify-self: center;
   width: 2rem;
   height: 100%;
   min-height: 0;
-  margin: 0;
-  background: transparent;
+  border-radius: var(--radius-sm);
   cursor: ns-resize;
-  writing-mode: vertical-lr;
-  direction: rtl;
-  -webkit-appearance: none;
-  appearance: none;
+  touch-action: none;
+  user-select: none;
 }
 
-.fader-input::-webkit-slider-runnable-track {
+.fader-track {
+  position: absolute;
+  top: calc(var(--thumb-height) / 2);
+  bottom: calc(var(--thumb-height) / 2);
+  left: calc(50% - 3px);
   width: 6px;
-  border: 0;
-  background: transparent;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 3px;
+  background: var(--color-surface-inset);
 }
 
-.fader-input::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
+.fader-thumb {
+  position: absolute;
+  top: calc((1 - var(--p)) * (100% - var(--thumb-height)));
+  left: calc(50% - 0.9375rem);
   width: 1.875rem;
-  height: 1.125rem;
-  margin-left: -0.75rem;
+  height: var(--thumb-height);
   border: 1px solid var(--color-text-dim);
   border-radius: var(--radius-sm);
-  background-color: var(--color-button-strong-hover);
+  background-color: var(--color-surface-hover);
   background-image:
     repeating-linear-gradient(to bottom, var(--color-text-muted) 0 1px, transparent 1px 4px), var(--glass-sheen);
   background-position: center;
@@ -3568,21 +3570,15 @@ input[type="number"].krate-input {
   box-shadow: var(--glass-rim);
 }
 
-.fader-input:hover::-webkit-slider-thumb {
+.fader-input:hover .fader-thumb {
   border-color: var(--color-accent);
 }
 
-.fader-input:active::-webkit-slider-thumb,
-.fader-input:focus-visible::-webkit-slider-thumb {
+.fader-input[data-dragging="true"] .fader-thumb,
+.fader-input:focus-visible .fader-thumb {
   border-color: var(--color-accent);
-  background-color: var(--color-button-strong-hover);
   background-image:
     repeating-linear-gradient(to bottom, var(--color-text) 0 1px, transparent 1px 4px), var(--glass-sheen);
-}
-
-.fader-input:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
 }
 
 .meter-box {
