@@ -230,7 +230,7 @@ pub fn pan_gains(pan: f32, balance: bool) -> (f32, f32) {
     }
 }
 
-fn send_gain(db: f32) -> f32 {
+fn level_gain(db: f32) -> f32 {
     if db <= OFF_DB { 0.0 } else { db_to_lin(db) }
 }
 
@@ -316,13 +316,13 @@ impl Mixer {
             };
             let reduction = strip.comp.process_stereo(buf, &comp);
             let audible = !params.flag(s, sp::MUTE) && (!any_solo || params.flag(s, sp::SOLO));
-            let fader = if audible { db_to_lin(params.get(s, sp::GAIN)) } else { 0.0 };
+            let fader = if audible { level_gain(params.get(s, sp::GAIN)) } else { 0.0 };
             let balance = !is_input(s) || params.flag(s, sp::STEREO);
             let (pan_l, pan_r) = pan_gains(params.get(s, sp::PAN), balance);
             let target_l = fader * pan_l;
             let target_r = fader * pan_r;
-            let target_main = send_gain(params.get(s, sp::MAIN));
-            let target_monitor = if monitor_active { send_gain(params.get(s, sp::MONITOR)) } else { 0.0 };
+            let target_main = level_gain(params.get(s, sp::MAIN));
+            let target_monitor = if monitor_active { level_gain(params.get(s, sp::MONITOR)) } else { 0.0 };
             if !strip.primed {
                 strip.left = target_l;
                 strip.right = target_r;
@@ -353,8 +353,8 @@ impl Mixer {
                 meters.strip_clip[s].store(true, Ordering::Relaxed);
             }
         }
-        let main_target = db_to_lin(params.master(mp::MAIN_GAIN));
-        let monitor_target = db_to_lin(params.master(mp::MONITOR_GAIN));
+        let main_target = level_gain(params.master(mp::MAIN_GAIN));
+        let monitor_target = level_gain(params.master(mp::MONITOR_GAIN));
         if !self.master_primed {
             self.main_gain = main_target;
             self.monitor_gain = monitor_target;
@@ -476,6 +476,50 @@ mod tests {
         let (l, r) = last(&out.main);
         assert!((l - 0.5).abs() < 1e-5 && (r - 0.3).abs() < 1e-5, "{l} {r}");
         assert!(out.monitor.iter().all(|v| *v == 0.0));
+    }
+
+    #[test]
+    fn a_channel_fader_at_off_is_silent_on_both_buses() {
+        let (mut mixer, params, meters, mut inputs) = rig();
+        fill(&mut inputs[STRIP_SONG], 0.9, 0.9);
+        params.set(STRIP_SONG, sp::MONITOR, 0.0);
+        params.set(STRIP_SONG, sp::GAIN, OFF_DB);
+        let out = run(&mut mixer, &params, &meters, &mut inputs, 512, true);
+        assert!(out.main.iter().all(|v| *v == 0.0), "{:?}", last(&out.main));
+        assert!(out.monitor.iter().all(|v| *v == 0.0), "{:?}", last(&out.monitor));
+        assert_eq!(meters.snapshot().strips[STRIP_SONG].left, 0.0);
+    }
+
+    #[test]
+    fn a_master_fader_at_off_silences_only_its_own_bus() {
+        for (off, silent_is_main) in [(mp::MAIN_GAIN, true), (mp::MONITOR_GAIN, false)] {
+            let (mut mixer, params, meters, mut inputs) = rig();
+            fill(&mut inputs[STRIP_SONG], 0.9, 0.9);
+            params.set(STRIP_SONG, sp::MONITOR, 0.0);
+            params.set_master(mp::MAIN_GAIN, 0.0);
+            params.set_master(mp::MONITOR_GAIN, 0.0);
+            params.set_master(off, OFF_DB);
+            let out = run(&mut mixer, &params, &meters, &mut inputs, 512, true);
+            let (silent, audible) = if silent_is_main {
+                (&out.main, &out.monitor)
+            } else {
+                (&out.monitor, &out.main)
+            };
+            assert!(silent.iter().all(|v| *v == 0.0), "{:?}", last(silent));
+            assert!(last(audible).0 > 0.5, "{:?}", last(audible));
+        }
+    }
+
+    #[test]
+    fn turning_a_fader_off_while_playing_fades_to_silence() {
+        let (mut mixer, params, meters, mut inputs) = rig();
+        fill(&mut inputs[STRIP_SONG], 0.9, 0.9);
+        run(&mut mixer, &params, &meters, &mut inputs, 512, false);
+        params.set_master(mp::MAIN_GAIN, OFF_DB);
+        let fading = run(&mut mixer, &params, &meters, &mut inputs, 64, false);
+        assert!(last(&fading.main).0 > 0.1, "the change should not click");
+        let faded = run(&mut mixer, &params, &meters, &mut inputs, RATE as usize / 10, false);
+        assert!(last(&faded.main).0.abs() < 1e-6, "{:?}", last(&faded.main));
     }
 
     #[test]
