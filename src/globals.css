@@ -3332,9 +3332,9 @@ input[type="number"].krate-input {
   --tone: var(--color-channel-1);
   position: relative;
   display: flex;
-  flex: 1 0 7.5rem;
+  flex: 1 0 7rem;
   flex-direction: column;
-  min-width: 7.5rem;
+  min-width: 7rem;
   max-width: 10rem;
   min-height: 0;
   background: var(--color-surface);
@@ -3399,7 +3399,7 @@ input[type="number"].krate-input {
   flex-direction: column;
   gap: var(--space-3);
   min-height: 0;
-  padding: var(--space-3) var(--space-3) var(--space-4);
+  padding: var(--space-3) var(--space-2) var(--space-4);
 }
 
 .strip-head {
