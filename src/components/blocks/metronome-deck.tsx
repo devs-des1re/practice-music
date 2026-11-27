@@ -21,6 +21,7 @@ import { LiveText } from "../ui/live-text";
 import { NumberInput } from "../ui/number-input";
 import { askConfirm, askForm } from "../../lib/modal";
 import { clampNumber } from "../../lib/numbers";
+import { DIVIDER, openContextMenu } from "../../lib/context-menu";
 import { PlayerSetClick, PlayerStream } from "../../../api/player.go";
 import { currentPrefs } from "../../lib/prefs";
 import { SUBDIVISIONS, accentLabel, barCaption, cleanBpm, cycleAccent, polyLabel } from "../../lib/mixer";
@@ -181,6 +182,18 @@ export function MetronomeDeck() {
     setTempo(cfg().bpm + direction * step);
   }
 
+  function metronomeMenu(e: MouseEvent) {
+    if (e.target instanceof HTMLInputElement) return;
+    openContextMenu(e, [
+      { label: audio().metronome.running ? "Stop the click" : "Start the click", keys: "M", onSelect: () => toggleRun() },
+      { label: "Tap tempo", keys: "T", onSelect: () => tap() },
+      { label: songClick() ? "Stop clicking with the song" : "Click with the song", keys: "K", disabled: !songLoaded(), onSelect: () => void guard(() => PlayerSetClick(!songClick())) },
+      DIVIDER,
+      { label: large() ? "Standard display" : "Large display", onSelect: () => toggleLarge() },
+      { label: view() === "setup" ? "Show the click view" : "Show setup", onSelect: () => setView(view() === "setup" ? "play" : "setup") },
+    ]);
+  }
+
   function toggleLarge() {
     const next = !large();
     setLarge(next);
@@ -285,7 +298,7 @@ export function MetronomeDeck() {
   });
 
   return (
-    <section class="panel ws-panel metro-panel" data-panel="metronome" data-size={large() ? "large" : "standard"} aria-label="Metronome">
+    <section class="panel ws-panel metro-panel" data-panel="metronome" data-size={large() ? "large" : "standard"} aria-label="Metronome" onContextMenu={metronomeMenu}>
       <header class="panel-head" data-drag="true">
         <h2 class="panel-title">
           <Icon name="lucide:metronome" />

@@ -98,7 +98,7 @@ export function Waveform(props: WaveformProps) {
 
   function onDown(e: PointerEvent) {
     const el = canvas();
-    if (!el || props.durationMs <= 0) return;
+    if (!el || props.durationMs <= 0 || e.button !== 0) return;
     el.setPointerCapture(e.pointerId);
     const width = el.clientWidth;
     const x = pointerX(e);

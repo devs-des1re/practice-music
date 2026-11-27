@@ -22,6 +22,7 @@ import { Notice } from "../ui/notice";
 import { LiveText } from "../ui/live-text";
 import { Menu, type MenuItem } from "../ui/menu";
 import { askConfirm, askText } from "../../lib/modal";
+import { DIVIDER, openContextMenu } from "../../lib/context-menu";
 import { channelPairs, formatDb, isListening, listenSend, sourceOptions } from "../../lib/mixer";
 import { formatClock } from "../../lib/waveform";
 import { handleError, onRefresh, logFailure } from "../../lib/service";
@@ -316,6 +317,30 @@ export function MixerPanel() {
     patchStrip(index, (x) => ({ ...x, main: next }));
   }
 
+  function stripMenu(e: MouseEvent, index: number) {
+    if (e.target instanceof HTMLInputElement && e.target.type !== "range") return;
+    const strip = board().strips[index];
+    if (!strip) return;
+    setSelected(index);
+    openContextMenu(e, [
+      { label: isListening(strip.main) ? "Stop listening" : "Listen", onSelect: () => toggleListen(index) },
+      { label: strip.mute ? "Unmute" : "Mute", onSelect: () => patchStrip(index, (x) => ({ ...x, mute: !x.mute })) },
+      { label: strip.solo ? "Solo off" : "Solo", onSelect: () => patchStrip(index, (x) => ({ ...x, solo: !x.solo })) },
+      DIVIDER,
+      { label: "Set level to 0 dB", disabled: strip.gain === 0, onSelect: () => patchStrip(index, (x) => ({ ...x, gain: 0 })) },
+      { label: "Centre the pan", disabled: strip.pan === 0, onSelect: () => patchStrip(index, (x) => ({ ...x, pan: 0 })) },
+      DIVIDER,
+      {
+        label: "Channel settings",
+        onSelect: () => {
+          setTab("channel");
+          showInspector(true);
+        },
+      },
+      { label: "Rename channel", disabled: strip.kind !== "input", onSelect: () => void renameChannel(index) },
+    ]);
+  }
+
   function numberOf(e: Event): number {
     return Number((e.target as HTMLInputElement).value);
   }
@@ -464,6 +489,7 @@ export function MixerPanel() {
               data-muted={s.mute ? "true" : "false"}
               aria-label={s.name + " channel"}
               onClick={() => setSelected(s.index)}
+              onContextMenu={(e: MouseEvent) => stripMenu(e, s.index)}
             >
               <div class="strip-body">
                 <div class="strip-head">

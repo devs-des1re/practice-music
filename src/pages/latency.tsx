@@ -25,6 +25,7 @@ import { logger } from "../lib/logger";
 import type { AudioState, DeviceList, LatencyState, LoopbackResult } from "../lib/types";
 import { NumberInput } from "../components/ui/number-input";
 import { ModalHost } from "../components/blocks/modal-host";
+import { ContextHost } from "../components/blocks/context-host";
 import { TooltipHost } from "../components/ui/tooltip";
 
 const emptyAudio: AudioState = {
@@ -250,6 +251,7 @@ export default function LatencyPage() {
   return (
     <div class="screen">
       <ModalHost />
+      <ContextHost />
       <TooltipHost />
       <Topbar />
       <div class="viewport">

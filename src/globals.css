@@ -4846,3 +4846,8 @@ input[type="number"].krate-input {
   color: var(--color-click);
 }
 
+#app-context-menu {
+  z-index: 1100;
+  min-width: 13rem;
+}
+

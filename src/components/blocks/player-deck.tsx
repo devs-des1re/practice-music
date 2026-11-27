@@ -25,6 +25,7 @@ import { Select } from "../ui/select";
 import { Notice } from "../ui/notice";
 import { LiveText } from "../ui/live-text";
 import { askConfirm, askForm, askText } from "../../lib/modal";
+import { DIVIDER, openContextMenu } from "../../lib/context-menu";
 import { clampNumber } from "../../lib/numbers";
 import { currentPrefs, subscribePrefs } from "../../lib/prefs";
 import { PlayGlyph } from "../ui/glyphs";
@@ -217,6 +218,39 @@ export function PlayerDeck(props: PlayerDeckProps) {
       await PlayerSetSpeed(1);
       await PlayerSetPitch(0);
     });
+  }
+
+  function timelineMenu(e: MouseEvent) {
+    const loaded = st().loaded;
+    if (!loaded) {
+      openContextMenu(e, [{ label: "Show library", onSelect: () => props.onShowLibrary?.() }]);
+      return;
+    }
+    const canvas = document.getElementById("waveform");
+    const box = canvas ? canvas.getBoundingClientRect() : null;
+    const at = box && box.width > 0 ? Math.min(1, Math.max(0, (e.clientX - box.left) / box.width)) * st().durationMs : st().positionMs;
+    const loop = st().loop;
+    const hasLoop = loop.endMs > loop.startMs;
+    openContextMenu(e, [
+      { label: st().playing ? "Pause" : "Play", keys: "Space", onSelect: () => togglePlay() },
+      {
+        label: "Play from " + formatClock(at),
+        onSelect: () =>
+          guard(async () => {
+            await PlayerSeek(at);
+            await PlayerPlay();
+          }),
+      },
+      { label: "Move the playhead here", onSelect: () => guard(() => PlayerSeek(at)) },
+      DIVIDER,
+      { label: selecting() ? "Cancel loop selection" : "Select a loop", keys: "S", onSelect: () => setSelecting(!selecting()) },
+      { label: loop.enabled ? "Turn the loop off" : "Turn the loop on", keys: "L", disabled: !hasLoop, onSelect: () => toggleLoop() },
+      { label: "Save loop", disabled: !loop.enabled, onSelect: () => void saveSection() },
+      { label: "Clear loop", disabled: !hasLoop, onSelect: () => guard(() => PlayerSetLoop(0, 0, false)) },
+      DIVIDER,
+      { label: st().click ? "Stop the metronome with the song" : "Metronome with the song", keys: "K", onSelect: () => toggleClick() },
+      { label: "Edit beat grid", onSelect: () => void editGrid() },
+    ]);
   }
 
   function toggleClick() {
@@ -515,7 +549,7 @@ export function PlayerDeck(props: PlayerDeckProps) {
         </div>
       </div>
 
-      <div class="timeline">
+      <div class="timeline" onContextMenu={timelineMenu}>
         <div class="timeline-empty" data-on={!st().loaded ? "true" : "false"}>
           <span class="timeline-title">
             <Icon name="lucide:audio-waveform" />

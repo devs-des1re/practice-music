@@ -31,6 +31,7 @@ import {
 } from "../lib/layout";
 import { defaultPanels, isTyping, loadPanels, savePanels, type PanelKey, type PanelSet } from "../lib/workspace";
 import { ModalHost } from "../components/blocks/modal-host";
+import { ContextHost } from "../components/blocks/context-host";
 import { TooltipHost } from "../components/ui/tooltip";
 
 const NOT_RESIZING = "none";
@@ -322,6 +323,7 @@ export default function Workspace() {
   return (
     <div class="screen">
       <ModalHost />
+      <ContextHost />
       <TooltipHost />
       <Topbar panels={panels()} onToggle={(key) => setPanel(key, !panels()[key])} onPreset={applyPreset} onReset={resetLayout} onShortcuts={() => setShortcuts(true)} />
       <ServiceNotice />

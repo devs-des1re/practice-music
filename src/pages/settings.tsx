@@ -23,6 +23,7 @@ import { bufferLatencyMs, formatRate, formatRates, stateLabel, stateTone } from 
 import { logger } from "../lib/logger";
 import { askConfirm } from "../lib/modal";
 import { ModalHost } from "../components/blocks/modal-host";
+import { ContextHost } from "../components/blocks/context-host";
 import { TooltipHost } from "../components/ui/tooltip";
 
 interface LowDevice {
@@ -336,6 +337,7 @@ export default function SettingsPage() {
   return (
     <div class="screen">
       <ModalHost />
+      <ContextHost />
       <TooltipHost />
       <Topbar />
       <div class="viewport">

@@ -18,6 +18,7 @@ The interface is built with Krate Native, the host layer is Go, and the audio ru
 - Mixer with per-channel EQ, compression, meters and a master limiter
 - MIDI timing analysis for e-kits
 - Footswitch and keyboard control, plus saved scenes
+- Right-click menus on the timeline, mixer channels, metronome, songs and text boxes
 
 ## Current state
 
