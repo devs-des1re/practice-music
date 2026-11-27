@@ -25,7 +25,12 @@ export function zoneColor(fraction: number, view: LaneView, token: (name: string
   return token("--color-meter-green");
 }
 
-export function drawLane(ctx: CanvasRenderingContext2D, height: number, view: LaneView, token: (name: string) => string) {
+export function drawLane(
+  ctx: CanvasRenderingContext2D,
+  height: number,
+  view: LaneView,
+  token: (name: string) => string,
+) {
   const top = view.pad;
   const span = height - top * 2;
   ctx.clearRect(0, 0, LANE_WIDTH, height);

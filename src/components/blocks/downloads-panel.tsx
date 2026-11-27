@@ -24,7 +24,16 @@ import type { Job, ToolsState } from "../../lib/types";
 const CHOICE_KEY = "pm.download.choice";
 
 const emptyTools: ToolsState = {
-  ytDlp: { source: "missing", path: "", version: "", latest: "", updateAvailable: false, busy: "", error: "", checkedAt: 0 },
+  ytDlp: {
+    source: "missing",
+    path: "",
+    version: "",
+    latest: "",
+    updateAvailable: false,
+    busy: "",
+    error: "",
+    checkedAt: 0,
+  },
   ffmpeg: "",
   ffprobe: "",
   libraryDir: "",
@@ -81,23 +90,44 @@ export function DownloadsPanel() {
   }
 
   async function clearFinished() {
-    const yes = await askConfirm({ title: "Clear finished downloads", message: "Remove every finished download from this list? Saved files stay in your library.", confirmLabel: "Clear list", danger: true });
+    const yes = await askConfirm({
+      title: "Clear finished downloads",
+      message: "Remove every finished download from this list? Saved files stay in your library.",
+      confirmLabel: "Clear list",
+      danger: true,
+    });
     if (yes) await guard(() => ClearDownloads());
   }
 
   async function cancelJob(job: Job) {
-    const yes = await askConfirm({ title: "Cancel download", message: "Stop downloading " + (job.title || job.url) + "?", confirmLabel: "Stop download", danger: true });
+    const yes = await askConfirm({
+      title: "Cancel download",
+      message: "Stop downloading " + (job.title || job.url) + "?",
+      confirmLabel: "Stop download",
+      danger: true,
+    });
     if (yes) await guard(() => CancelDownload(job.id));
   }
 
   async function removeJob(job: Job) {
-    const yes = await askConfirm({ title: "Remove download", message: "Remove " + (job.title || job.url) + " from this list?", confirmLabel: "Remove", danger: true });
+    const yes = await askConfirm({
+      title: "Remove download",
+      message: "Remove " + (job.title || job.url) + " from this list?",
+      confirmLabel: "Remove",
+      danger: true,
+    });
     if (yes) await guard(() => RemoveDownload(job.id));
   }
 
   const ytVersion = createMemo(() => tools().ytDlp.version || "-");
   const ytLatest = createMemo(() => tools().ytDlp.latest || "-");
-  const ytSource = createMemo(() => (tools().ytDlp.source === "managed" ? "Managed by PracticeMusic" : tools().ytDlp.source === "path" ? "Found on PATH" : "Not installed"));
+  const ytSource = createMemo(() =>
+    tools().ytDlp.source === "managed"
+      ? "Managed by PracticeMusic"
+      : tools().ytDlp.source === "path"
+        ? "Found on PATH"
+        : "Not installed",
+  );
   const ffmpegText = createMemo(() => tools().ffmpeg || "Not found");
   const libDir = createMemo(() => tools().libraryDir || "No library folder set");
   const ytBusy = createMemo(() => tools().ytDlp.busy || "");
@@ -112,7 +142,12 @@ export function DownloadsPanel() {
           Downloads
         </h2>
         <div class="panel-tools">
-          <button class="krate-button krate-button-secondary krate-button-sm" type="button" disabled={jobs().length === 0} onClick={clearFinished}>
+          <button
+            class="krate-button krate-button-secondary krate-button-sm"
+            type="button"
+            disabled={jobs().length === 0}
+            onClick={clearFinished}
+          >
             <Icon name="lucide:eraser" />
             Clear finished
           </button>
@@ -132,10 +167,18 @@ export function DownloadsPanel() {
           <Notice tone="ok" text={info()} />
         </div>
         <div showIf={tools().ytDlp.source === "missing"}>
-          <Notice tone="warn" title="yt-dlp is not installed" text="Install it below. The release is checked against its SHA-256 before use." />
+          <Notice
+            tone="warn"
+            title="yt-dlp is not installed"
+            text="Install it below. The release is checked against its SHA-256 before use."
+          />
         </div>
         <div showIf={!tools().ffmpeg}>
-          <Notice tone="warn" title="ffmpeg was not found" text="MP3 conversion and video merging need ffmpeg on your PATH." />
+          <Notice
+            tone="warn"
+            title="ffmpeg was not found"
+            text="MP3 conversion and video merging need ffmpeg on your PATH."
+          />
         </div>
       </div>
 
@@ -170,18 +213,31 @@ export function DownloadsPanel() {
               </div>
               <div class="detail-actions">
                 {(j.state === "queued" || j.state === "running") && (
-                  <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={() => cancelJob(j)}>
+                  <button
+                    class="krate-button krate-button-secondary krate-button-sm"
+                    type="button"
+                    onClick={() => cancelJob(j)}
+                  >
                     Cancel
                   </button>
                 )}
                 {(j.state === "failed" || j.state === "cancelled") && (
-                  <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={() => guard(() => RetryDownload(j.id))}>
+                  <button
+                    class="krate-button krate-button-secondary krate-button-sm"
+                    type="button"
+                    onClick={() => guard(() => RetryDownload(j.id))}
+                  >
                     <Icon name="lucide:rotate-cw" />
                     Retry
                   </button>
                 )}
                 {(j.state === "done" || j.state === "failed" || j.state === "cancelled") && (
-                  <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Remove from the list" onClick={() => removeJob(j)}>
+                  <button
+                    class="krate-button krate-button-ghost krate-button-icon krate-button-sm"
+                    type="button"
+                    aria-label="Remove from the list"
+                    onClick={() => removeJob(j)}
+                  >
                     <Icon name="lucide:x" />
                   </button>
                 )}
@@ -200,9 +256,13 @@ export function DownloadsPanel() {
             <span class="kv-key">Source</span>
             <span class="kv-value">{ytSource()}</span>
             <span class="kv-key">ffmpeg</span>
-            <span class="kv-value mono" title={ffmpegText()}>{ffmpegText()}</span>
+            <span class="kv-value mono" title={ffmpegText()}>
+              {ffmpegText()}
+            </span>
             <span class="kv-key">Saves to</span>
-            <span class="kv-value mono" title={libDir()}>{libDir()}</span>
+            <span class="kv-value mono" title={libDir()}>
+              {libDir()}
+            </span>
           </div>
           <div showIf={!!ytError()}>
             <Notice tone="bad" title="yt-dlp" text={ytError()} />
@@ -217,7 +277,12 @@ export function DownloadsPanel() {
               <Icon name="lucide:package" />
               {ytBusy() === "installing" ? "Installing" : installLabel()}
             </button>
-            <button class="krate-button krate-button-secondary krate-button-sm" type="button" disabled={!!ytBusy()} onClick={() => guard(() => CheckTools())}>
+            <button
+              class="krate-button krate-button-secondary krate-button-sm"
+              type="button"
+              disabled={!!ytBusy()}
+              onClick={() => guard(() => CheckTools())}
+            >
               <Icon name="lucide:refresh-cw" />
               {ytBusy() === "checking" ? "Checking" : "Check"}
             </button>

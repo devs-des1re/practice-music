@@ -3,7 +3,15 @@ import { AudioStream } from "../../../api/audio.go";
 import { Engine, Health } from "../../../api/host.go";
 import { LiveText } from "../ui/live-text";
 import { countdownText } from "../../lib/errors";
-import { noteAudioRunning, reportOnline, requestAudio, retryAudio, serviceState, subscribeService, type ServiceState } from "../../lib/service";
+import {
+  noteAudioRunning,
+  reportOnline,
+  requestAudio,
+  retryAudio,
+  serviceState,
+  subscribeService,
+  type ServiceState,
+} from "../../lib/service";
 
 const PROBE_FIRST_MS = 1000;
 const PROBE_MAX_MS = 10000;
@@ -92,7 +100,12 @@ export function ServiceNotice() {
     <div class="service-bar" role="status" data-tone={tone()} data-on={shown() ? "true" : "false"}>
       <LiveText class="service-text" text={text()} />
       <div class="service-actions">
-        <button class="krate-button krate-button-secondary krate-button-sm" type="button" disabled={busy()} onClick={retry}>
+        <button
+          class="krate-button krate-button-secondary krate-button-sm"
+          type="button"
+          disabled={busy()}
+          onClick={retry}
+        >
           <Icon name="lucide:rotate-cw" />
           Retry now
         </button>

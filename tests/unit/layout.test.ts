@@ -20,7 +20,10 @@ import {
   type PanelId,
 } from "../../src/lib/layout.ts";
 
-const only = (...ids: PanelId[]) => (id: PanelId) => ids.includes(id);
+const only =
+  (...ids: PanelId[]) =>
+  (id: PanelId) =>
+    ids.includes(id);
 
 test("the default layout puts the library beside the decks with the mixer below them", () => {
   const tree = defaultTree(only("player", "metronome", "library", "mixer"));
@@ -148,7 +151,13 @@ test("normalise drops hidden panels, adds missing ones and rejects duplicates", 
   assert.equal(has(fewer, "mixer"), true);
   const more = normalise(saved, only("player", "metronome", "library", "mixer", "downloads"));
   assert.equal(has(more, "downloads"), true);
-  const dupes: Node = { kind: "split", dir: "row", ratio: 0.5, a: { kind: "leaf", id: "player" }, b: { kind: "leaf", id: "player" } };
+  const dupes: Node = {
+    kind: "split",
+    dir: "row",
+    ratio: 0.5,
+    a: { kind: "leaf", id: "player" },
+    b: { kind: "leaf", id: "player" },
+  };
   assert.deepEqual([...leaves(normalise(dupes, only("player", "metronome")))].sort(), ["metronome", "player"]);
   assert.deepEqual([...leaves(normalise(null, only("player", "metronome")))].sort(), ["metronome", "player"]);
 });

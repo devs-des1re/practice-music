@@ -110,7 +110,12 @@ export default function SettingsPage() {
     if (next) setEngine(next);
   });
   const rescan = () =>
-    loadDevices({ setList: setDeviceList, setLoaded: setDevicesLoaded, setError: setDevicesError, setLoading: setDevicesLoading });
+    loadDevices({
+      setList: setDeviceList,
+      setLoaded: setDevicesLoaded,
+      setError: setDevicesError,
+      setLoading: setDevicesLoading,
+    });
   createEffect(() => {
     if (engine().state === "running") {
       rescan();
@@ -190,7 +195,8 @@ export default function SettingsPage() {
   async function resetPreferences() {
     const yes = await askConfirm({
       title: "Reset preferences",
-      message: "Put appearance, mixer, player, metronome, library and download preferences back to their defaults? Audio devices and library folders are not changed.",
+      message:
+        "Put appearance, mixer, player, metronome, library and download preferences back to their defaults? Audio devices and library folders are not changed.",
       confirmLabel: "Reset preferences",
       danger: true,
     });
@@ -221,7 +227,9 @@ export default function SettingsPage() {
 
   const hostOptions = createMemo(() =>
     [{ value: "", label: "Automatic" }].concat(
-      deviceList().hosts.filter((h) => h.available).map((h) => ({ value: h.id, label: h.name })),
+      deviceList()
+        .hosts.filter((h) => h.available)
+        .map((h) => ({ value: h.id, label: h.name })),
     ),
   );
   const outputOptions = createMemo(() => pick("output", draft()?.audio.outputDevice || ""));
@@ -241,7 +249,9 @@ export default function SettingsPage() {
     const current = draft()?.audio.sampleRate || 0;
     if (current && !rates.includes(current)) rates.push(current);
     rates.sort((a, b) => a - b);
-    return [{ value: "0", label: "Device default" }].concat(rates.map((r) => ({ value: String(r), label: formatRate(r) })));
+    return [{ value: "0", label: "Device default" }].concat(
+      rates.map((r) => ({ value: String(r), label: formatRate(r) })),
+    );
   });
 
   const bufferOptions = createMemo(() => {
@@ -251,7 +261,9 @@ export default function SettingsPage() {
     const current = draft()?.audio.bufferFrames || 0;
     if (current && !choices.includes(current)) choices.push(current);
     choices.sort((a, b) => a - b);
-    return [{ value: "0", label: "Device default" }].concat(choices.map((f) => ({ value: String(f), label: f + " frames" })));
+    return [{ value: "0", label: "Device default" }].concat(
+      choices.map((f) => ({ value: String(f), label: f + " frames" })),
+    );
   });
 
   const lowDevice = createMemo(() => {
@@ -263,25 +275,53 @@ export default function SettingsPage() {
     const mode = draft()?.audio.mode || "shared";
     const dev = lowDevice();
     let text = MODE_HINTS[mode] || "";
-    if (dev && mode === "lowlatency" && dev.shared) text += " This device allows down to " + dev.shared.minMs.toFixed(1) + " ms.";
-    if (dev && mode === "exclusive") text += dev.exclusive.supported ? " This device allows down to " + (dev.exclusive.minMs ?? 0).toFixed(1) + " ms (" + dev.exclusive.format + ")." : " This device does not accept exclusive mode.";
+    if (dev && mode === "lowlatency" && dev.shared)
+      text += " This device allows down to " + dev.shared.minMs.toFixed(1) + " ms.";
+    if (dev && mode === "exclusive")
+      text += dev.exclusive.supported
+        ? " This device allows down to " + (dev.exclusive.minMs ?? 0).toFixed(1) + " ms (" + dev.exclusive.format + ")."
+        : " This device does not accept exclusive mode.";
     return text;
   });
 
   const bufferHint = createMemo(() => {
     const dev = activeOutput();
-    if (draft()?.audio.mode !== "shared") return "Leave on device default for the smallest stable buffer. A larger value trades delay for safety.";
+    if (draft()?.audio.mode !== "shared")
+      return "Leave on device default for the smallest stable buffer. A larger value trades delay for safety.";
     if (!dev || !dev.bufferFrames) return "The driver does not report its buffer range.";
     const rate = draft()?.audio.sampleRate || dev.defaultSampleRate || 48000;
     const { min, max } = dev.bufferFrames;
     if (min === max) {
-      return "This driver uses a fixed buffer of " + min + " frames (" + bufferLatencyMs(min, rate) + " at " + formatRate(rate) + "). An ASIO or JACK device allows smaller buffers.";
+      return (
+        "This driver uses a fixed buffer of " +
+        min +
+        " frames (" +
+        bufferLatencyMs(min, rate) +
+        " at " +
+        formatRate(rate) +
+        "). An ASIO or JACK device allows smaller buffers."
+      );
     }
-    return "Supported: " + min + " to " + max + " frames (" + bufferLatencyMs(min, rate) + " to " + bufferLatencyMs(max, rate) + ").";
+    return (
+      "Supported: " +
+      min +
+      " to " +
+      max +
+      " frames (" +
+      bufferLatencyMs(min, rate) +
+      " to " +
+      bufferLatencyMs(max, rate) +
+      ")."
+    );
   });
 
   async function removeFolder(folder: string, index: number) {
-    const yes = await askConfirm({ title: "Remove library folder", message: "Stop watching " + folder + "? The files stay on disk.", confirmLabel: "Remove folder", danger: true });
+    const yes = await askConfirm({
+      title: "Remove library folder",
+      message: "Stop watching " + folder + "? The files stay on disk.",
+      confirmLabel: "Remove folder",
+      danger: true,
+    });
     if (yes) edit((s) => s.library.folders.splice(index, 1));
   }
 
@@ -307,7 +347,15 @@ export default function SettingsPage() {
       });
       if (!target) return;
       const res = await ExportSettings(target);
-      setTransferInfo("Exported settings, mixer, metronome and " + res.scenes + " scene" + (res.scenes === 1 ? "" : "s") + " to " + res.path + ".");
+      setTransferInfo(
+        "Exported settings, mixer, metronome and " +
+          res.scenes +
+          " scene" +
+          (res.scenes === 1 ? "" : "s") +
+          " to " +
+          res.path +
+          ".",
+      );
     } catch (e) {
       logger.error("export failed", e);
       setError(describe(e));
@@ -326,7 +374,9 @@ export default function SettingsPage() {
       if (!files || files.length === 0) return;
       const res = await ImportSettings(files[0]);
       await reload();
-      setTransferInfo("Imported settings, mixer, metronome and " + res.scenes + " scene" + (res.scenes === 1 ? "" : "s") + ".");
+      setTransferInfo(
+        "Imported settings, mixer, metronome and " + res.scenes + " scene" + (res.scenes === 1 ? "" : "s") + ".",
+      );
       setTransferNotes(res.notes.join(" "));
     } catch (e) {
       logger.error("import failed", e);
@@ -341,416 +391,644 @@ export default function SettingsPage() {
       <TooltipHost />
       <Topbar />
       <div class="viewport">
-    <main class="page settings-page">
-      <header class="page-head">
-        <h1 class="page-title">
-          <Icon name="lucide:settings" />
-          Settings
-        </h1>
-        <div class="actions">
-          <Link class="krate-button krate-button-secondary" href="/latency">
-            <Icon name="lucide:timer" />
-            Latency tools
-          </Link>
-        </div>
-      </header>
-
-      <div showIf={!!notice()}>
-        <Notice tone="warn" title="Settings were reset" text={notice()} />
-      </div>
-      <div showIf={!!error()}>
-        <Notice tone="bad" text={error()} />
-      </div>
-      <div showIf={!!devicesError()}>
-        <Notice tone="warn" title="Device list unavailable" text={devicesError()} />
-      </div>
-      <div showIf={engine().state !== "running"}>
-        <Notice tone="warn" text="The audio engine is not running. Device lists fill in once it is up, and saved choices are kept." />
-      </div>
-
-      <p class="empty" showIf={!draft() && !error()}>
-        Loading settings
-      </p>
-
-      <div class="fill settings-ws" showIf={!!draft()}>
-        <aside class="rail" data-hue="mixer" aria-label="Settings sections">
-          <button class="rail-item" type="button" data-active={section() === "audio" ? "true" : "false"} onClick={() => setSection("audio")}>
-            <span class="rail-label">
-              <Icon name="lucide:monitor-speaker" />
-              Audio
-            </span>
-          </button>
-          <button class="rail-item" type="button" data-active={section() === "engine" ? "true" : "false"} onClick={() => setSection("engine")}>
-            <span class="rail-label">
-              <Icon name="lucide:cpu" />
-              Engine
-            </span>
-          </button>
-          <button class="rail-item" type="button" data-active={section() === "library" ? "true" : "false"} onClick={() => setSection("library")}>
-            <span class="rail-label">
-              <Icon name="lucide:folder" />
-              Library
-            </span>
-          </button>
-          <button class="rail-item" type="button" data-active={section() === "appearance" ? "true" : "false"} onClick={() => setSection("appearance")}>
-            <span class="rail-label">
-              <Icon name="lucide:sliders-horizontal" />
-              Appearance
-            </span>
-          </button>
-          <button class="rail-item" type="button" data-active={section() === "mixer" ? "true" : "false"} onClick={() => setSection("mixer")}>
-            <span class="rail-label">
-              <Icon name="lucide:sliders-vertical" />
-              Mixer
-            </span>
-          </button>
-          <button class="rail-item" type="button" data-active={section() === "player" ? "true" : "false"} onClick={() => setSection("player")}>
-            <span class="rail-label">
-              <Icon name="lucide:audio-waveform" />
-              Player
-            </span>
-          </button>
-          <button class="rail-item" type="button" data-active={section() === "metronome" ? "true" : "false"} onClick={() => setSection("metronome")}>
-            <span class="rail-label">
-              <Icon name="lucide:metronome" />
-              Metronome
-            </span>
-          </button>
-          <button class="rail-item" type="button" data-active={section() === "downloads" ? "true" : "false"} onClick={() => setSection("downloads")}>
-            <span class="rail-label">
-              <Icon name="lucide:download" />
-              Downloads
-            </span>
-          </button>
-          <button class="rail-item" type="button" data-active={section() === "backup" ? "true" : "false"} onClick={() => setSection("backup")}>
-            <span class="rail-label">
-              <Icon name="lucide:save" />
-              Backup
-            </span>
-          </button>
-        </aside>
-        <div class="col">
-          <div class="pane" showIf={section() === "audio"}>
-            <Panel hue="mixer">
-              <PanelHead title="Audio">
-            <button class="krate-button krate-button-secondary krate-button-sm" type="button" disabled={devicesLoading()} onClick={rescan}>
-              <Icon name="lucide:refresh-cw" />
-              Rescan
-            </button>
-          </PanelHead>
-            <div class="panel-body form-grid">
-          <Field label="Driver" htmlFor="audio-host" hint="Choose ASIO, JACK or PipeWire for the lowest latency.">
-            <Select
-              id="audio-host"
-              value={draft()?.audio.host || ""}
-              options={hostOptions()}
-              onChange={(v) => edit((s) => (s.audio.host = v))}
-            />
-          </Field>
-          <Field label="Output mode" htmlFor="audio-mode" hint={modeHint()}>
-            <Select
-              id="audio-mode"
-              value={draft()?.audio.mode || "shared"}
-              options={[
-                { value: "shared", label: "Shared, standard" },
-                { value: "lowlatency", label: "Low-latency shared (Windows)" },
-                { value: "exclusive", label: "Exclusive (Windows)" },
-              ]}
-              onChange={(v) => edit((s) => (s.audio.mode = v))}
-            />
-          </Field>
-          <Field
-            label="Amp output"
-            htmlFor="audio-output"
-            warning={missing("output", draft()?.audio.outputDevice || "")}
-          >
-            <Select
-              id="audio-output"
-              value={draft()?.audio.outputDevice || ""}
-              options={outputOptions()}
-              onChange={(v) => edit((s) => (s.audio.outputDevice = v))}
-            />
-          </Field>
-          <Field
-            label="Monitor output"
-            htmlFor="audio-monitor"
-            hint="Headphones or a second output for the monitor mix."
-            warning={missing("output", draft()?.audio.monitorDevice || "")}
-          >
-            <Select
-              id="audio-monitor"
-              value={draft()?.audio.monitorDevice || ""}
-              options={monitorOptions()}
-              onChange={(v) => edit((s) => (s.audio.monitorDevice = v))}
-            />
-          </Field>
-          <Field
-            label="Input"
-            htmlFor="audio-input"
-            hint="Your kit or audio interface. It feeds the mixer input strips."
-            warning={missing("input", draft()?.audio.inputDevice || "")}
-          >
-            <Select
-              id="audio-input"
-              value={draft()?.audio.inputDevice || ""}
-              options={inputOptions()}
-              onChange={(v) => edit((s) => (s.audio.inputDevice = v))}
-            />
-          </Field>
-          <div class="field-row span-2">
-            <Field label="Sample rate" htmlFor="audio-rate">
-              <Select
-                id="audio-rate"
-                value={String(draft()?.audio.sampleRate || 0)}
-                options={rateOptions()}
-                onChange={(v) => edit((s) => (s.audio.sampleRate = Number(v)))}
-              />
-            </Field>
-            <Field label="Buffer size" htmlFor="audio-buffer">
-              <Select
-                id="audio-buffer"
-                value={String(draft()?.audio.bufferFrames || 0)}
-                options={bufferOptions()}
-                onChange={(v) => edit((s) => (s.audio.bufferFrames = Number(v)))}
-              />
-            </Field>
-          </div>
-          <p class="field-hint span-2">{bufferHint()}</p>
-          </div>
-            </Panel>
-          </div>
-
-          <div class="pane" showIf={section() === "engine"}>
-            <Panel>
-              <PanelHead title="Audio engine">
-                <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={() => RestartEngine()}>
-                  <Icon name="lucide:rotate-cw" />
-                  Restart
-                </button>
-              </PanelHead>
-              <div class="panel-body fixed">
-                <div class="status-line">
-                  <StatusDot tone={stateTone(engine().state)} label={stateText()} />
-                  <LiveText class="state-text" text={stateText()} />
-                </div>
-                <div class="readout-grid">
-                  <Readout label="Version" value={engine().engineVersion || "-"} />
-                  <Readout label="Protocol" value={engine().protocol ? "v" + engine().protocol : "-"} />
-                  <Readout label="Process" value={engine().pid ? String(engine().pid) : "-"} />
-                  <Readout label="Restarts" value={String(engine().restarts || 0)} />
-                </div>
-                <div showIf={!!engine().lastError}>
-                  <Notice tone={engine().state === "failed" ? "bad" : "warn"} title="Last engine error" text={engine().lastError || ""} />
-                </div>
-              </div>
-              <div class="scroll" showIf={devicesLoaded() && deviceList().devices.length > 0}>
-                <table class="device-table">
-                  <thead>
-                    <tr>
-                      <th>Device</th>
-                      <th>Driver</th>
-                      <th>Direction</th>
-                      <th>Channels</th>
-                      <th>Sample rates</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {deviceList().devices.map((d) => (
-                      <tr key={d.id + d.direction}>
-                        <td>
-                          <div class="device-name">
-                            <span>{d.name}</span>
-                            <span class="device-id">{d.id}</span>
-                          </div>
-                        </td>
-                        <td class="num">{d.host}</td>
-                        <td>
-                          <span class="tag">{d.direction}</span>
-                          {d.isDefault && <span class="tag" data-tone="accent">default</span>}
-                        </td>
-                        <td class="num">{d.maxChannels}</td>
-                        <td class="num rates">{formatRates(d.sampleRates)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </Panel>
-          </div>
-
-          <div class="pane" showIf={section() === "library"}>
-            <Panel hue="library">
-              <PanelHead title="Library">
-              <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={addFolder}>
-                <Icon name="lucide:folder-plus" />
-                Add folder
-              </button>
-            </PanelHead>
-            <PanelBody>
-            <div class="folder-list" showIf={(draft()?.library.folders.length ?? 0) > 0}>
-              {(draft()?.library.folders || []).map((f, i) => (
-                <div class="folder-row" key={f}>
-                  <span class="folder-path" title={f}>
-                    {f}
-                  </span>
-                  <button
-                    class="krate-button krate-button-ghost krate-button-icon krate-button-sm"
-                    type="button"
-                    aria-label={"Remove " + f}
-                    onClick={() => removeFolder(f, i)}
-                  >
-                    <Icon name="lucide:x" />
-                  </button>
-                </div>
-              ))}
+        <main class="page settings-page">
+          <header class="page-head">
+            <h1 class="page-title">
+              <Icon name="lucide:settings" />
+              Settings
+            </h1>
+            <div class="actions">
+              <Link class="krate-button krate-button-secondary" href="/latency">
+                <Icon name="lucide:timer" />
+                Latency tools
+              </Link>
             </div>
-            <p class="empty" showIf={(draft()?.library.folders.length ?? 1) === 0}>
-              No library folder yet.
-            </p>
-            <Toggle
-              id="library-normalize"
-              label="Normalise loudness on import"
-              hint="Applies as songs are added."
-              checked={!!draft()?.library.normalizeOnImport}
-              onChange={(v) => edit((s) => (s.library.normalizeOnImport = v))}
+          </header>
+
+          <div showIf={!!notice()}>
+            <Notice tone="warn" title="Settings were reset" text={notice()} />
+          </div>
+          <div showIf={!!error()}>
+            <Notice tone="bad" text={error()} />
+          </div>
+          <div showIf={!!devicesError()}>
+            <Notice tone="warn" title="Device list unavailable" text={devicesError()} />
+          </div>
+          <div showIf={engine().state !== "running"}>
+            <Notice
+              tone="warn"
+              text="The audio engine is not running. Device lists fill in once it is up, and saved choices are kept."
             />
-            <Toggle
-              id="library-tool-updates"
-              label="Update yt-dlp automatically"
-              hint="Only for the copy PracticeMusic manages."
-              checked={!draft()?.library.disableToolUpdates}
-              onChange={(v) => edit((s) => (s.library.disableToolUpdates = !v))}
-            />
-              <Field label="Sort songs by" htmlFor="pref-sort" hint="The order the library opens in.">
-                <Select id="pref-sort" value={(draft()?.preferences.librarySort ?? FALLBACK_PREFERENCES.librarySort)} options={SORT_CHOICES} onChange={(v) => prefer((p) => (p.librarySort = v))} />
-              </Field>
-              <Toggle id="pref-artwork" label="Show artwork" hint="Thumbnails beside song titles." checked={(draft()?.preferences.artwork ?? FALLBACK_PREFERENCES.artwork)} onChange={(v) => prefer((p) => (p.artwork = v))} />
-              <Toggle id="pref-play-on-load" label="Play a song when it loads" hint="Starts playback after you load a song from the library." checked={(draft()?.preferences.playOnLoad ?? FALLBACK_PREFERENCES.playOnLoad)} onChange={(v) => prefer((p) => (p.playOnLoad = v))} />
-            </PanelBody>
-          </Panel>
           </div>
 
-          <div class="pane" showIf={section() === "appearance"}>
-            <Panel hue="player">
-              <PanelHead title="Appearance" />
-            <PanelBody>
-            <Field label="Interface size" htmlFor="ui-scale">
-              <Select
-                id="ui-scale"
-                value={String(draft()?.appearance.uiScale || 100)}
-                options={SCALE_CHOICES.map((p) => ({ value: String(p), label: p + "%" }))}
-                onChange={(v) => edit((s) => (s.appearance.uiScale = Number(v)))}
-              />
-            </Field>
-              <Field label="Glass effect" htmlFor="pref-glass" hint="Translucent surfaces with a soft sheen. Off can help on slower computers.">
-                <Select id="pref-glass" value={(draft()?.preferences.glass ?? FALLBACK_PREFERENCES.glass)} options={GLASS_CHOICES} onChange={(v) => prefer((p) => (p.glass = v))} />
-              </Field>
-              <Field label="Corners" htmlFor="pref-corners" hint="Applies to buttons, fields, menus and popups.">
-                <Select id="pref-corners" value={(draft()?.preferences.corners ?? FALLBACK_PREFERENCES.corners)} options={CORNER_CHOICES} onChange={(v) => prefer((p) => (p.corners = v))} />
-              </Field>
-              <Toggle id="pref-tooltips" label="Show tooltips" hint="Short help when the pointer rests on a control." checked={(draft()?.preferences.tooltips ?? FALLBACK_PREFERENCES.tooltips)} onChange={(v) => prefer((p) => (p.tooltips = v))} />
-              <Field label="Tooltip delay" htmlFor="pref-tooltip-delay">
-                <Select id="pref-tooltip-delay" value={String((draft()?.preferences.tooltipDelayMs ?? FALLBACK_PREFERENCES.tooltipDelayMs))} options={TOOLTIP_DELAYS} onChange={(v) => prefer((p) => (p.tooltipDelayMs = Number(v)))} />
-              </Field>
-            </PanelBody>
-          </Panel>
-          </div>
+          <p class="empty" showIf={!draft() && !error()}>
+            Loading settings
+          </p>
 
-          <div class="pane" showIf={section() === "mixer"}>
-            <Panel>
-              <PanelHead title="Mixer" />
-              <PanelBody>
-              <Field label="Peak mark hold" htmlFor="pref-peak-hold" hint="How long the highest level stays marked on each channel.">
-                <Select id="pref-peak-hold" value={String((draft()?.preferences.peakHoldMs ?? FALLBACK_PREFERENCES.peakHoldMs))} options={PEAK_HOLDS} onChange={(v) => prefer((p) => (p.peakHoldMs = Number(v)))} />
-              </Field>
-              <Field label="Fader step" htmlFor="pref-fader-step" hint="The smallest change when you drag a fader or use the arrow keys on it.">
-                <Select id="pref-fader-step" value={String((draft()?.preferences.faderStepDb ?? FALLBACK_PREFERENCES.faderStepDb))} options={FADER_STEPS} onChange={(v) => prefer((p) => (p.faderStepDb = Number(v)))} />
-              </Field>
-              <Toggle id="pref-reduction" label="Show compressor and limiter reduction" hint="A thin yellow bar appears beside a channel while its level is being reduced." checked={(draft()?.preferences.reductionBars ?? FALLBACK_PREFERENCES.reductionBars)} onChange={(v) => prefer((p) => (p.reductionBars = v))} />
-              </PanelBody>
-            </Panel>
-          </div>
-
-          <div class="pane" showIf={section() === "player"}>
-            <Panel>
-              <PanelHead title="Player" />
-              <PanelBody>
-              <Field label="Default snapping" htmlFor="pref-snap" hint="How loop points snap when you drag on the timeline.">
-                <Select id="pref-snap" value={(draft()?.preferences.defaultSnap ?? FALLBACK_PREFERENCES.defaultSnap)} options={SNAP_CHOICES} onChange={(v) => prefer((p) => (p.defaultSnap = v))} />
-              </Field>
-              <Toggle id="pref-grid" label="Show the beat grid" hint="Beat and bar lines on the waveform. Snapping still works when hidden." checked={(draft()?.preferences.beatGrid ?? FALLBACK_PREFERENCES.beatGrid)} onChange={(v) => prefer((p) => (p.beatGrid = v))} />
-              <Field label="Skip with arrow keys (seconds)" htmlFor="pref-seek" hint="1 to 60.">
-                <NumberInput id="pref-seek" class="krate-input" label="Skip with arrow keys (seconds)" value={(draft()?.preferences.seekSeconds ?? FALLBACK_PREFERENCES.seekSeconds)} min={1} max={60} decimals={0} onCommit={(v) => prefer((p) => (p.seekSeconds = v))} />
-              </Field>
-              <Field label="Skip with Shift and arrow keys (seconds)" htmlFor="pref-seek-large" hint="1 to 300.">
-                <NumberInput id="pref-seek-large" class="krate-input" label="Skip with Shift and arrow keys (seconds)" value={(draft()?.preferences.seekLargeSeconds ?? FALLBACK_PREFERENCES.seekLargeSeconds)} min={1} max={300} decimals={0} onCommit={(v) => prefer((p) => (p.seekLargeSeconds = v))} />
-              </Field>
-              <Field label="Speed step (percent)" htmlFor="pref-speed-step" hint="Used by the minus and equals keys. 1 to 25.">
-                <NumberInput id="pref-speed-step" class="krate-input" label="Speed step (percent)" value={(draft()?.preferences.speedStep ?? FALLBACK_PREFERENCES.speedStep)} min={1} max={25} decimals={0} onCommit={(v) => prefer((p) => (p.speedStep = v))} />
-              </Field>
-              <Field label="Previous restarts the song after (seconds)" htmlFor="pref-restart" hint="Before this point, Previous goes to the song before. 0 to 30.">
-                <NumberInput id="pref-restart" class="krate-input" label="Previous restarts the song after (seconds)" value={(draft()?.preferences.restartAfterSeconds ?? FALLBACK_PREFERENCES.restartAfterSeconds)} min={0} max={30} decimals={0} onCommit={(v) => prefer((p) => (p.restartAfterSeconds = v))} />
-              </Field>
-              </PanelBody>
-            </Panel>
-          </div>
-
-          <div class="pane" showIf={section() === "metronome"}>
-            <Panel>
-              <PanelHead title="Metronome" />
-              <PanelBody>
-              <Field label="Tempo step (BPM)" htmlFor="pref-tempo-step" hint="Used by the plus and minus buttons and the Up and Down keys. 0.1 to 10.">
-                <NumberInput id="pref-tempo-step" class="krate-input" label="Tempo step (BPM)" value={(draft()?.preferences.tempoStep ?? FALLBACK_PREFERENCES.tempoStep)} min={0.1} max={10} decimals={1} onCommit={(v) => prefer((p) => (p.tempoStep = v))} />
-              </Field>
-              <Field label="Larger tempo step with Shift (BPM)" htmlFor="pref-tempo-large" hint="0.1 to 50.">
-                <NumberInput id="pref-tempo-large" class="krate-input" label="Larger tempo step with Shift (BPM)" value={(draft()?.preferences.tempoStepLarge ?? FALLBACK_PREFERENCES.tempoStepLarge)} min={0.1} max={50} decimals={1} onCommit={(v) => prefer((p) => (p.tempoStepLarge = v))} />
-              </Field>
-              </PanelBody>
-            </Panel>
-          </div>
-
-          <div class="pane" showIf={section() === "downloads"}>
-            <Panel>
-              <PanelHead title="Downloads" />
-              <PanelBody>
-              <Field label="Default format and quality" htmlFor="pref-download" hint="What a new download starts with.">
-                <Select id="pref-download" value={(draft()?.preferences.downloadChoice ?? FALLBACK_PREFERENCES.downloadChoice)} options={DOWNLOAD_DEFAULTS} onChange={(v) => prefer((p) => (p.downloadChoice = v))} />
-              </Field>
-              </PanelBody>
-            </Panel>
-          </div>
-
-          <div class="pane" showIf={section() === "backup"}>
-            <Panel hue="browser">
-              <PanelHead title="Backup" />
-            <PanelBody>
-              <div class="detail-actions">
-                <button class="krate-button krate-button-secondary" type="button" onClick={exportAll}>
+          <div class="fill settings-ws" showIf={!!draft()}>
+            <aside class="rail" data-hue="mixer" aria-label="Settings sections">
+              <button
+                class="rail-item"
+                type="button"
+                data-active={section() === "audio" ? "true" : "false"}
+                onClick={() => setSection("audio")}
+              >
+                <span class="rail-label">
+                  <Icon name="lucide:monitor-speaker" />
+                  Audio
+                </span>
+              </button>
+              <button
+                class="rail-item"
+                type="button"
+                data-active={section() === "engine" ? "true" : "false"}
+                onClick={() => setSection("engine")}
+              >
+                <span class="rail-label">
+                  <Icon name="lucide:cpu" />
+                  Engine
+                </span>
+              </button>
+              <button
+                class="rail-item"
+                type="button"
+                data-active={section() === "library" ? "true" : "false"}
+                onClick={() => setSection("library")}
+              >
+                <span class="rail-label">
+                  <Icon name="lucide:folder" />
+                  Library
+                </span>
+              </button>
+              <button
+                class="rail-item"
+                type="button"
+                data-active={section() === "appearance" ? "true" : "false"}
+                onClick={() => setSection("appearance")}
+              >
+                <span class="rail-label">
+                  <Icon name="lucide:sliders-horizontal" />
+                  Appearance
+                </span>
+              </button>
+              <button
+                class="rail-item"
+                type="button"
+                data-active={section() === "mixer" ? "true" : "false"}
+                onClick={() => setSection("mixer")}
+              >
+                <span class="rail-label">
+                  <Icon name="lucide:sliders-vertical" />
+                  Mixer
+                </span>
+              </button>
+              <button
+                class="rail-item"
+                type="button"
+                data-active={section() === "player" ? "true" : "false"}
+                onClick={() => setSection("player")}
+              >
+                <span class="rail-label">
+                  <Icon name="lucide:audio-waveform" />
+                  Player
+                </span>
+              </button>
+              <button
+                class="rail-item"
+                type="button"
+                data-active={section() === "metronome" ? "true" : "false"}
+                onClick={() => setSection("metronome")}
+              >
+                <span class="rail-label">
+                  <Icon name="lucide:metronome" />
+                  Metronome
+                </span>
+              </button>
+              <button
+                class="rail-item"
+                type="button"
+                data-active={section() === "downloads" ? "true" : "false"}
+                onClick={() => setSection("downloads")}
+              >
+                <span class="rail-label">
                   <Icon name="lucide:download" />
-                  Export settings
-                </button>
-                <button class="krate-button krate-button-secondary" type="button" onClick={importAll}>
-                  <Icon name="lucide:upload" />
-                  Import settings
-                </button>
-                <button class="krate-button krate-button-destructive" type="button" onClick={resetPreferences}>
-                  <Icon name="lucide:rotate-ccw" />
-                  Reset preferences
-                </button>
+                  Downloads
+                </span>
+              </button>
+              <button
+                class="rail-item"
+                type="button"
+                data-active={section() === "backup" ? "true" : "false"}
+                onClick={() => setSection("backup")}
+              >
+                <span class="rail-label">
+                  <Icon name="lucide:save" />
+                  Backup
+                </span>
+              </button>
+            </aside>
+            <div class="col">
+              <div class="pane" showIf={section() === "audio"}>
+                <Panel hue="mixer">
+                  <PanelHead title="Audio">
+                    <button
+                      class="krate-button krate-button-secondary krate-button-sm"
+                      type="button"
+                      disabled={devicesLoading()}
+                      onClick={rescan}
+                    >
+                      <Icon name="lucide:refresh-cw" />
+                      Rescan
+                    </button>
+                  </PanelHead>
+                  <div class="panel-body form-grid">
+                    <Field
+                      label="Driver"
+                      htmlFor="audio-host"
+                      hint="Choose ASIO, JACK or PipeWire for the lowest latency."
+                    >
+                      <Select
+                        id="audio-host"
+                        value={draft()?.audio.host || ""}
+                        options={hostOptions()}
+                        onChange={(v) => edit((s) => (s.audio.host = v))}
+                      />
+                    </Field>
+                    <Field label="Output mode" htmlFor="audio-mode" hint={modeHint()}>
+                      <Select
+                        id="audio-mode"
+                        value={draft()?.audio.mode || "shared"}
+                        options={[
+                          { value: "shared", label: "Shared, standard" },
+                          { value: "lowlatency", label: "Low-latency shared (Windows)" },
+                          { value: "exclusive", label: "Exclusive (Windows)" },
+                        ]}
+                        onChange={(v) => edit((s) => (s.audio.mode = v))}
+                      />
+                    </Field>
+                    <Field
+                      label="Amp output"
+                      htmlFor="audio-output"
+                      warning={missing("output", draft()?.audio.outputDevice || "")}
+                    >
+                      <Select
+                        id="audio-output"
+                        value={draft()?.audio.outputDevice || ""}
+                        options={outputOptions()}
+                        onChange={(v) => edit((s) => (s.audio.outputDevice = v))}
+                      />
+                    </Field>
+                    <Field
+                      label="Monitor output"
+                      htmlFor="audio-monitor"
+                      hint="Headphones or a second output for the monitor mix."
+                      warning={missing("output", draft()?.audio.monitorDevice || "")}
+                    >
+                      <Select
+                        id="audio-monitor"
+                        value={draft()?.audio.monitorDevice || ""}
+                        options={monitorOptions()}
+                        onChange={(v) => edit((s) => (s.audio.monitorDevice = v))}
+                      />
+                    </Field>
+                    <Field
+                      label="Input"
+                      htmlFor="audio-input"
+                      hint="Your kit or audio interface. It feeds the mixer input strips."
+                      warning={missing("input", draft()?.audio.inputDevice || "")}
+                    >
+                      <Select
+                        id="audio-input"
+                        value={draft()?.audio.inputDevice || ""}
+                        options={inputOptions()}
+                        onChange={(v) => edit((s) => (s.audio.inputDevice = v))}
+                      />
+                    </Field>
+                    <div class="field-row span-2">
+                      <Field label="Sample rate" htmlFor="audio-rate">
+                        <Select
+                          id="audio-rate"
+                          value={String(draft()?.audio.sampleRate || 0)}
+                          options={rateOptions()}
+                          onChange={(v) => edit((s) => (s.audio.sampleRate = Number(v)))}
+                        />
+                      </Field>
+                      <Field label="Buffer size" htmlFor="audio-buffer">
+                        <Select
+                          id="audio-buffer"
+                          value={String(draft()?.audio.bufferFrames || 0)}
+                          options={bufferOptions()}
+                          onChange={(v) => edit((s) => (s.audio.bufferFrames = Number(v)))}
+                        />
+                      </Field>
+                    </div>
+                    <p class="field-hint span-2">{bufferHint()}</p>
+                  </div>
+                </Panel>
               </div>
-              <div showIf={!!transferInfo()}>
-                <Notice tone="ok" text={transferInfo()} />
-              </div>
-              <div showIf={!!transferNotes()}>
-                <Notice tone="warn" title="Check these" text={transferNotes()} />
-              </div>
-            </PanelBody>
-          </Panel>
-          </div>
-        </div>
-      </div>
 
-    </main>
+              <div class="pane" showIf={section() === "engine"}>
+                <Panel>
+                  <PanelHead title="Audio engine">
+                    <button
+                      class="krate-button krate-button-secondary krate-button-sm"
+                      type="button"
+                      onClick={() => RestartEngine()}
+                    >
+                      <Icon name="lucide:rotate-cw" />
+                      Restart
+                    </button>
+                  </PanelHead>
+                  <div class="panel-body fixed">
+                    <div class="status-line">
+                      <StatusDot tone={stateTone(engine().state)} label={stateText()} />
+                      <LiveText class="state-text" text={stateText()} />
+                    </div>
+                    <div class="readout-grid">
+                      <Readout label="Version" value={engine().engineVersion || "-"} />
+                      <Readout label="Protocol" value={engine().protocol ? "v" + engine().protocol : "-"} />
+                      <Readout label="Process" value={engine().pid ? String(engine().pid) : "-"} />
+                      <Readout label="Restarts" value={String(engine().restarts || 0)} />
+                    </div>
+                    <div showIf={!!engine().lastError}>
+                      <Notice
+                        tone={engine().state === "failed" ? "bad" : "warn"}
+                        title="Last engine error"
+                        text={engine().lastError || ""}
+                      />
+                    </div>
+                  </div>
+                  <div class="scroll" showIf={devicesLoaded() && deviceList().devices.length > 0}>
+                    <table class="device-table">
+                      <thead>
+                        <tr>
+                          <th>Device</th>
+                          <th>Driver</th>
+                          <th>Direction</th>
+                          <th>Channels</th>
+                          <th>Sample rates</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {deviceList().devices.map((d) => (
+                          <tr key={d.id + d.direction}>
+                            <td>
+                              <div class="device-name">
+                                <span>{d.name}</span>
+                                <span class="device-id">{d.id}</span>
+                              </div>
+                            </td>
+                            <td class="num">{d.host}</td>
+                            <td>
+                              <span class="tag">{d.direction}</span>
+                              {d.isDefault && (
+                                <span class="tag" data-tone="accent">
+                                  default
+                                </span>
+                              )}
+                            </td>
+                            <td class="num">{d.maxChannels}</td>
+                            <td class="num rates">{formatRates(d.sampleRates)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </Panel>
+              </div>
+
+              <div class="pane" showIf={section() === "library"}>
+                <Panel hue="library">
+                  <PanelHead title="Library">
+                    <button
+                      class="krate-button krate-button-secondary krate-button-sm"
+                      type="button"
+                      onClick={addFolder}
+                    >
+                      <Icon name="lucide:folder-plus" />
+                      Add folder
+                    </button>
+                  </PanelHead>
+                  <PanelBody>
+                    <div class="folder-list" showIf={(draft()?.library.folders.length ?? 0) > 0}>
+                      {(draft()?.library.folders || []).map((f, i) => (
+                        <div class="folder-row" key={f}>
+                          <span class="folder-path" title={f}>
+                            {f}
+                          </span>
+                          <button
+                            class="krate-button krate-button-ghost krate-button-icon krate-button-sm"
+                            type="button"
+                            aria-label={"Remove " + f}
+                            onClick={() => removeFolder(f, i)}
+                          >
+                            <Icon name="lucide:x" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <p class="empty" showIf={(draft()?.library.folders.length ?? 1) === 0}>
+                      No library folder yet.
+                    </p>
+                    <Toggle
+                      id="library-normalize"
+                      label="Normalise loudness on import"
+                      hint="Applies as songs are added."
+                      checked={!!draft()?.library.normalizeOnImport}
+                      onChange={(v) => edit((s) => (s.library.normalizeOnImport = v))}
+                    />
+                    <Toggle
+                      id="library-tool-updates"
+                      label="Update yt-dlp automatically"
+                      hint="Only for the copy PracticeMusic manages."
+                      checked={!draft()?.library.disableToolUpdates}
+                      onChange={(v) => edit((s) => (s.library.disableToolUpdates = !v))}
+                    />
+                    <Field label="Sort songs by" htmlFor="pref-sort" hint="The order the library opens in.">
+                      <Select
+                        id="pref-sort"
+                        value={draft()?.preferences.librarySort ?? FALLBACK_PREFERENCES.librarySort}
+                        options={SORT_CHOICES}
+                        onChange={(v) => prefer((p) => (p.librarySort = v))}
+                      />
+                    </Field>
+                    <Toggle
+                      id="pref-artwork"
+                      label="Show artwork"
+                      hint="Thumbnails beside song titles."
+                      checked={draft()?.preferences.artwork ?? FALLBACK_PREFERENCES.artwork}
+                      onChange={(v) => prefer((p) => (p.artwork = v))}
+                    />
+                    <Toggle
+                      id="pref-play-on-load"
+                      label="Play a song when it loads"
+                      hint="Starts playback after you load a song from the library."
+                      checked={draft()?.preferences.playOnLoad ?? FALLBACK_PREFERENCES.playOnLoad}
+                      onChange={(v) => prefer((p) => (p.playOnLoad = v))}
+                    />
+                  </PanelBody>
+                </Panel>
+              </div>
+
+              <div class="pane" showIf={section() === "appearance"}>
+                <Panel hue="player">
+                  <PanelHead title="Appearance" />
+                  <PanelBody>
+                    <Field label="Interface size" htmlFor="ui-scale">
+                      <Select
+                        id="ui-scale"
+                        value={String(draft()?.appearance.uiScale || 100)}
+                        options={SCALE_CHOICES.map((p) => ({ value: String(p), label: p + "%" }))}
+                        onChange={(v) => edit((s) => (s.appearance.uiScale = Number(v)))}
+                      />
+                    </Field>
+                    <Field
+                      label="Glass effect"
+                      htmlFor="pref-glass"
+                      hint="Translucent surfaces with a soft sheen. Off can help on slower computers."
+                    >
+                      <Select
+                        id="pref-glass"
+                        value={draft()?.preferences.glass ?? FALLBACK_PREFERENCES.glass}
+                        options={GLASS_CHOICES}
+                        onChange={(v) => prefer((p) => (p.glass = v))}
+                      />
+                    </Field>
+                    <Field label="Corners" htmlFor="pref-corners" hint="Applies to buttons, fields, menus and popups.">
+                      <Select
+                        id="pref-corners"
+                        value={draft()?.preferences.corners ?? FALLBACK_PREFERENCES.corners}
+                        options={CORNER_CHOICES}
+                        onChange={(v) => prefer((p) => (p.corners = v))}
+                      />
+                    </Field>
+                    <Toggle
+                      id="pref-tooltips"
+                      label="Show tooltips"
+                      hint="Short help when the pointer rests on a control."
+                      checked={draft()?.preferences.tooltips ?? FALLBACK_PREFERENCES.tooltips}
+                      onChange={(v) => prefer((p) => (p.tooltips = v))}
+                    />
+                    <Field label="Tooltip delay" htmlFor="pref-tooltip-delay">
+                      <Select
+                        id="pref-tooltip-delay"
+                        value={String(draft()?.preferences.tooltipDelayMs ?? FALLBACK_PREFERENCES.tooltipDelayMs)}
+                        options={TOOLTIP_DELAYS}
+                        onChange={(v) => prefer((p) => (p.tooltipDelayMs = Number(v)))}
+                      />
+                    </Field>
+                  </PanelBody>
+                </Panel>
+              </div>
+
+              <div class="pane" showIf={section() === "mixer"}>
+                <Panel>
+                  <PanelHead title="Mixer" />
+                  <PanelBody>
+                    <Field
+                      label="Peak mark hold"
+                      htmlFor="pref-peak-hold"
+                      hint="How long the highest level stays marked on each channel."
+                    >
+                      <Select
+                        id="pref-peak-hold"
+                        value={String(draft()?.preferences.peakHoldMs ?? FALLBACK_PREFERENCES.peakHoldMs)}
+                        options={PEAK_HOLDS}
+                        onChange={(v) => prefer((p) => (p.peakHoldMs = Number(v)))}
+                      />
+                    </Field>
+                    <Field
+                      label="Fader step"
+                      htmlFor="pref-fader-step"
+                      hint="The smallest change when you drag a fader or use the arrow keys on it."
+                    >
+                      <Select
+                        id="pref-fader-step"
+                        value={String(draft()?.preferences.faderStepDb ?? FALLBACK_PREFERENCES.faderStepDb)}
+                        options={FADER_STEPS}
+                        onChange={(v) => prefer((p) => (p.faderStepDb = Number(v)))}
+                      />
+                    </Field>
+                    <Toggle
+                      id="pref-reduction"
+                      label="Show compressor and limiter reduction"
+                      hint="A thin yellow bar appears beside a channel while its level is being reduced."
+                      checked={draft()?.preferences.reductionBars ?? FALLBACK_PREFERENCES.reductionBars}
+                      onChange={(v) => prefer((p) => (p.reductionBars = v))}
+                    />
+                  </PanelBody>
+                </Panel>
+              </div>
+
+              <div class="pane" showIf={section() === "player"}>
+                <Panel>
+                  <PanelHead title="Player" />
+                  <PanelBody>
+                    <Field
+                      label="Default snapping"
+                      htmlFor="pref-snap"
+                      hint="How loop points snap when you drag on the timeline."
+                    >
+                      <Select
+                        id="pref-snap"
+                        value={draft()?.preferences.defaultSnap ?? FALLBACK_PREFERENCES.defaultSnap}
+                        options={SNAP_CHOICES}
+                        onChange={(v) => prefer((p) => (p.defaultSnap = v))}
+                      />
+                    </Field>
+                    <Toggle
+                      id="pref-grid"
+                      label="Show the beat grid"
+                      hint="Beat and bar lines on the waveform. Snapping still works when hidden."
+                      checked={draft()?.preferences.beatGrid ?? FALLBACK_PREFERENCES.beatGrid}
+                      onChange={(v) => prefer((p) => (p.beatGrid = v))}
+                    />
+                    <Field label="Skip with arrow keys (seconds)" htmlFor="pref-seek" hint="1 to 60.">
+                      <NumberInput
+                        id="pref-seek"
+                        class="krate-input"
+                        label="Skip with arrow keys (seconds)"
+                        value={draft()?.preferences.seekSeconds ?? FALLBACK_PREFERENCES.seekSeconds}
+                        min={1}
+                        max={60}
+                        decimals={0}
+                        onCommit={(v) => prefer((p) => (p.seekSeconds = v))}
+                      />
+                    </Field>
+                    <Field label="Skip with Shift and arrow keys (seconds)" htmlFor="pref-seek-large" hint="1 to 300.">
+                      <NumberInput
+                        id="pref-seek-large"
+                        class="krate-input"
+                        label="Skip with Shift and arrow keys (seconds)"
+                        value={draft()?.preferences.seekLargeSeconds ?? FALLBACK_PREFERENCES.seekLargeSeconds}
+                        min={1}
+                        max={300}
+                        decimals={0}
+                        onCommit={(v) => prefer((p) => (p.seekLargeSeconds = v))}
+                      />
+                    </Field>
+                    <Field
+                      label="Speed step (percent)"
+                      htmlFor="pref-speed-step"
+                      hint="Used by the minus and equals keys. 1 to 25."
+                    >
+                      <NumberInput
+                        id="pref-speed-step"
+                        class="krate-input"
+                        label="Speed step (percent)"
+                        value={draft()?.preferences.speedStep ?? FALLBACK_PREFERENCES.speedStep}
+                        min={1}
+                        max={25}
+                        decimals={0}
+                        onCommit={(v) => prefer((p) => (p.speedStep = v))}
+                      />
+                    </Field>
+                    <Field
+                      label="Previous restarts the song after (seconds)"
+                      htmlFor="pref-restart"
+                      hint="Before this point, Previous goes to the song before. 0 to 30."
+                    >
+                      <NumberInput
+                        id="pref-restart"
+                        class="krate-input"
+                        label="Previous restarts the song after (seconds)"
+                        value={draft()?.preferences.restartAfterSeconds ?? FALLBACK_PREFERENCES.restartAfterSeconds}
+                        min={0}
+                        max={30}
+                        decimals={0}
+                        onCommit={(v) => prefer((p) => (p.restartAfterSeconds = v))}
+                      />
+                    </Field>
+                  </PanelBody>
+                </Panel>
+              </div>
+
+              <div class="pane" showIf={section() === "metronome"}>
+                <Panel>
+                  <PanelHead title="Metronome" />
+                  <PanelBody>
+                    <Field
+                      label="Tempo step (BPM)"
+                      htmlFor="pref-tempo-step"
+                      hint="Used by the plus and minus buttons and the Up and Down keys. 0.1 to 10."
+                    >
+                      <NumberInput
+                        id="pref-tempo-step"
+                        class="krate-input"
+                        label="Tempo step (BPM)"
+                        value={draft()?.preferences.tempoStep ?? FALLBACK_PREFERENCES.tempoStep}
+                        min={0.1}
+                        max={10}
+                        decimals={1}
+                        onCommit={(v) => prefer((p) => (p.tempoStep = v))}
+                      />
+                    </Field>
+                    <Field label="Larger tempo step with Shift (BPM)" htmlFor="pref-tempo-large" hint="0.1 to 50.">
+                      <NumberInput
+                        id="pref-tempo-large"
+                        class="krate-input"
+                        label="Larger tempo step with Shift (BPM)"
+                        value={draft()?.preferences.tempoStepLarge ?? FALLBACK_PREFERENCES.tempoStepLarge}
+                        min={0.1}
+                        max={50}
+                        decimals={1}
+                        onCommit={(v) => prefer((p) => (p.tempoStepLarge = v))}
+                      />
+                    </Field>
+                  </PanelBody>
+                </Panel>
+              </div>
+
+              <div class="pane" showIf={section() === "downloads"}>
+                <Panel>
+                  <PanelHead title="Downloads" />
+                  <PanelBody>
+                    <Field
+                      label="Default format and quality"
+                      htmlFor="pref-download"
+                      hint="What a new download starts with."
+                    >
+                      <Select
+                        id="pref-download"
+                        value={draft()?.preferences.downloadChoice ?? FALLBACK_PREFERENCES.downloadChoice}
+                        options={DOWNLOAD_DEFAULTS}
+                        onChange={(v) => prefer((p) => (p.downloadChoice = v))}
+                      />
+                    </Field>
+                  </PanelBody>
+                </Panel>
+              </div>
+
+              <div class="pane" showIf={section() === "backup"}>
+                <Panel hue="browser">
+                  <PanelHead title="Backup" />
+                  <PanelBody>
+                    <div class="detail-actions">
+                      <button class="krate-button krate-button-secondary" type="button" onClick={exportAll}>
+                        <Icon name="lucide:download" />
+                        Export settings
+                      </button>
+                      <button class="krate-button krate-button-secondary" type="button" onClick={importAll}>
+                        <Icon name="lucide:upload" />
+                        Import settings
+                      </button>
+                      <button class="krate-button krate-button-destructive" type="button" onClick={resetPreferences}>
+                        <Icon name="lucide:rotate-ccw" />
+                        Reset preferences
+                      </button>
+                    </div>
+                    <div showIf={!!transferInfo()}>
+                      <Notice tone="ok" text={transferInfo()} />
+                    </div>
+                    <div showIf={!!transferNotes()}>
+                      <Notice tone="warn" title="Check these" text={transferNotes()} />
+                    </div>
+                  </PanelBody>
+                </Panel>
+              </div>
+            </div>
+          </div>
+        </main>
       </div>
     </div>
   );

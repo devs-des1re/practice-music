@@ -1,4 +1,5 @@
-const OFFLINE = /failed to fetch|networkerror|load failed|network request failed|err_connection|err_insufficient|go host is not reachable|connection refused|actively refused|dial unix|socket hang up/i;
+const OFFLINE =
+  /failed to fetch|networkerror|load failed|network request failed|err_connection|err_insufficient|go host is not reachable|connection refused|actively refused|dial unix|socket hang up/i;
 const PREFIX = /^[a-z]+_error:\s*/i;
 const RETRY_STEPS_MS = [3000, 6000, 12000, 24000, 30000];
 

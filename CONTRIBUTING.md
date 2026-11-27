@@ -25,7 +25,10 @@ npm run dev
 
 Run these before opening a pull request. CI runs the same commands.
 
+`npm run lint` fails if a file is not formatted with Prettier. Run `npm run format` to fix that.
+
 ```sh
+npm run format
 npm run typecheck
 npm run lint
 npm test

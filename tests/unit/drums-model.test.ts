@@ -82,7 +82,10 @@ test("the monitor keeps the newest lines and folds a moving pedal into one", () 
   assert.equal(list.length, 1);
   add(2, "pedal", 10);
   add(3, "pedal", 60);
-  assert.deepEqual(list.map((l) => l.detail), ["position 60", "note 38, strength 90"]);
+  assert.deepEqual(
+    list.map((l) => l.detail),
+    ["position 60", "note 38, strength 90"],
+  );
   add(4, "hit", 70);
   add(5, "hit", 71);
   assert.equal(list.length, 3);
@@ -95,7 +98,10 @@ test("a pad says what it will play", () => {
   assert.equal(soundSummary(snare, sounds, "muldjord", false), "Kit not downloaded");
   assert.equal(soundSummary(snare, sounds, "none", false), "No kit chosen");
   assert.equal(soundSummary({ ...snare, sound: "none" }, sounds, "muldjord", true), "Silent");
-  assert.equal(soundSummary({ ...snare, sound: "custom", files: ["C:\\a\\crack.wav"] }, sounds, "none", false), "crack.wav");
+  assert.equal(
+    soundSummary({ ...snare, sound: "custom", files: ["C:\\a\\crack.wav"] }, sounds, "none", false),
+    "crack.wav",
+  );
   assert.equal(soundChoices(snare, sounds).at(-1)?.disabled, true);
 });
 
@@ -136,7 +142,10 @@ test("small helpers", () => {
   assert.equal(notesText([36, 35]), "Notes 36, 35");
   assert.equal(fileName("D:/kits/snare 1.wav"), "snare 1.wav");
   assert.equal(levelChoices(0.6).length, levelChoices(1).length);
-  assert.equal(levelChoices(0.33).some((c) => c.label === "33%"), true);
+  assert.equal(
+    levelChoices(0.33).some((c) => c.label === "33%"),
+    true,
+  );
   assert.deepEqual(
     listeningInputs([
       { kind: "song", main: 0 },
@@ -145,7 +154,10 @@ test("small helpers", () => {
     ]).length,
     1,
   );
-  assert.deepEqual(portChoices(["e-drum"], "old kit").map((c) => c.value), ["", "e-drum", "old kit"]);
+  assert.deepEqual(
+    portChoices(["e-drum"], "old kit").map((c) => c.value),
+    ["", "e-drum", "old kit"],
+  );
 });
 
 test("the page says why hits are silent and offers the matching fix", () => {
@@ -157,7 +169,10 @@ test("the page says why hits are silent and offers the matching fix", () => {
   assert.equal(silentReason({ ...s, enabled: false }, present, "ready", true).fix, "enable");
   assert.equal(silentReason({ ...s, kit: "muldjord" }, present, "ready", true).text, "");
   assert.equal(silentReason({ ...s, kit: "muldjord" }, present, "loading", true).text, "");
-  assert.equal(silentReason({ ...s, kit: "muldjord" }, { installed: false, phase: "downloading" }, "idle", true).text, "");
+  assert.equal(
+    silentReason({ ...s, kit: "muldjord" }, { installed: false, phase: "downloading" }, "idle", true).text,
+    "",
+  );
   assert.match(silentReason({ ...s, kit: "muldjord" }, present, "idle", false).text, /Audio is not running/);
   assert.match(silentReason({ ...s, kit: "muldjord" }, present, "failed", true).text, /could not be loaded/);
   assert.match(silentReason({ ...s, kit: "muldjord" }, present, "idle", true).text, /each pad/);

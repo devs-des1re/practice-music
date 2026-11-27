@@ -62,7 +62,10 @@ const SOUNDS = [
 
 const BEATS = Array.from({ length: 16 }, (_, i) => ({ value: String(i + 1), label: String(i + 1) }));
 
-const POLYS = [{ value: "0", label: "Off" }, ...Array.from({ length: 11 }, (_, i) => ({ value: String(i + 2), label: String(i + 2) }))];
+const POLYS = [
+  { value: "0", label: "Off" },
+  ...Array.from({ length: 11 }, (_, i) => ({ value: String(i + 2), label: String(i + 2) })),
+];
 
 const ROLES = [
   { role: "accent", label: "Accent" },
@@ -139,14 +142,19 @@ export function MetronomeDeck() {
     if (frame.seq === beatSeen.seq) return;
     const lead = audio().streamLatencyMs > 0 ? audio().streamLatencyMs : audio().periodMs;
     const delay = Math.min(150, Math.max(0, lead || 0));
-    const timer = setTimeout(() => setShown({ beat: frame.beat, bar: frame.bar, level: frame.level, silent: frame.silent }), delay);
+    const timer = setTimeout(
+      () => setShown({ beat: frame.beat, bar: frame.bar, level: frame.level, silent: frame.silent }),
+      delay,
+    );
     onCleanup(() => clearTimeout(timer));
   });
 
   createEffect(() => {
     const b = shown();
-    const idle = songClick() && songBpm() > 0 ? "Ready to click with the song at " + songBpm().toFixed(1) + " BPM" : "Stopped";
-    const counted = b.beat >= 0 ? (b.silent ? "Silent bar. " : "") + barCaption(b.bar, b.beat, cfg().beatsPerBar) : idle;
+    const idle =
+      songClick() && songBpm() > 0 ? "Ready to click with the song at " + songBpm().toFixed(1) + " BPM" : "Stopped";
+    const counted =
+      b.beat >= 0 ? (b.silent ? "Silent bar. " : "") + barCaption(b.bar, b.beat, cfg().beatsPerBar) : idle;
     setCaptionText(songPlaying() ? "With the song at " + songBpm().toFixed(1) + " BPM" : counted);
   });
 
@@ -185,12 +193,24 @@ export function MetronomeDeck() {
   function metronomeMenu(e: MouseEvent) {
     if (e.target instanceof HTMLInputElement) return;
     openContextMenu(e, [
-      { label: audio().metronome.running ? "Stop the click" : "Start the click", keys: "M", onSelect: () => toggleRun() },
+      {
+        label: audio().metronome.running ? "Stop the click" : "Start the click",
+        keys: "M",
+        onSelect: () => toggleRun(),
+      },
       { label: "Tap tempo", keys: "T", onSelect: () => tap() },
-      { label: songClick() ? "Stop clicking with the song" : "Click with the song", keys: "K", disabled: !songLoaded(), onSelect: () => void guard(() => PlayerSetClick(!songClick())) },
+      {
+        label: songClick() ? "Stop clicking with the song" : "Click with the song",
+        keys: "K",
+        disabled: !songLoaded(),
+        onSelect: () => void guard(() => PlayerSetClick(!songClick())),
+      },
       DIVIDER,
       { label: large() ? "Standard display" : "Large display", onSelect: () => toggleLarge() },
-      { label: view() === "setup" ? "Show the click view" : "Show setup", onSelect: () => setView(view() === "setup" ? "play" : "setup") },
+      {
+        label: view() === "setup" ? "Show the click view" : "Show setup",
+        onSelect: () => setView(view() === "setup" ? "play" : "setup"),
+      },
     ]);
   }
 
@@ -247,7 +267,9 @@ export function MetronomeDeck() {
     const label = ROLES.find((r) => r.role === role)?.label;
     const yes = await askConfirm({
       title: label ? "Remove custom sound" : "Remove all custom sounds",
-      message: label ? "Go back to the built-in sound for " + label.toLowerCase() + "?" : "Go back to the built-in sound for every beat?",
+      message: label
+        ? "Go back to the built-in sound for " + label.toLowerCase() + "?"
+        : "Go back to the built-in sound for every beat?",
       confirmLabel: "Use built-in",
       danger: true,
     });
@@ -260,15 +282,31 @@ export function MetronomeDeck() {
   async function editSilentBars() {
     const values = await askForm({
       title: "Silent bars",
-      message: "The click plays for some bars, then goes quiet so you can hold the time yourself. Use 0 silent bars to turn this off.",
+      message:
+        "The click plays for some bars, then goes quiet so you can hold the time yourself. Use 0 silent bars to turn this off.",
       confirmLabel: "Apply",
       fields: [
-        { key: "play", label: "Bars with the click (1 to 64)", type: "decimal", value: String(cfg().playBars), required: true },
-        { key: "silent", label: "Silent bars (0 to 64)", type: "decimal", value: String(cfg().silentBars), required: true },
+        {
+          key: "play",
+          label: "Bars with the click (1 to 64)",
+          type: "decimal",
+          value: String(cfg().playBars),
+          required: true,
+        },
+        {
+          key: "silent",
+          label: "Silent bars (0 to 64)",
+          type: "decimal",
+          value: String(cfg().silentBars),
+          required: true,
+        },
       ],
     });
     if (!values) return;
-    update({ playBars: clampNumber(values.play, 1, 64, 0) ?? cfg().playBars, silentBars: clampNumber(values.silent, 0, 64, 0) ?? cfg().silentBars });
+    update({
+      playBars: clampNumber(values.play, 1, 64, 0) ?? cfg().playBars,
+      silentBars: clampNumber(values.silent, 0, 64, 0) ?? cfg().silentBars,
+    });
   }
 
   onMount(() => {
@@ -298,33 +336,69 @@ export function MetronomeDeck() {
   });
 
   return (
-    <section class="panel ws-panel metro-panel" data-panel="metronome" data-size={large() ? "large" : "standard"} aria-label="Metronome" onContextMenu={metronomeMenu}>
+    <section
+      class="panel ws-panel metro-panel"
+      data-panel="metronome"
+      data-size={large() ? "large" : "standard"}
+      aria-label="Metronome"
+      onContextMenu={metronomeMenu}
+    >
       <header class="panel-head" data-drag="true">
         <h2 class="panel-title">
           <Icon name="lucide:metronome" />
           Metronome
         </h2>
         <div class="metro-mini">
-          <button class="tp-btn mini-run" type="button" aria-label="Start or stop the click" data-tip="Start or stop the click" data-keys="M" data-on={audio().metronome.running ? "true" : "false"} onClick={toggleRun}>
+          <button
+            class="tp-btn mini-run"
+            type="button"
+            aria-label="Start or stop the click"
+            data-tip="Start or stop the click"
+            data-keys="M"
+            data-on={audio().metronome.running ? "true" : "false"}
+            onClick={toggleRun}
+          >
             <RunGlyph on={audio().metronome.running} />
           </button>
           <LiveText class="mini-bpm mono" text={bpmText() + " BPM"} />
           <div class="mini-leds" aria-hidden="true">
             {cfg().accents.map((level, i) => (
-              <span class="mini-led" key={i} data-level={String(level)} data-on={shown().beat === i ? "true" : "false"} />
+              <span
+                class="mini-led"
+                key={i}
+                data-level={String(level)}
+                data-on={shown().beat === i ? "true" : "false"}
+              />
             ))}
           </div>
         </div>
         <div class="panel-tools">
           <div class="segmented metro-tabs">
-            <button class="segment" type="button" data-active={view() === "play" ? "true" : "false"} onClick={() => setView("play")}>
+            <button
+              class="segment"
+              type="button"
+              data-active={view() === "play" ? "true" : "false"}
+              onClick={() => setView("play")}
+            >
               Click
             </button>
-            <button class="segment" type="button" data-active={view() === "setup" ? "true" : "false"} onClick={() => setView("setup")}>
+            <button
+              class="segment"
+              type="button"
+              data-active={view() === "setup" ? "true" : "false"}
+              onClick={() => setView("setup")}
+            >
               Setup
             </button>
           </div>
-          <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm size-button" type="button" aria-label="Large display" data-tip="Large display for playing along" data-on={large() ? "true" : "false"} onClick={toggleLarge}>
+          <button
+            class="krate-button krate-button-ghost krate-button-icon krate-button-sm size-button"
+            type="button"
+            aria-label="Large display"
+            data-tip="Large display for playing along"
+            data-on={large() ? "true" : "false"}
+            onClick={toggleLarge}
+          >
             <Icon name="lucide:maximize-2" />
           </button>
           <FoldButton />
@@ -340,14 +414,37 @@ export function MetronomeDeck() {
       <div class="metro-body" showIf={view() === "play"}>
         <div class="metro-top">
           <label class="bpm-lcd" data-tip="Tempo. Up and Down keys nudge it.">
-            <NumberInput id="metro-tempo" class="bpm-input" label="Tempo in beats per minute" value={cfg().bpm} min={20} max={400} decimals={1} onCommit={setTempo} />
+            <NumberInput
+              id="metro-tempo"
+              class="bpm-input"
+              label="Tempo in beats per minute"
+              value={cfg().bpm}
+              min={20}
+              max={400}
+              decimals={1}
+              onCommit={setTempo}
+            />
             <span class="bpm-unit">BPM</span>
           </label>
           <div class="bpm-steps">
-            <button class="tp-btn" type="button" aria-label="Faster" data-tip="Faster. Hold Shift for the larger step." data-keys="Up" onClick={(e: MouseEvent) => nudge(1, e.shiftKey)}>
+            <button
+              class="tp-btn"
+              type="button"
+              aria-label="Faster"
+              data-tip="Faster. Hold Shift for the larger step."
+              data-keys="Up"
+              onClick={(e: MouseEvent) => nudge(1, e.shiftKey)}
+            >
               <Icon name="lucide:plus" />
             </button>
-            <button class="tp-btn" type="button" aria-label="Slower" data-tip="Slower. Hold Shift for the larger step." data-keys="Down" onClick={(e: MouseEvent) => nudge(-1, e.shiftKey)}>
+            <button
+              class="tp-btn"
+              type="button"
+              aria-label="Slower"
+              data-tip="Slower. Hold Shift for the larger step."
+              data-keys="Down"
+              onClick={(e: MouseEvent) => nudge(-1, e.shiftKey)}
+            >
               <Icon name="lucide:minus" />
             </button>
           </div>
@@ -355,7 +452,13 @@ export function MetronomeDeck() {
 
         <div class="beat-leds" aria-label="Beat indicator">
           {cfg().accents.map((level, i) => (
-            <div class="beat-led" key={i} data-level={String(level)} data-on={shown().beat === i ? "true" : "false"} data-silent={shown().silent ? "true" : "false"}>
+            <div
+              class="beat-led"
+              key={i}
+              data-level={String(level)}
+              data-on={shown().beat === i ? "true" : "false"}
+              data-silent={shown().silent ? "true" : "false"}
+            >
               {String(i + 1)}
             </div>
           ))}
@@ -363,10 +466,22 @@ export function MetronomeDeck() {
         <LiveText class="metro-caption" text={captionText()} />
 
         <div class="metro-actions">
-          <button class="krate-button krate-button-primary" type="button" data-tip="Start or stop the click" data-keys="M" onClick={toggleRun}>
+          <button
+            class="krate-button krate-button-primary"
+            type="button"
+            data-tip="Start or stop the click"
+            data-keys="M"
+            onClick={toggleRun}
+          >
             <RunGlyph on={audio().metronome.running} offLabel="Start" onLabel="Stop" />
           </button>
-          <button class="krate-button krate-button-secondary" type="button" data-tip="Tap the tempo" data-keys="T" onClick={tap}>
+          <button
+            class="krate-button krate-button-secondary"
+            type="button"
+            data-tip="Tap the tempo"
+            data-keys="T"
+            onClick={tap}
+          >
             <Icon name="lucide:hand" />
             Tap
           </button>
@@ -393,13 +508,25 @@ export function MetronomeDeck() {
                 <label class="field-label" for="beats">
                   Beats per bar
                 </label>
-                <Select id="beats" label="Beats per bar" value={String(cfg().beatsPerBar)} options={BEATS} onChange={(v) => update({ beatsPerBar: Number(v) })} />
+                <Select
+                  id="beats"
+                  label="Beats per bar"
+                  value={String(cfg().beatsPerBar)}
+                  options={BEATS}
+                  onChange={(v) => update({ beatsPerBar: Number(v) })}
+                />
               </div>
               <div class="field">
                 <label class="field-label" for="subdivision">
                   Subdivision
                 </label>
-                <Select id="subdivision" label="Subdivision" value={String(cfg().subdivision)} options={SUBDIVISIONS} onChange={(v) => update({ subdivision: Number(v) })} />
+                <Select
+                  id="subdivision"
+                  label="Subdivision"
+                  value={String(cfg().subdivision)}
+                  options={SUBDIVISIONS}
+                  onChange={(v) => update({ subdivision: Number(v) })}
+                />
               </div>
             </div>
           </section>
@@ -408,7 +535,15 @@ export function MetronomeDeck() {
             <h3 class="section-title">Accents</h3>
             <div class="accent-row">
               {cfg().accents.map((level, i) => (
-                <button class="accent-button" type="button" key={i} data-level={String(level)} aria-label={"Beat " + (i + 1) + ": " + accentLabel(level)} data-tip={accentLabel(level) + ". Click to change."} onClick={() => cycle(i)}>
+                <button
+                  class="accent-button"
+                  type="button"
+                  key={i}
+                  data-level={String(level)}
+                  aria-label={"Beat " + (i + 1) + ": " + accentLabel(level)}
+                  data-tip={accentLabel(level) + ". Click to change."}
+                  onClick={() => cycle(i)}
+                >
                   <span class="accent-bar" />
                   <span class="accent-index">{String(i + 1)}</span>
                 </button>
@@ -459,7 +594,13 @@ export function MetronomeDeck() {
           <span class="setup-title">Polyrhythm</span>
           <div class="field-row compact">
             <Field label={polyLabel(cfg().polyBeats, cfg().beatsPerBar)} htmlFor="poly">
-              <Select id="poly" label="Polyrhythm" value={String(cfg().polyBeats)} options={POLYS} onChange={(v) => update({ polyBeats: Number(v) })} />
+              <Select
+                id="poly"
+                label="Polyrhythm"
+                value={String(cfg().polyBeats)}
+                options={POLYS}
+                onChange={(v) => update({ polyBeats: Number(v) })}
+              />
             </Field>
             <Field label={"Level " + polyShown() + "%"} htmlFor="poly-level">
               <input
@@ -490,7 +631,13 @@ export function MetronomeDeck() {
 
         <div class="setup-block">
           <span class="setup-title">Sound</span>
-          <Select id="sound" label="Built-in sound" value={cfg().sound} options={SOUNDS} onChange={(v) => update({ sound: v })} />
+          <Select
+            id="sound"
+            label="Built-in sound"
+            value={cfg().sound}
+            options={SOUNDS}
+            onChange={(v) => update({ sound: v })}
+          />
           <div class="sound-list">
             {ROLES.map((r) => (
               <div class="sound-row" key={r.role}>
@@ -498,20 +645,41 @@ export function MetronomeDeck() {
                 <span class="sound-file mono" title={cfg().customSounds[r.role] || ""}>
                   {cfg().customSounds[r.role] ? baseName(cfg().customSounds[r.role]) : "Built-in"}
                 </span>
-                <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label={"Choose a file for " + r.label} data-tip="Choose a file" onClick={() => chooseSound(r.role)}>
+                <button
+                  class="krate-button krate-button-ghost krate-button-icon krate-button-sm"
+                  type="button"
+                  aria-label={"Choose a file for " + r.label}
+                  data-tip="Choose a file"
+                  onClick={() => chooseSound(r.role)}
+                >
                   <Icon name="lucide:folder-open" />
                 </button>
-                <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label={"Reset " + r.label} data-tip="Back to built-in" disabled={!cfg().customSounds[r.role]} onClick={() => resetSound(r.role)}>
+                <button
+                  class="krate-button krate-button-ghost krate-button-icon krate-button-sm"
+                  type="button"
+                  aria-label={"Reset " + r.label}
+                  data-tip="Back to built-in"
+                  disabled={!cfg().customSounds[r.role]}
+                  onClick={() => resetSound(r.role)}
+                >
                   <Icon name="lucide:rotate-ccw" />
                 </button>
               </div>
             ))}
           </div>
           <div class="detail-actions">
-            <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={() => chooseSound("all")}>
+            <button
+              class="krate-button krate-button-secondary krate-button-sm"
+              type="button"
+              onClick={() => chooseSound("all")}
+            >
               One file for all
             </button>
-            <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={() => resetSound("all")}>
+            <button
+              class="krate-button krate-button-secondary krate-button-sm"
+              type="button"
+              onClick={() => resetSound("all")}
+            >
               Reset all
             </button>
           </div>

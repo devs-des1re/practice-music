@@ -56,6 +56,10 @@ test("without sections there is no marker lane and no flags", () => {
 
 test("drawing never throws for a loop that covers the whole song or a missing grid", () => {
   const { ctx } = recorder();
-  assert.doesNotThrow(() => drawWaveform(ctx, 300, 120, { ...base, region: { start: 0, end: 120000, on: true }, lines: [] }, () => "#000"));
-  assert.doesNotThrow(() => drawWaveform(ctx, 300, 120, { ...base, region: { start: 0, end: 0, on: false } }, () => "#000"));
+  assert.doesNotThrow(() =>
+    drawWaveform(ctx, 300, 120, { ...base, region: { start: 0, end: 120000, on: true }, lines: [] }, () => "#000"),
+  );
+  assert.doesNotThrow(() =>
+    drawWaveform(ctx, 300, 120, { ...base, region: { start: 0, end: 0, on: false } }, () => "#000"),
+  );
 });

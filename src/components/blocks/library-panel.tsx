@@ -137,7 +137,12 @@ export function LibraryPanel() {
     const lists = playlists();
     const inList = playlistId() !== 0;
     const items: MenuItem[] = [
-      { label: "Load into the player", keys: "Enter", disabled: !song, onSelect: () => (song ? loadSong(song.id) : undefined) },
+      {
+        label: "Load into the player",
+        keys: "Enter",
+        disabled: !song,
+        onSelect: () => (song ? loadSong(song.id) : undefined),
+      },
       { label: "Edit details", disabled: !song, onSelect: () => (song ? edit(song.id) : undefined) },
       { label: "", separator: true },
     ];
@@ -235,7 +240,24 @@ export function LibraryPanel() {
       const files = await openFile({
         title: "Import songs",
         multiple: true,
-        filters: [{ name: "Audio and video", patterns: ["*.mp3", "*.m4a", "*.aac", "*.flac", "*.wav", "*.ogg", "*.opus", "*.mp4", "*.mkv", "*.webm", "*.mov"] }],
+        filters: [
+          {
+            name: "Audio and video",
+            patterns: [
+              "*.mp3",
+              "*.m4a",
+              "*.aac",
+              "*.flac",
+              "*.wav",
+              "*.ogg",
+              "*.opus",
+              "*.mp4",
+              "*.mkv",
+              "*.webm",
+              "*.mov",
+            ],
+          },
+        ],
       });
       if (files && files.length > 0) await ImportFiles(files);
     });
@@ -244,14 +266,21 @@ export function LibraryPanel() {
   async function rescan() {
     await guard(async () => {
       const res = await RescanLibrary();
-      setInfo("Scan finished: " + res.added.length + " added, " + res.updated + " updated, " + res.removed + " removed.");
+      setInfo(
+        "Scan finished: " + res.added.length + " added, " + res.updated + " updated, " + res.removed + " removed.",
+      );
     });
   }
 
   async function removeSong() {
     const song = selectedSong();
     if (!song) return;
-    const sure = await askConfirm({ title: "Delete file", message: "Delete " + song.title + " and its file from disk? This cannot be undone.", confirmLabel: "Delete file", danger: true });
+    const sure = await askConfirm({
+      title: "Delete file",
+      message: "Delete " + song.title + " and its file from disk? This cannot be undone.",
+      confirmLabel: "Delete file",
+      danger: true,
+    });
     if (!sure) return;
     await guard(async () => {
       await DeleteSong(song.id, true);
@@ -262,7 +291,12 @@ export function LibraryPanel() {
   async function forget() {
     const song = selectedSong();
     if (!song) return;
-    const sure = await askConfirm({ title: "Remove from library", message: "Remove " + song.title + " from the library? The file stays on disk.", confirmLabel: "Remove", danger: true });
+    const sure = await askConfirm({
+      title: "Remove from library",
+      message: "Remove " + song.title + " from the library? The file stays on disk.",
+      confirmLabel: "Remove",
+      danger: true,
+    });
     if (!sure) return;
     await guard(async () => {
       await DeleteSong(song.id, false);
@@ -271,7 +305,13 @@ export function LibraryPanel() {
   }
 
   async function createList() {
-    const name = await askText({ title: "New playlist", label: "Playlist name", confirmLabel: "Create playlist", placeholder: "Warm up", maxLength: 60 });
+    const name = await askText({
+      title: "New playlist",
+      label: "Playlist name",
+      confirmLabel: "Create playlist",
+      placeholder: "Warm up",
+      maxLength: 60,
+    });
     if (!name) return;
     await guard(async () => {
       const made = await CreatePlaylist(name);
@@ -283,7 +323,13 @@ export function LibraryPanel() {
     const id = playlistId();
     const current = playlists().find((x) => x.id === id);
     if (!current) return;
-    const name = await askText({ title: "Rename playlist", label: "Playlist name", confirmLabel: "Rename", value: current.name, maxLength: 60 });
+    const name = await askText({
+      title: "Rename playlist",
+      label: "Playlist name",
+      confirmLabel: "Rename",
+      value: current.name,
+      maxLength: 60,
+    });
     if (!name || name === current.name) return;
     await guard(() => RenamePlaylist(id, name));
   }
@@ -292,7 +338,12 @@ export function LibraryPanel() {
     const id = playlistId();
     const current = playlists().find((x) => x.id === id);
     if (!current) return;
-    const sure = await askConfirm({ title: "Delete playlist", message: "Delete the playlist " + current.name + "? The songs stay in your library.", confirmLabel: "Delete playlist", danger: true });
+    const sure = await askConfirm({
+      title: "Delete playlist",
+      message: "Delete the playlist " + current.name + "? The songs stay in your library.",
+      confirmLabel: "Delete playlist",
+      danger: true,
+    });
     if (!sure) return;
     await guard(async () => {
       await DeletePlaylist(id);
@@ -311,7 +362,12 @@ export function LibraryPanel() {
     const song = selectedSong();
     const id = playlistId();
     if (!song || !id) return;
-    const sure = await askConfirm({ title: "Remove from playlist", message: "Remove " + song.title + " from this playlist? It stays in your library.", confirmLabel: "Remove", danger: true });
+    const sure = await askConfirm({
+      title: "Remove from playlist",
+      message: "Remove " + song.title + " from this playlist? It stays in your library.",
+      confirmLabel: "Remove",
+      danger: true,
+    });
     if (!sure) return;
     await guard(() => RemoveFromPlaylist(id, song.id));
   }
@@ -332,10 +388,23 @@ export function LibraryPanel() {
           <span class="panel-count">{String(songs().length)}</span>
         </h2>
         <div class="panel-tools">
-          <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Rescan the library folder" data-tip="Rescan the library folder" onClick={rescan}>
+          <button
+            class="krate-button krate-button-ghost krate-button-icon krate-button-sm"
+            type="button"
+            aria-label="Rescan the library folder"
+            data-tip="Rescan the library folder"
+            onClick={rescan}
+          >
             <Icon name="lucide:refresh-cw" />
           </button>
-          <button class="krate-button krate-button-primary krate-button-sm" type="button" aria-label="Import songs" data-tip="Import songs from files" disabled={importing().running} onClick={chooseFiles}>
+          <button
+            class="krate-button krate-button-primary krate-button-sm"
+            type="button"
+            aria-label="Import songs"
+            data-tip="Import songs from files"
+            disabled={importing().running}
+            onClick={chooseFiles}
+          >
             <Icon name="lucide:file-plus" />
             Import
           </button>
@@ -351,7 +420,11 @@ export function LibraryPanel() {
           <Notice tone="ok" text={info()} />
         </div>
         <div showIf={importing().running}>
-          <Notice tone="info" title="Importing" text={importing().done + " of " + importing().total + ": " + importing().current} />
+          <Notice
+            tone="info"
+            title="Importing"
+            text={importing().done + " of " + importing().total + ": " + importing().current}
+          />
         </div>
         <div showIf={!importing().running && importing().errors.length > 0}>
           <Notice tone="warn" title="Some files were not imported" text={importing().errors.join("; ")} />
@@ -361,23 +434,52 @@ export function LibraryPanel() {
       <div class="lib-toolbar">
         <div class="search-box">
           <Icon name="lucide:search" />
-          <input class="krate-input" type="search" placeholder="Search songs, artists, tags" aria-label="Search the library" value={text()} onInput={(e: Event) => setText((e.target as HTMLInputElement).value)} />
+          <input
+            class="krate-input"
+            type="search"
+            placeholder="Search songs, artists, tags"
+            aria-label="Search the library"
+            value={text()}
+            onInput={(e: Event) => setText((e.target as HTMLInputElement).value)}
+          />
         </div>
         <div class="narrow-only">
           <Select
             id="lib-playlist"
             label="Playlist"
             value={String(playlistId())}
-            options={[{ value: "0", label: "All songs" }].concat(playlists().map((p) => ({ value: String(p.id), label: p.name })))}
+            options={[{ value: "0", label: "All songs" }].concat(
+              playlists().map((p) => ({ value: String(p.id), label: p.name })),
+            )}
             onChange={(v) => setPlaylistId(Number(v))}
           />
-          <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="New playlist" data-tip="New playlist" onClick={createList}>
+          <button
+            class="krate-button krate-button-ghost krate-button-icon krate-button-sm"
+            type="button"
+            aria-label="New playlist"
+            data-tip="New playlist"
+            onClick={createList}
+          >
             <Icon name="lucide:list-plus" />
           </button>
-          <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Rename playlist" data-tip="Rename the open playlist" disabled={!playlistId()} onClick={renameList}>
+          <button
+            class="krate-button krate-button-ghost krate-button-icon krate-button-sm"
+            type="button"
+            aria-label="Rename playlist"
+            data-tip="Rename the open playlist"
+            disabled={!playlistId()}
+            onClick={renameList}
+          >
             <Icon name="lucide:pencil" />
           </button>
-          <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Delete playlist" data-tip="Delete the open playlist" disabled={!playlistId()} onClick={deleteList}>
+          <button
+            class="krate-button krate-button-ghost krate-button-icon krate-button-sm"
+            type="button"
+            aria-label="Delete playlist"
+            data-tip="Delete the open playlist"
+            disabled={!playlistId()}
+            onClick={deleteList}
+          >
             <Icon name="lucide:trash-2" />
           </button>
         </div>
@@ -387,24 +489,55 @@ export function LibraryPanel() {
         <aside class="lib-rail" aria-label="Playlists and tags">
           <div class="rail-head">
             <span class="rail-title">Playlists</span>
-            <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="New playlist" data-tip="New playlist" onClick={createList}>
+            <button
+              class="krate-button krate-button-ghost krate-button-icon krate-button-sm"
+              type="button"
+              aria-label="New playlist"
+              data-tip="New playlist"
+              onClick={createList}
+            >
               <Icon name="lucide:plus" />
             </button>
-            <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Rename playlist" data-tip="Rename the open playlist" disabled={!playlistId()} onClick={renameList}>
+            <button
+              class="krate-button krate-button-ghost krate-button-icon krate-button-sm"
+              type="button"
+              aria-label="Rename playlist"
+              data-tip="Rename the open playlist"
+              disabled={!playlistId()}
+              onClick={renameList}
+            >
               <Icon name="lucide:pencil" />
             </button>
-            <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Delete playlist" data-tip="Delete the open playlist" disabled={!playlistId()} onClick={deleteList}>
+            <button
+              class="krate-button krate-button-ghost krate-button-icon krate-button-sm"
+              type="button"
+              aria-label="Delete playlist"
+              data-tip="Delete the open playlist"
+              disabled={!playlistId()}
+              onClick={deleteList}
+            >
               <Icon name="lucide:trash-2" />
             </button>
           </div>
-          <button class="rail-item" type="button" data-active={playlistId() === 0 ? "true" : "false"} onClick={() => setPlaylistId(0)}>
+          <button
+            class="rail-item"
+            type="button"
+            data-active={playlistId() === 0 ? "true" : "false"}
+            onClick={() => setPlaylistId(0)}
+          >
             <span class="rail-label">
               <Icon name="lucide:music" />
               All songs
             </span>
           </button>
           {playlists().map((p) => (
-            <button class="rail-item" type="button" key={p.id} data-active={playlistId() === p.id ? "true" : "false"} onClick={() => setPlaylistId(p.id)}>
+            <button
+              class="rail-item"
+              type="button"
+              key={p.id}
+              data-active={playlistId() === p.id ? "true" : "false"}
+              onClick={() => setPlaylistId(p.id)}
+            >
               <span class="rail-label">
                 <Icon name="lucide:list-music" />
                 {p.name}
@@ -416,7 +549,13 @@ export function LibraryPanel() {
             Tags
           </span>
           {tags().map((t) => (
-            <button class="rail-item" type="button" key={t.name} data-active={tag() === t.name ? "true" : "false"} onClick={() => setTag(tag() === t.name ? "" : t.name)}>
+            <button
+              class="rail-item"
+              type="button"
+              key={t.name}
+              data-active={tag() === t.name ? "true" : "false"}
+              onClick={() => setTag(tag() === t.name ? "" : t.name)}
+            >
               <span class="rail-label">
                 <Icon name="lucide:tag" />
                 {t.name}
@@ -428,19 +567,41 @@ export function LibraryPanel() {
 
         <div class="lib-songs">
           <div class="song-head" role="row">
-            <button class="col-head num-head" type="button" data-sorted={sort() === "added" ? "true" : "false"} data-tip="Newest first" onClick={() => setSort("added")}>
+            <button
+              class="col-head num-head"
+              type="button"
+              data-sorted={sort() === "added" ? "true" : "false"}
+              data-tip="Newest first"
+              onClick={() => setSort("added")}
+            >
               #
             </button>
-            <button class="col-head" type="button" data-sorted={sort() === "title" ? "true" : "false"} onClick={() => setSort("title")}>
+            <button
+              class="col-head"
+              type="button"
+              data-sorted={sort() === "title" ? "true" : "false"}
+              onClick={() => setSort("title")}
+            >
               Title
               <Icon name="lucide:arrow-down" />
             </button>
-            <button class="col-head col-artist" type="button" data-sorted={sort() === "artist" ? "true" : "false"} onClick={() => setSort("artist")}>
+            <button
+              class="col-head col-artist"
+              type="button"
+              data-sorted={sort() === "artist" ? "true" : "false"}
+              onClick={() => setSort("artist")}
+            >
               Artist
               <Icon name="lucide:arrow-down" />
             </button>
             <span class="col-head col-album">Album</span>
-            <button class="col-head num" type="button" data-sorted={sort() === "duration" ? "true" : "false"} data-tip="Longest first" onClick={() => setSort("duration")}>
+            <button
+              class="col-head num"
+              type="button"
+              data-sorted={sort() === "duration" ? "true" : "false"}
+              data-tip="Longest first"
+              onClick={() => setSort("duration")}
+            >
               Time
               <Icon name="lucide:arrow-down" />
             </button>
@@ -457,7 +618,12 @@ export function LibraryPanel() {
             </span>
             <span class="empty-title">Your library is empty</span>
             <span>Import audio files or download a song to start practising.</span>
-            <button class="krate-button krate-button-primary krate-button-sm" type="button" disabled={importing().running} onClick={chooseFiles}>
+            <button
+              class="krate-button krate-button-primary krate-button-sm"
+              type="button"
+              disabled={importing().running}
+              onClick={chooseFiles}
+            >
               <Icon name="lucide:file-plus" />
               Import songs
             </button>
@@ -488,20 +654,41 @@ export function LibraryPanel() {
                   <Icon name="lucide:audio-lines" />
                 </span>
                 <span class="song-cell song-title-cell">
-                  <span class="thumb">{artwork() && thumbs()[s.id] ? <img alt="" src={thumbs()[s.id]} /> : <Icon name="lucide:music" />}</span>
+                  <span class="thumb">
+                    {artwork() && thumbs()[s.id] ? <img alt="" src={thumbs()[s.id]} /> : <Icon name="lucide:music" />}
+                  </span>
                   <span class="song-title">{s.title}</span>
                 </span>
                 <span class="song-cell song-artist">{s.artist || "Unknown artist"}</span>
                 <span class="song-cell song-album">{s.album || ""}</span>
                 <span class="song-meta">{formatDurationMs(s.durationMs)}</span>
                 <span class="song-actions">
-                  <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label={"Edit " + s.title} data-tip="Edit details" onClick={() => edit(s.id)}>
+                  <button
+                    class="krate-button krate-button-ghost krate-button-icon krate-button-sm"
+                    type="button"
+                    aria-label={"Edit " + s.title}
+                    data-tip="Edit details"
+                    onClick={() => edit(s.id)}
+                  >
                     <Icon name="lucide:pencil" />
                   </button>
-                  <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label={"More actions for " + s.title} data-tip="Add to a playlist, remove or delete" onClick={(e: MouseEvent) => openMenu(e, s.id)}>
+                  <button
+                    class="krate-button krate-button-ghost krate-button-icon krate-button-sm"
+                    type="button"
+                    aria-label={"More actions for " + s.title}
+                    data-tip="Add to a playlist, remove or delete"
+                    onClick={(e: MouseEvent) => openMenu(e, s.id)}
+                  >
                     <Icon name="lucide:ellipsis" />
                   </button>
-                  <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label={"Load " + s.title} data-tip="Load into the player" data-keys="Enter" onClick={() => loadSong(s.id)}>
+                  <button
+                    class="krate-button krate-button-ghost krate-button-icon krate-button-sm"
+                    type="button"
+                    aria-label={"Load " + s.title}
+                    data-tip="Load into the player"
+                    data-keys="Enter"
+                    onClick={() => loadSong(s.id)}
+                  >
                     <Icon name="lucide:play" />
                   </button>
                 </span>
@@ -509,10 +696,16 @@ export function LibraryPanel() {
             ))}
           </div>
         </div>
-
       </div>
 
-      <Menu id="song-menu" open={menuOpen()} x={menuX()} y={menuY()} items={menuList()} onClose={() => setMenuOpen(false)} />
+      <Menu
+        id="song-menu"
+        open={menuOpen()}
+        x={menuX()}
+        y={menuY()}
+        items={menuList()}
+        onClose={() => setMenuOpen(false)}
+      />
     </section>
   );
 }

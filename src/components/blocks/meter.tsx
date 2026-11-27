@@ -122,7 +122,12 @@ export function PeakReadout(props: PeakReadoutProps) {
     const running = AudioStream()?.running;
     const frame = MeterStream();
     if (!running || !frame) return;
-    const lv: Level = props.which === "main" ? frame.main : props.which === "monitor" ? frame.monitor : frame.strips[Number(props.which)] || quiet;
+    const lv: Level =
+      props.which === "main"
+        ? frame.main
+        : props.which === "monitor"
+          ? frame.monitor
+          : frame.strips[Number(props.which)] || quiet;
     if (state.clip && !lv.clip) state.peak = 0;
     state.clip = lv.clip;
     state.peak = Math.max(state.peak, lv.l, lv.r);

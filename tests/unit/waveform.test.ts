@@ -1,6 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { snapTime, gridLines, barAndBeat, formatClock, hitHandle, orderRegion, beatLengthMs } from "../../src/lib/waveform.ts";
+import {
+  snapTime,
+  gridLines,
+  barAndBeat,
+  formatClock,
+  hitHandle,
+  orderRegion,
+  beatLengthMs,
+} from "../../src/lib/waveform.ts";
 import { rulerStepMs, rulerLabel } from "../../src/lib/wave-draw.ts";
 
 const grid = { bpm: 120, offsetMs: 100, beatsPerBar: 4, downbeat: 1 };

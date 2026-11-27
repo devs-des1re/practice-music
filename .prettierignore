@@ -1,0 +1,12 @@
+node_modules
+dist
+dist-native
+.krate
+engine/target
+api/engine/payload
+package-lock.json
+public
+shots
+src/krate-env.d.ts
+.claude
+src/lib/logger.ts

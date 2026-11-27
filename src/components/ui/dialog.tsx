@@ -27,7 +27,14 @@ export function Dialog(props: DialogProps) {
       <section class="dialog" role="dialog" aria-modal="true" aria-label={props.title}>
         <header class="dialog-head">
           <h2 class="dialog-title">{props.title}</h2>
-          <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Close" data-tip="Close" data-keys="Esc" onClick={props.onClose}>
+          <button
+            class="krate-button krate-button-ghost krate-button-icon krate-button-sm"
+            type="button"
+            aria-label="Close"
+            data-tip="Close"
+            data-keys="Esc"
+            onClick={props.onClose}
+          >
             <Icon name="lucide:x" />
           </button>
         </header>

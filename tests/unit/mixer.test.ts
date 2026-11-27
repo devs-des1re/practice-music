@@ -50,11 +50,23 @@ test("meters go green then amber then red", () => {
 });
 
 test("output pairs follow the device channel count", () => {
-  assert.deepEqual(channelPairs(1).map((o) => o.value), ["0"]);
-  assert.deepEqual(channelPairs(2).map((o) => o.value), ["0"]);
-  assert.deepEqual(channelPairs(6).map((o) => o.value), ["0", "2", "4"]);
+  assert.deepEqual(
+    channelPairs(1).map((o) => o.value),
+    ["0"],
+  );
+  assert.deepEqual(
+    channelPairs(2).map((o) => o.value),
+    ["0"],
+  );
+  assert.deepEqual(
+    channelPairs(6).map((o) => o.value),
+    ["0", "2", "4"],
+  );
   assert.equal(channelPairs(4)[1].label, "Outputs 3-4");
-  assert.deepEqual(channelPairs(5).map((o) => o.value), ["0", "2"]);
+  assert.deepEqual(
+    channelPairs(5).map((o) => o.value),
+    ["0", "2"],
+  );
   assert.equal(channelPairs(0).length, 1);
 });
 

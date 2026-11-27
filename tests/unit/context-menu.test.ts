@@ -1,10 +1,19 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { DIVIDER, openContextMenu, subscribeContext, tidyItems, type ContextRequest } from "../../src/lib/context-menu.ts";
+import {
+  DIVIDER,
+  openContextMenu,
+  subscribeContext,
+  tidyItems,
+  type ContextRequest,
+} from "../../src/lib/context-menu.ts";
 
 test("dividers never lead, trail or double up", () => {
   const items = tidyItems([DIVIDER, { label: "a" }, DIVIDER, DIVIDER, { label: "b" }, DIVIDER]);
-  assert.deepEqual(items.map((i) => (i.separator ? "-" : i.label)), ["a", "-", "b"]);
+  assert.deepEqual(
+    items.map((i) => (i.separator ? "-" : i.label)),
+    ["a", "-", "b"],
+  );
   assert.deepEqual(tidyItems([DIVIDER]), []);
 });
 

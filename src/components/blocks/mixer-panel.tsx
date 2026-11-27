@@ -152,7 +152,15 @@ export function MixerPanel() {
     const meter = grid && grid.bpm > 0 ? grid.beatsPerBar + " beats per bar" : "-";
     const pitch = (p.pitch > 0 ? "+" : "") + p.pitch.toFixed(1) + " st";
     const loop = p.loop.enabled ? formatClock(p.loop.startMs) + " to " + formatClock(p.loop.endMs) : "Off";
-    setSongRows([p.title || "Untitled", p.artist || "-", formatClock(p.durationMs), tempo, meter, Math.round(p.speed * 100) + "% speed, " + pitch, loop]);
+    setSongRows([
+      p.title || "Untitled",
+      p.artist || "-",
+      formatClock(p.durationMs),
+      tempo,
+      meter,
+      Math.round(p.speed * 100) + "% speed, " + pitch,
+      loop,
+    ]);
   });
 
   createEffect(() => {
@@ -190,7 +198,8 @@ export function MixerPanel() {
     const remembered = localStorage.getItem(INSPECTOR_OPEN_KEY);
     const box = document.getElementById("console");
     if (remembered === "1" || remembered === "0") setInspect(remembered === "1");
-    else if (box && box.clientWidth >= 73.75 * parseFloat(getComputedStyle(document.documentElement).fontSize)) setInspect(true);
+    else if (box && box.clientWidth >= 73.75 * parseFloat(getComputedStyle(document.documentElement).fontSize))
+      setInspect(true);
     const off = onRefresh(() => {
       GetMixer()
         .then((next) => setBoard(next))
@@ -329,8 +338,16 @@ export function MixerPanel() {
       { label: strip.mute ? "Unmute" : "Mute", onSelect: () => patchStrip(index, (x) => ({ ...x, mute: !x.mute })) },
       { label: strip.solo ? "Solo off" : "Solo", onSelect: () => patchStrip(index, (x) => ({ ...x, solo: !x.solo })) },
       DIVIDER,
-      { label: "Set level to 0 dB", disabled: strip.gain === 0, onSelect: () => patchStrip(index, (x) => ({ ...x, gain: 0 })) },
-      { label: "Centre the pan", disabled: strip.pan === 0, onSelect: () => patchStrip(index, (x) => ({ ...x, pan: 0 })) },
+      {
+        label: "Set level to 0 dB",
+        disabled: strip.gain === 0,
+        onSelect: () => patchStrip(index, (x) => ({ ...x, gain: 0 })),
+      },
+      {
+        label: "Centre the pan",
+        disabled: strip.pan === 0,
+        onSelect: () => patchStrip(index, (x) => ({ ...x, pan: 0 })),
+      },
       DIVIDER,
       {
         label: "Channel settings",
@@ -355,10 +372,21 @@ export function MixerPanel() {
   }
 
   async function saveAs() {
-    const name = await askText({ title: "Save scene", label: "Scene name", confirmLabel: "Save scene", placeholder: "Rehearsal mix", maxLength: 40 });
+    const name = await askText({
+      title: "Save scene",
+      label: "Scene name",
+      confirmLabel: "Save scene",
+      placeholder: "Rehearsal mix",
+      maxLength: 40,
+    });
     if (!name) return;
     if (scenes().some((sc) => sc.name.toLowerCase() === name.toLowerCase())) {
-      const replace = await askConfirm({ title: "Replace scene", message: "A scene called " + name + " already exists. Replace it with the current mix?", confirmLabel: "Replace", danger: true });
+      const replace = await askConfirm({
+        title: "Replace scene",
+        message: "A scene called " + name + " already exists. Replace it with the current mix?",
+        confirmLabel: "Replace",
+        danger: true,
+      });
       if (!replace) return;
     }
     guard(async () => {
@@ -370,7 +398,11 @@ export function MixerPanel() {
   async function updateActive() {
     const name = active().name;
     if (!name) return;
-    const yes = await askConfirm({ title: "Update scene", message: "Overwrite the scene " + name + " with the current mix?", confirmLabel: "Update" });
+    const yes = await askConfirm({
+      title: "Update scene",
+      message: "Overwrite the scene " + name + " with the current mix?",
+      confirmLabel: "Update",
+    });
     if (!yes) return;
     guard(async () => {
       const scene = await SaveScene(name);
@@ -381,7 +413,13 @@ export function MixerPanel() {
   async function renameActive() {
     const current = active();
     if (current.id === 0) return;
-    const name = await askText({ title: "Rename scene", label: "Scene name", confirmLabel: "Rename", value: current.name, maxLength: 40 });
+    const name = await askText({
+      title: "Rename scene",
+      label: "Scene name",
+      confirmLabel: "Rename",
+      value: current.name,
+      maxLength: 40,
+    });
     if (!name || name === current.name) return;
     guard(async () => {
       await RenameScene(current.id, name);
@@ -392,7 +430,12 @@ export function MixerPanel() {
   async function removeActive() {
     const current = active();
     if (current.id === 0) return;
-    const yes = await askConfirm({ title: "Delete scene", message: "Delete the scene " + current.name + "? This cannot be undone.", confirmLabel: "Delete scene", danger: true });
+    const yes = await askConfirm({
+      title: "Delete scene",
+      message: "Delete the scene " + current.name + "? This cannot be undone.",
+      confirmLabel: "Delete scene",
+      danger: true,
+    });
     if (!yes) return;
     guard(async () => {
       await DeleteScene(current.id);
@@ -401,7 +444,12 @@ export function MixerPanel() {
   }
 
   async function resetAll() {
-    const yes = await askConfirm({ title: "Reset mixer", message: "Put every fader, send, EQ and compressor back to its default?", confirmLabel: "Reset mixer", danger: true });
+    const yes = await askConfirm({
+      title: "Reset mixer",
+      message: "Put every fader, send, EQ and compressor back to its default?",
+      confirmLabel: "Reset mixer",
+      danger: true,
+    });
     if (!yes) return;
     guard(async () => {
       await ResetMixer();
@@ -412,7 +460,13 @@ export function MixerPanel() {
   async function renameChannel(index: number) {
     const current = board().strips[index];
     if (!current) return;
-    const name = await askText({ title: "Rename channel", label: "Channel name", confirmLabel: "Rename", value: current.name, maxLength: 24 });
+    const name = await askText({
+      title: "Rename channel",
+      label: "Channel name",
+      confirmLabel: "Rename",
+      value: current.name,
+      maxLength: 24,
+    });
     if (name) patchStrip(index, (x) => ({ ...x, name }));
   }
 
@@ -443,24 +497,51 @@ export function MixerPanel() {
             id="scene-recall"
             label="Recall a scene"
             value={String(active().id)}
-            options={[{ value: "0", label: scenes().length === 0 ? "No scenes yet" : "Recall a scene" }].concat(scenes().map((sc) => ({ value: String(sc.id), label: sc.name })))}
+            options={[{ value: "0", label: scenes().length === 0 ? "No scenes yet" : "Recall a scene" }].concat(
+              scenes().map((sc) => ({ value: String(sc.id), label: sc.name })),
+            )}
             onChange={(v) => {
               if (Number(v)) recall(Number(v));
             }}
           />
-          <button class="krate-button krate-button-secondary krate-button-sm" type="button" aria-haspopup="menu" data-tip="Save, rename or delete scenes" onClick={openSceneMenu}>
+          <button
+            class="krate-button krate-button-secondary krate-button-sm"
+            type="button"
+            aria-haspopup="menu"
+            data-tip="Save, rename or delete scenes"
+            onClick={openSceneMenu}
+          >
             <Icon name="lucide:bookmark" />
             Scenes
             <Icon name="lucide:chevron-down" />
           </button>
           <span class="tool-divider" />
-          <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Clear clip lights" data-tip="Clear clip lights and peaks" onClick={() => guard(() => ResetMeters())}>
+          <button
+            class="krate-button krate-button-ghost krate-button-icon krate-button-sm"
+            type="button"
+            aria-label="Clear clip lights"
+            data-tip="Clear clip lights and peaks"
+            onClick={() => guard(() => ResetMeters())}
+          >
             <Icon name="lucide:eraser" />
           </button>
-          <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Reset the mixer" data-tip="Reset every channel" onClick={resetAll}>
+          <button
+            class="krate-button krate-button-ghost krate-button-icon krate-button-sm"
+            type="button"
+            aria-label="Reset the mixer"
+            data-tip="Reset every channel"
+            onClick={resetAll}
+          >
             <Icon name="lucide:rotate-ccw" />
           </button>
-          <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Channel settings" data-tip="Show or hide the inspector" data-on={inspect() ? "true" : "false"} onClick={() => showInspector(!inspect())}>
+          <button
+            class="krate-button krate-button-ghost krate-button-icon krate-button-sm"
+            type="button"
+            aria-label="Channel settings"
+            data-tip="Show or hide the inspector"
+            data-on={inspect() ? "true" : "false"}
+            onClick={() => showInspector(!inspect())}
+          >
             <Icon name="lucide:panel-right" />
           </button>
           <FoldButton />
@@ -607,7 +688,13 @@ export function MixerPanel() {
 
               <div class="strip-foot">
                 {s.kind === "input" ? (
-                  <button class="strip-name strip-rename" type="button" aria-label={"Rename " + s.name} data-tip="Rename channel" onClick={() => renameChannel(s.index)}>
+                  <button
+                    class="strip-name strip-rename"
+                    type="button"
+                    aria-label={"Rename " + s.name}
+                    data-tip="Rename channel"
+                    onClick={() => renameChannel(s.index)}
+                  >
                     {s.name}
                   </button>
                 ) : (
@@ -704,21 +791,47 @@ export function MixerPanel() {
         </aside>
 
         <aside class="mixer-inspector" aria-label="Channel settings">
-          <div class="inspector-grip" role="separator" aria-label="Drag to resize the inspector" data-tip="Drag to resize" onPointerDown={startInspectorResize} />
+          <div
+            class="inspector-grip"
+            role="separator"
+            aria-label="Drag to resize the inspector"
+            data-tip="Drag to resize"
+            onPointerDown={startInspectorResize}
+          />
           <header class="inspector-head">
             <LiveText class="inspector-title" text={tab() === "song" ? "Song" : inspectorTitle()} />
             <div class="segmented">
-              <button class="segment" type="button" data-active={tab() === "song" ? "true" : "false"} onClick={() => setTab("song")}>
+              <button
+                class="segment"
+                type="button"
+                data-active={tab() === "song" ? "true" : "false"}
+                onClick={() => setTab("song")}
+              >
                 Song
               </button>
-              <button class="segment" type="button" data-active={tab() === "channel" ? "true" : "false"} onClick={() => setTab("channel")}>
+              <button
+                class="segment"
+                type="button"
+                data-active={tab() === "channel" ? "true" : "false"}
+                onClick={() => setTab("channel")}
+              >
                 Channel
               </button>
-              <button class="segment" type="button" data-active={tab() === "routing" ? "true" : "false"} onClick={() => setTab("routing")}>
+              <button
+                class="segment"
+                type="button"
+                data-active={tab() === "routing" ? "true" : "false"}
+                onClick={() => setTab("routing")}
+              >
                 Routing
               </button>
             </div>
-            <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm inspector-close" type="button" aria-label="Close channel settings" onClick={() => showInspector(false)}>
+            <button
+              class="krate-button krate-button-ghost krate-button-icon krate-button-sm inspector-close"
+              type="button"
+              aria-label="Close channel settings"
+              onClick={() => showInspector(false)}
+            >
               <Icon name="lucide:x" />
             </button>
           </header>
@@ -761,30 +874,96 @@ export function MixerPanel() {
           <div class="inspector-body" showIf={tab() === "channel"}>
             <div showIf={strip().kind === "input"}>
               <Section title="Input" open={isOpen("input")} onToggle={() => toggleSection("input")}>
-              <Select
-                id="strip-source"
-                label="Input source"
-                value={String(strip().source)}
-                options={sourceOptions(cap().channels, strip().stereo)}
-                onChange={(v) => patchStrip(selected(), (x) => ({ ...x, source: Number(v) }))}
-              />
-              <label class="check-row">
-                <input type="checkbox" checked={strip().stereo} onChange={(e: Event) => patchStrip(selected(), (x) => ({ ...x, stereo: (e.target as HTMLInputElement).checked }))} />
-                Stereo pair
-              </label>
+                <Select
+                  id="strip-source"
+                  label="Input source"
+                  value={String(strip().source)}
+                  options={sourceOptions(cap().channels, strip().stereo)}
+                  onChange={(v) => patchStrip(selected(), (x) => ({ ...x, source: Number(v) }))}
+                />
+                <label class="check-row">
+                  <input
+                    type="checkbox"
+                    checked={strip().stereo}
+                    onChange={(e: Event) =>
+                      patchStrip(selected(), (x) => ({ ...x, stereo: (e.target as HTMLInputElement).checked }))
+                    }
+                  />
+                  Stereo pair
+                </label>
               </Section>
             </div>
 
             <Section title="Levels" open={isOpen("levels")} onToggle={() => toggleSection("levels")}>
-              <ParamRow label="Pan" ariaLabel="Pan" min={-1} max={1} step={0.01} value={strip().pan} text={panText(strip().pan)} onInput={(v) => patchStrip(selected(), (x) => ({ ...x, pan: v }))} onReset={() => patchStrip(selected(), (x) => ({ ...x, pan: 0 }))} />
-              <ParamRow label="Main" ariaLabel="Send to main" min={-60} max={12} step={0.5} value={strip().main} text={formatDb(strip().main)} onInput={(v) => patchStrip(selected(), (x) => ({ ...x, main: v }))} onReset={() => patchStrip(selected(), (x) => ({ ...x, main: 0 }))} />
-              <ParamRow label="Monitor" ariaLabel="Send to monitor" min={-60} max={12} step={0.5} value={strip().monitor} text={formatDb(strip().monitor)} onInput={(v) => patchStrip(selected(), (x) => ({ ...x, monitor: v }))} onReset={() => patchStrip(selected(), (x) => ({ ...x, monitor: 0 }))} />
+              <ParamRow
+                label="Pan"
+                ariaLabel="Pan"
+                min={-1}
+                max={1}
+                step={0.01}
+                value={strip().pan}
+                text={panText(strip().pan)}
+                onInput={(v) => patchStrip(selected(), (x) => ({ ...x, pan: v }))}
+                onReset={() => patchStrip(selected(), (x) => ({ ...x, pan: 0 }))}
+              />
+              <ParamRow
+                label="Main"
+                ariaLabel="Send to main"
+                min={-60}
+                max={12}
+                step={0.5}
+                value={strip().main}
+                text={formatDb(strip().main)}
+                onInput={(v) => patchStrip(selected(), (x) => ({ ...x, main: v }))}
+                onReset={() => patchStrip(selected(), (x) => ({ ...x, main: 0 }))}
+              />
+              <ParamRow
+                label="Monitor"
+                ariaLabel="Send to monitor"
+                min={-60}
+                max={12}
+                step={0.5}
+                value={strip().monitor}
+                text={formatDb(strip().monitor)}
+                onInput={(v) => patchStrip(selected(), (x) => ({ ...x, monitor: v }))}
+                onReset={() => patchStrip(selected(), (x) => ({ ...x, monitor: 0 }))}
+              />
             </Section>
 
             <Section title="Equaliser" open={isOpen("eq")} onToggle={() => toggleSection("eq")}>
-              <ParamRow label="Low" ariaLabel="Low shelf" min={-15} max={15} step={0.5} value={strip().eq.low} text={strip().eq.low.toFixed(1)} onInput={(v) => patchStrip(selected(), (x) => ({ ...x, eq: { ...x.eq, low: v } }))} onReset={() => patchStrip(selected(), (x) => ({ ...x, eq: { ...x.eq, low: 0 } }))} />
-              <ParamRow label="Mid" ariaLabel="Mid band" min={-15} max={15} step={0.5} value={strip().eq.mid} text={strip().eq.mid.toFixed(1)} onInput={(v) => patchStrip(selected(), (x) => ({ ...x, eq: { ...x.eq, mid: v } }))} onReset={() => patchStrip(selected(), (x) => ({ ...x, eq: { ...x.eq, mid: 0 } }))} />
-              <ParamRow label="High" ariaLabel="High shelf" min={-15} max={15} step={0.5} value={strip().eq.high} text={strip().eq.high.toFixed(1)} onInput={(v) => patchStrip(selected(), (x) => ({ ...x, eq: { ...x.eq, high: v } }))} onReset={() => patchStrip(selected(), (x) => ({ ...x, eq: { ...x.eq, high: 0 } }))} />
+              <ParamRow
+                label="Low"
+                ariaLabel="Low shelf"
+                min={-15}
+                max={15}
+                step={0.5}
+                value={strip().eq.low}
+                text={strip().eq.low.toFixed(1)}
+                onInput={(v) => patchStrip(selected(), (x) => ({ ...x, eq: { ...x.eq, low: v } }))}
+                onReset={() => patchStrip(selected(), (x) => ({ ...x, eq: { ...x.eq, low: 0 } }))}
+              />
+              <ParamRow
+                label="Mid"
+                ariaLabel="Mid band"
+                min={-15}
+                max={15}
+                step={0.5}
+                value={strip().eq.mid}
+                text={strip().eq.mid.toFixed(1)}
+                onInput={(v) => patchStrip(selected(), (x) => ({ ...x, eq: { ...x.eq, mid: v } }))}
+                onReset={() => patchStrip(selected(), (x) => ({ ...x, eq: { ...x.eq, mid: 0 } }))}
+              />
+              <ParamRow
+                label="High"
+                ariaLabel="High shelf"
+                min={-15}
+                max={15}
+                step={0.5}
+                value={strip().eq.high}
+                text={strip().eq.high.toFixed(1)}
+                onInput={(v) => patchStrip(selected(), (x) => ({ ...x, eq: { ...x.eq, high: v } }))}
+                onReset={() => patchStrip(selected(), (x) => ({ ...x, eq: { ...x.eq, high: 0 } }))}
+              />
             </Section>
 
             <Section
@@ -795,25 +974,91 @@ export function MixerPanel() {
               switchOn={strip().comp.on}
               onSwitch={(on) => patchStrip(selected(), (x) => ({ ...x, comp: { ...x.comp, on } }))}
             >
-              <ParamRow label="Threshold" ariaLabel="Compressor threshold" min={-60} max={0} step={1} value={strip().comp.threshold} text={strip().comp.threshold.toFixed(0) + " dB"} onInput={(v) => patchStrip(selected(), (x) => ({ ...x, comp: { ...x.comp, threshold: v } }))} />
-              <ParamRow label="Ratio" ariaLabel="Compressor ratio" min={1} max={20} step={0.5} value={strip().comp.ratio} text={strip().comp.ratio.toFixed(1) + " : 1"} onInput={(v) => patchStrip(selected(), (x) => ({ ...x, comp: { ...x.comp, ratio: v } }))} />
-              <ParamRow label="Attack" ariaLabel="Compressor attack" min={1} max={100} step={1} value={strip().comp.attack} text={strip().comp.attack.toFixed(0) + " ms"} onInput={(v) => patchStrip(selected(), (x) => ({ ...x, comp: { ...x.comp, attack: v } }))} />
-              <ParamRow label="Release" ariaLabel="Compressor release" min={20} max={1000} step={10} value={strip().comp.release} text={strip().comp.release.toFixed(0) + " ms"} onInput={(v) => patchStrip(selected(), (x) => ({ ...x, comp: { ...x.comp, release: v } }))} />
-              <ParamRow label="Makeup" ariaLabel="Compressor makeup gain" min={0} max={24} step={0.5} value={strip().comp.makeup} text={strip().comp.makeup.toFixed(1) + " dB"} onInput={(v) => patchStrip(selected(), (x) => ({ ...x, comp: { ...x.comp, makeup: v } }))} />
+              <ParamRow
+                label="Threshold"
+                ariaLabel="Compressor threshold"
+                min={-60}
+                max={0}
+                step={1}
+                value={strip().comp.threshold}
+                text={strip().comp.threshold.toFixed(0) + " dB"}
+                onInput={(v) => patchStrip(selected(), (x) => ({ ...x, comp: { ...x.comp, threshold: v } }))}
+              />
+              <ParamRow
+                label="Ratio"
+                ariaLabel="Compressor ratio"
+                min={1}
+                max={20}
+                step={0.5}
+                value={strip().comp.ratio}
+                text={strip().comp.ratio.toFixed(1) + " : 1"}
+                onInput={(v) => patchStrip(selected(), (x) => ({ ...x, comp: { ...x.comp, ratio: v } }))}
+              />
+              <ParamRow
+                label="Attack"
+                ariaLabel="Compressor attack"
+                min={1}
+                max={100}
+                step={1}
+                value={strip().comp.attack}
+                text={strip().comp.attack.toFixed(0) + " ms"}
+                onInput={(v) => patchStrip(selected(), (x) => ({ ...x, comp: { ...x.comp, attack: v } }))}
+              />
+              <ParamRow
+                label="Release"
+                ariaLabel="Compressor release"
+                min={20}
+                max={1000}
+                step={10}
+                value={strip().comp.release}
+                text={strip().comp.release.toFixed(0) + " ms"}
+                onInput={(v) => patchStrip(selected(), (x) => ({ ...x, comp: { ...x.comp, release: v } }))}
+              />
+              <ParamRow
+                label="Makeup"
+                ariaLabel="Compressor makeup gain"
+                min={0}
+                max={24}
+                step={0.5}
+                value={strip().comp.makeup}
+                text={strip().comp.makeup.toFixed(1) + " dB"}
+                onInput={(v) => patchStrip(selected(), (x) => ({ ...x, comp: { ...x.comp, makeup: v } }))}
+              />
             </Section>
           </div>
 
           <div class="inspector-body" showIf={tab() === "routing"}>
             <Section title="Master limiter" open={isOpen("limiter")} onToggle={() => toggleSection("limiter")}>
               <label class="check-row">
-                <input type="checkbox" checked={board().master.limiter} onChange={(e: Event) => patchMaster((m) => ({ ...m, limiter: (e.target as HTMLInputElement).checked }))} />
+                <input
+                  type="checkbox"
+                  checked={board().master.limiter}
+                  onChange={(e: Event) =>
+                    patchMaster((m) => ({ ...m, limiter: (e.target as HTMLInputElement).checked }))
+                  }
+                />
                 Limiter on
               </label>
-              <ParamRow label="Ceiling" ariaLabel="Limiter ceiling" min={-12} max={0} step={0.1} value={board().master.ceiling} text={board().master.ceiling.toFixed(1) + " dB"} onInput={(v) => patchMaster((m) => ({ ...m, ceiling: v }))} />
+              <ParamRow
+                label="Ceiling"
+                ariaLabel="Limiter ceiling"
+                min={-12}
+                max={0}
+                step={0.1}
+                value={board().master.ceiling}
+                text={board().master.ceiling.toFixed(1) + " dB"}
+                onInput={(v) => patchMaster((m) => ({ ...m, ceiling: v }))}
+              />
             </Section>
 
             <Section title="Outputs" open={isOpen("outputs")} onToggle={() => toggleSection("outputs")}>
-              <Field label="Main mix" htmlFor="main-pair" hint={audio().running ? "On " + (audio().device || "the output device") : "Waiting for the audio engine."}>
+              <Field
+                label="Main mix"
+                htmlFor="main-pair"
+                hint={
+                  audio().running ? "On " + (audio().device || "the output device") : "Waiting for the audio engine."
+                }
+              >
                 <Select
                   id="main-pair"
                   label="Main output channels"
@@ -825,7 +1070,11 @@ export function MixerPanel() {
               <Field
                 label="Monitor mix"
                 htmlFor="monitor-pair"
-                hint={mon() && mon().mode === "device" ? "On " + (mon().device || "the monitor device") : "No monitor device chosen, so it plays on the main output."}
+                hint={
+                  mon() && mon().mode === "device"
+                    ? "On " + (mon().device || "the monitor device")
+                    : "No monitor device chosen, so it plays on the main output."
+                }
               >
                 <Select
                   id="monitor-pair"
@@ -839,7 +1088,8 @@ export function MixerPanel() {
                 {"Monitor output: " + (mon() ? mon().error : "")}
               </p>
               <p class="field-warn" showIf={!!mon() && mon().rateMismatch}>
-                The monitor device runs at a different sample rate. Set both devices to the same rate for the best quality.
+                The monitor device runs at a different sample rate. Set both devices to the same rate for the best
+                quality.
               </p>
             </Section>
 
@@ -870,7 +1120,14 @@ export function MixerPanel() {
           </div>
         </aside>
       </div>
-      <Menu id="scene-menu" open={sceneMenu()} x={sceneMenuX()} y={sceneMenuY()} items={sceneItems()} onClose={() => setSceneMenu(false)} />
+      <Menu
+        id="scene-menu"
+        open={sceneMenu()}
+        x={sceneMenuX()}
+        y={sceneMenuY()}
+        items={sceneItems()}
+        onClose={() => setSceneMenu(false)}
+      />
     </section>
   );
 }

@@ -44,7 +44,12 @@ export function Waveform(props: WaveformProps) {
 
   function grid(): GridInfo | null {
     if (props.gridBpm <= 0) return null;
-    return { bpm: props.gridBpm, offsetMs: props.gridOffset, beatsPerBar: props.gridBeats, downbeat: props.gridDownbeat };
+    return {
+      bpm: props.gridBpm,
+      offsetMs: props.gridOffset,
+      beatsPerBar: props.gridBeats,
+      downbeat: props.gridDownbeat,
+    };
   }
 
   function region(): { start: number; end: number; on: boolean } {
@@ -79,7 +84,14 @@ export function Waveform(props: WaveformProps) {
       ctx,
       width,
       HEIGHT,
-      { peaks, duration, position, region: reg, lines: props.showGrid ? gridLines(grid(), duration) : [], markers: props.markers },
+      {
+        peaks,
+        duration,
+        position,
+        region: reg,
+        lines: props.showGrid ? gridLines(grid(), duration) : [],
+        markers: props.markers,
+      },
       token,
     );
   });
@@ -119,7 +131,13 @@ export function Waveform(props: WaveformProps) {
       return;
     }
     const reg = region();
-    const handle = hitHandle(x, (reg.start / props.durationMs) * width, (reg.end / props.durationMs) * width, reg.on, GRAB);
+    const handle = hitHandle(
+      x,
+      (reg.start / props.durationMs) * width,
+      (reg.end / props.durationMs) * width,
+      reg.on,
+      GRAB,
+    );
     if (handle) {
       drag.mode = handle;
       setDragStart(reg.start);
@@ -137,9 +155,12 @@ export function Waveform(props: WaveformProps) {
     const x = pointerX(e);
     const reg = region();
     if (drag.mode === "none") {
-      const near = props.selecting && hitHandle(x, (reg.start / props.durationMs) * width, (reg.end / props.durationMs) * width, reg.on, GRAB);
+      const near =
+        props.selecting &&
+        hitHandle(x, (reg.start / props.durationMs) * width, (reg.end / props.durationMs) * width, reg.on, GRAB);
       const py = pointerY(e);
-      const overFlag = props.markers.length > 0 && py >= RULER && py < RULER + LANE && flags.some((f) => x >= f.x0 && x <= f.x1);
+      const overFlag =
+        props.markers.length > 0 && py >= RULER && py < RULER + LANE && flags.some((f) => x >= f.x0 && x <= f.x1);
       el.style.cursor = overFlag ? "pointer" : near ? "col-resize" : props.selecting ? "crosshair" : "pointer";
       return;
     }

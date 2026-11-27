@@ -52,7 +52,13 @@ export const RULER = 22;
 export const LANE = 20;
 const MIN_TICK_PX = 64;
 
-export function drawWaveform(ctx: CanvasRenderingContext2D, width: number, HEIGHT: number, view: WaveView, token: (name: string) => string): Flag[] {
+export function drawWaveform(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  HEIGHT: number,
+  view: WaveView,
+  token: (name: string) => string,
+): Flag[] {
   const { peaks, duration, position, region: reg } = view;
   const markers = view.markers;
   const lane = markers.length > 0 ? LANE : 0;
@@ -123,7 +129,8 @@ export function drawWaveform(ctx: CanvasRenderingContext2D, width: number, HEIGH
     ctx.fillRect(x0, 0, Math.max(2, x1 - x0), RULER - 1);
     ctx.fillStyle = token("--color-song");
     ctx.fillRect(x0, RULER - 3, Math.max(2, x1 - x0), 2);
-    const label = "LOOP " + rulerLabel(reg.start) + " - " + rulerLabel(reg.end) + "  (" + rulerLabel(reg.end - reg.start) + ")";
+    const label =
+      "LOOP " + rulerLabel(reg.start) + " - " + rulerLabel(reg.end) + "  (" + rulerLabel(reg.end - reg.start) + ")";
     if (x1 - x0 > ctx.measureText(label).width + 12) ctx.fillText(label, x0 + 6, 9);
   }
 

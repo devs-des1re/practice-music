@@ -125,7 +125,10 @@ export function retryAudio(): Promise<boolean> {
 
 export async function startAudioForUser(): Promise<void> {
   const ok = await retryAudio();
-  if (!ok) throw new ReportedError(serviceShared().state.offline ? "The PracticeMusic host is not reachable." : serviceShared().state.message);
+  if (!ok)
+    throw new ReportedError(
+      serviceShared().state.offline ? "The PracticeMusic host is not reachable." : serviceShared().state.message,
+    );
 }
 
 export function reportOffline() {

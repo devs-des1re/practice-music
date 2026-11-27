@@ -12,9 +12,5 @@ export default function Layout({ children }: { children?: any }) {
       .catch((e) => logFailure("could not read settings", e));
   });
 
-  return (
-    <div class="shell">
-      {children}
-    </div>
-  );
+  return <div class="shell">{children}</div>;
 }

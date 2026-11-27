@@ -36,10 +36,14 @@ test("the browser page opens a remote pane and follows its navigation", async ()
 test("downloading from the browser page queues the current address", async () => {
   await page.waitFor(home);
   await page.evaluate(() => {
-    const button = [...document.querySelectorAll("button")].find((b) => b.textContent && b.textContent.trim() === "Download");
+    const button = [...document.querySelectorAll("button")].find(
+      (b) => b.textContent && b.textContent.trim() === "Download",
+    );
     if (button) (button as HTMLButtonElement).click();
   });
-  await page.waitFor(() => [...document.querySelectorAll(".notice")].some((n) => !!n.textContent && n.textContent.includes("download queue")));
+  await page.waitFor(() =>
+    [...document.querySelectorAll(".notice")].some((n) => !!n.textContent && n.textContent.includes("download queue")),
+  );
 });
 
 test("leaving the page removes the pane and returning opens a new one", async () => {

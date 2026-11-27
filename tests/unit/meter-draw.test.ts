@@ -2,7 +2,16 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { drawLane, zoneColor, type LaneView } from "../../src/lib/meter-draw.ts";
 
-const base: LaneView = { level: 0, hold: 0, greenTop: 0.66, yellowTop: 0.79, unity: 0.83, clip: false, reduction: 0, pad: 10 };
+const base: LaneView = {
+  level: 0,
+  hold: 0,
+  greenTop: 0.66,
+  yellowTop: 0.79,
+  unity: 0.83,
+  clip: false,
+  reduction: 0,
+  pad: 10,
+};
 const token = (name: string) => name;
 
 function record(view: LaneView) {
@@ -31,7 +40,10 @@ function record(view: LaneView) {
 
 test("a rising level fills green, then yellow, then red from the bottom of one bar", () => {
   const bars = record({ ...base, level: 0.9 }).filter((f) => f.x === 5 && f.w === 10);
-  assert.deepEqual(bars.map((f) => f.color), ["--color-meter-green", "--color-meter-amber", "--color-meter-red"]);
+  assert.deepEqual(
+    bars.map((f) => f.color),
+    ["--color-meter-green", "--color-meter-amber", "--color-meter-red"],
+  );
   assert.ok(Math.abs(bars[0].y + bars[0].h - 210) < 1e-9);
   assert.ok(bars[2].y < bars[1].y && bars[1].y < bars[0].y);
 });

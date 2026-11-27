@@ -39,7 +39,9 @@ export function meterTone(linear: number): MeterTone {
 const DISPLAY_ORDER: Record<string, number> = { song: 0, click: 1, drums: 2, input: 3 };
 
 export function inDisplayOrder<T extends { kind: string; index: number }>(strips: T[]): T[] {
-  return strips.slice().sort((a, b) => (DISPLAY_ORDER[a.kind] ?? 9) - (DISPLAY_ORDER[b.kind] ?? 9) || a.index - b.index);
+  return strips
+    .slice()
+    .sort((a, b) => (DISPLAY_ORDER[a.kind] ?? 9) - (DISPLAY_ORDER[b.kind] ?? 9) || a.index - b.index);
 }
 
 export function channelPairs(channels: number): Option[] {

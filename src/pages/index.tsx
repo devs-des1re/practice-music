@@ -143,12 +143,30 @@ export default function Workspace() {
       geo.gutters
         .filter((g) => !g.locked)
         .map((g) => {
-        const style =
-          g.dir === "row"
-            ? "left:calc(" + pct(g.area.x + g.area.w * g.ratio) + " - " + GUTTER / 2 + "px);top:" + pct(g.area.y) + ";width:" + GUTTER + "px;height:" + pct(g.area.h)
-            : "top:calc(" + pct(g.area.y + g.area.h * g.ratio) + " - " + GUTTER / 2 + "px);left:" + pct(g.area.x) + ";height:" + GUTTER + "px;width:" + pct(g.area.w);
-        return { path: g.path, dir: g.dir, style, geo: g };
-      }),
+          const style =
+            g.dir === "row"
+              ? "left:calc(" +
+                pct(g.area.x + g.area.w * g.ratio) +
+                " - " +
+                GUTTER / 2 +
+                "px);top:" +
+                pct(g.area.y) +
+                ";width:" +
+                GUTTER +
+                "px;height:" +
+                pct(g.area.h)
+              : "top:calc(" +
+                pct(g.area.y + g.area.h * g.ratio) +
+                " - " +
+                GUTTER / 2 +
+                "px);left:" +
+                pct(g.area.x) +
+                ";height:" +
+                GUTTER +
+                "px;width:" +
+                pct(g.area.w);
+          return { path: g.path, dir: g.dir, style, geo: g };
+        }),
     );
     if (!ready()) return;
     try {
@@ -325,10 +343,22 @@ export default function Workspace() {
       <ModalHost />
       <ContextHost />
       <TooltipHost />
-      <Topbar panels={panels()} onToggle={(key) => setPanel(key, !panels()[key])} onPreset={applyPreset} onReset={resetLayout} onShortcuts={() => setShortcuts(true)} />
+      <Topbar
+        panels={panels()}
+        onToggle={(key) => setPanel(key, !panels()[key])}
+        onPreset={applyPreset}
+        onReset={resetLayout}
+        onShortcuts={() => setShortcuts(true)}
+      />
       <ServiceNotice />
       <main class="ws">
-        <div class="ws-stage" data-dragging={dragId() ? "true" : "false"} data-resizing={resizePath() !== NOT_RESIZING ? "true" : "false"} onPointerDown={onStageDown} onClick={onStageClick}>
+        <div
+          class="ws-stage"
+          data-dragging={dragId() ? "true" : "false"}
+          data-resizing={resizePath() !== NOT_RESIZING ? "true" : "false"}
+          onPointerDown={onStageDown}
+          onClick={onStageClick}
+        >
           <div class="cell" data-tile="player">
             <PlayerDeck onShowLibrary={() => setPanel("library", true)} />
           </div>

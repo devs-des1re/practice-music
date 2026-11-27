@@ -40,7 +40,11 @@ function ensureNsis() {
   if (!windows || format !== "nsis") return;
   const exe = "makensis.exe";
   if (onPath(exe)) return;
-  const bases = [process.env["ProgramFiles(x86)"], process.env.ProgramFiles, process.env.ChocolateyInstall && path.join(process.env.ChocolateyInstall, "bin")];
+  const bases = [
+    process.env["ProgramFiles(x86)"],
+    process.env.ProgramFiles,
+    process.env.ChocolateyInstall && path.join(process.env.ChocolateyInstall, "bin"),
+  ];
   for (const base of bases) {
     if (!base) continue;
     for (const dir of [path.join(base, "NSIS"), base]) {
@@ -51,7 +55,9 @@ function ensureNsis() {
       }
     }
   }
-  console.error("makensis was not found. Install NSIS (choco install nsis, or winget install NSIS.NSIS), open a new terminal and run this again.");
+  console.error(
+    "makensis was not found. Install NSIS (choco install nsis, or winget install NSIS.NSIS), open a new terminal and run this again.",
+  );
   console.error("To build without an installer, run: node scripts/package.mjs zip");
   process.exit(1);
 }

@@ -103,10 +103,22 @@ export function BrowserPanel(props: BrowserPanelProps) {
 
       <div class="browser-body">
         <div class="address-bar">
-          <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Home" disabled={!pane().open} onClick={() => go(HOME)}>
+          <button
+            class="krate-button krate-button-ghost krate-button-icon krate-button-sm"
+            type="button"
+            aria-label="Home"
+            disabled={!pane().open}
+            onClick={() => go(HOME)}
+          >
             <Icon name="lucide:house" />
           </button>
-          <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Reload" disabled={!pane().open} onClick={() => go(page())}>
+          <button
+            class="krate-button krate-button-ghost krate-button-icon krate-button-sm"
+            type="button"
+            aria-label="Reload"
+            disabled={!pane().open}
+            onClick={() => go(page())}
+          >
             <Icon name="lucide:rotate-cw" />
           </button>
           <div class="search-box grow">
@@ -150,7 +162,13 @@ export function BrowserPanel(props: BrowserPanelProps) {
               setQuality("best");
             }}
           />
-          <Select id="br-quality" label="Quality" value={quality()} options={format() === "mp4" ? MP4 : MP3} onChange={(v) => setQuality(v)} />
+          <Select
+            id="br-quality"
+            label="Quality"
+            value={quality()}
+            options={format() === "mp4" ? MP4 : MP3}
+            onChange={(v) => setQuality(v)}
+          />
           <button class="krate-button krate-button-primary" type="button" disabled={!pane().open} onClick={download}>
             <Icon name="lucide:download" />
             Download

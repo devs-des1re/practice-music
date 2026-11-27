@@ -10,14 +10,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "baseUrl": ".",
-    "rootDirs": [
-      ".",
-      ".krate/native/types"
-    ]
+    "rootDirs": [".", ".krate/native/types"]
   },
-  "include": [
-    "src",
-    ".krate/native/types",
-    ".krate/native/plugins"
-  ]
+  "include": ["src", ".krate/native/types", ".krate/native/plugins"]
 }

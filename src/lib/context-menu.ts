@@ -42,7 +42,10 @@ export function tidyItems(items: ContextItem[]): ContextItem[] {
 
 export const DIVIDER: ContextItem = { label: "", separator: true };
 
-export function openContextMenu(e: { clientX: number; clientY: number; preventDefault: () => void }, items: ContextItem[]) {
+export function openContextMenu(
+  e: { clientX: number; clientY: number; preventDefault: () => void },
+  items: ContextItem[],
+) {
   e.preventDefault();
   const request = { x: e.clientX, y: e.clientY, items: tidyItems(items) };
   for (const fn of contextState().listeners) fn(request);

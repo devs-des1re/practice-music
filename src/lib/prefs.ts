@@ -12,7 +12,8 @@ interface PreferenceStore {
 
 function preferenceStore(): PreferenceStore {
   const holder = globalThis as unknown as { __pmPrefs?: PreferenceStore };
-  if (!holder.__pmPrefs) holder.__pmPrefs = { value: { ...FALLBACK_PREFERENCES }, loaded: false, loading: false, listeners: new Set() };
+  if (!holder.__pmPrefs)
+    holder.__pmPrefs = { value: { ...FALLBACK_PREFERENCES }, loaded: false, loading: false, listeners: new Set() };
   return holder.__pmPrefs;
 }
 

@@ -178,7 +178,9 @@ export default function DrumsPage() {
     setDrumView({
       silent: quiet?.text || "",
       silentFix: quiet?.fix || "",
-      banner: hearing ? "You also hear " + extra.join(" and ") + " straight from the line input, on top of the sampled drums." : "",
+      banner: hearing
+        ? "You also hear " + extra.join(" and ") + " straight from the line input, on top of the sampled drums."
+        : "",
       learn: "Hit the drum you want to use for " + chosen.label + ".",
       midi: status.portError || (status.open ? "Listening to " + status.open : "No MIDI input chosen"),
       download: "Download, " + megabytes(info?.downloadBytes || 0),
@@ -393,7 +395,8 @@ export default function DrumsPage() {
     const label = drumDraft()?.pads.find((p) => p.id === id)?.label || "this pad";
     const yes = await askConfirm({
       title: "Reset " + label,
-      message: "Put its sound, notes, level, pan, pitch, sensitivity and choke back to the defaults? Your files stay on your computer.",
+      message:
+        "Put its sound, notes, level, pan, pitch, sensitivity and choke back to the defaults? Your files stay on your computer.",
       confirmLabel: "Reset pad",
       danger: true,
     });
@@ -496,15 +499,30 @@ export default function DrumsPage() {
           </div>
           <div class="drum-banner" showIf={!!drumView().silent}>
             <Notice tone="warn" title="Your drums are silent" text={drumView().silent} />
-            <button class="krate-button krate-button-primary krate-button-sm" type="button" showIf={drumView().silentFix === "choose"} onClick={() => editDrums((s) => ({ ...s, kit: "muldjord" }))}>
+            <button
+              class="krate-button krate-button-primary krate-button-sm"
+              type="button"
+              showIf={drumView().silentFix === "choose"}
+              onClick={() => editDrums((s) => ({ ...s, kit: "muldjord" }))}
+            >
               <Icon name="lucide:drum" />
               Use MuldjordKit
             </button>
-            <button class="krate-button krate-button-primary krate-button-sm" type="button" showIf={drumView().silentFix === "download"} onClick={downloadKit}>
+            <button
+              class="krate-button krate-button-primary krate-button-sm"
+              type="button"
+              showIf={drumView().silentFix === "download"}
+              onClick={downloadKit}
+            >
               <Icon name="lucide:download" />
               Download MuldjordKit
             </button>
-            <button class="krate-button krate-button-primary krate-button-sm" type="button" showIf={drumView().silentFix === "enable"} onClick={() => editDrums((s) => ({ ...s, enabled: true }))}>
+            <button
+              class="krate-button krate-button-primary krate-button-sm"
+              type="button"
+              showIf={drumView().silentFix === "enable"}
+              onClick={() => editDrums((s) => ({ ...s, enabled: true }))}
+            >
               <Icon name="lucide:power" />
               Switch drum sounds on
             </button>
@@ -527,7 +545,13 @@ export default function DrumsPage() {
               <Panel>
                 <header class="panel-head">
                   <h2 class="panel-title">MIDI input</h2>
-                  <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label="Rescan MIDI devices" data-tip="Look for MIDI devices again" onClick={() => DrumsScan().then(setDrumStatus).catch(drumFail("the MIDI scan failed"))}>
+                  <button
+                    class="krate-button krate-button-ghost krate-button-icon krate-button-sm"
+                    type="button"
+                    aria-label="Rescan MIDI devices"
+                    data-tip="Look for MIDI devices again"
+                    onClick={() => DrumsScan().then(setDrumStatus).catch(drumFail("the MIDI scan failed"))}
+                  >
                     <Icon name="lucide:refresh-cw" />
                   </button>
                 </header>
@@ -541,10 +565,16 @@ export default function DrumsPage() {
                     />
                   </Field>
                   <div class="status-line">
-                    <StatusDot tone={drumStatus().portError ? "warn" : drumStatus().open ? "ok" : "idle"} label="MIDI state" />
+                    <StatusDot
+                      tone={drumStatus().portError ? "warn" : drumStatus().open ? "ok" : "idle"}
+                      label="MIDI state"
+                    />
                     <LiveText class="drum-midi-state" text={drumView().midi} />
                   </div>
-                  <p class="field-hint">Plug your headphones or speakers into this computer to hear these sounds, and turn the drum module's own volume down.</p>
+                  <p class="field-hint">
+                    Plug your headphones or speakers into this computer to hear these sounds, and turn the drum module's
+                    own volume down.
+                  </p>
                 </PanelBody>
               </Panel>
 
@@ -552,20 +582,41 @@ export default function DrumsPage() {
                 <PanelHead title="Drum kit" />
                 <PanelBody>
                   <Field label="Kit" htmlFor="drum-kit">
-                    <Select id="drum-kit" value={drumDraft()?.kit || "none"} options={drumView().kits} onChange={(v) => editDrums((s) => ({ ...s, kit: v }))} />
+                    <Select
+                      id="drum-kit"
+                      value={drumDraft()?.kit || "none"}
+                      options={drumView().kits}
+                      onChange={(v) => editDrums((s) => ({ ...s, kit: v }))}
+                    />
                   </Field>
                   <div class="drum-kit-box" showIf={drumDraft()?.kit === "muldjord"}>
                     <div class="drum-kit-box" showIf={!drumStatus().kit.installed && !drumStatus().kit.phase}>
-                      <p class="field-hint">The recordings are not on this computer yet. Nothing is downloaded until you choose to.</p>
-                      <button class="krate-button krate-button-primary krate-button-sm" type="button" onClick={downloadKit}>
+                      <p class="field-hint">
+                        The recordings are not on this computer yet. Nothing is downloaded until you choose to.
+                      </p>
+                      <button
+                        class="krate-button krate-button-primary krate-button-sm"
+                        type="button"
+                        onClick={downloadKit}
+                      >
                         <Icon name="lucide:download" />
                         {drumView().download}
                       </button>
                     </div>
                     <div class="drum-kit-box" showIf={!!drumStatus().kit.phase}>
                       <LiveText class="field-hint" text={drumView().kitProgress} />
-                      <progress class="drum-progress" max="100" aria-label="Kit progress" value={drumView().kitPercent} />
-                      <button class="krate-button krate-button-secondary krate-button-sm" type="button" showIf={drumStatus().kit.phase !== "removing"} onClick={() => DrumsKitCancel()}>
+                      <progress
+                        class="drum-progress"
+                        max="100"
+                        aria-label="Kit progress"
+                        value={drumView().kitPercent}
+                      />
+                      <button
+                        class="krate-button krate-button-secondary krate-button-sm"
+                        type="button"
+                        showIf={drumStatus().kit.phase !== "removing"}
+                        onClick={() => DrumsKitCancel()}
+                      >
                         <Icon name="lucide:x" />
                         Cancel
                       </button>
@@ -575,10 +626,24 @@ export default function DrumsPage() {
                     </div>
                     <div class="drum-kit-box" showIf={drumStatus().kit.installed && !drumStatus().kit.phase}>
                       <Field label="Room microphones" htmlFor="drum-room" hint="More sounds bigger and further away.">
-                        <Select id="drum-room" value={String(drumDraft()?.room ?? 0.6)} options={drumView().rooms} onChange={(v) => editDrums((s) => ({ ...s, room: Number(v) }))} />
+                        <Select
+                          id="drum-room"
+                          value={String(drumDraft()?.room ?? 0.6)}
+                          options={drumView().rooms}
+                          onChange={(v) => editDrums((s) => ({ ...s, room: Number(v) }))}
+                        />
                       </Field>
-                      <Field label="Overhead microphones" htmlFor="drum-overheads" hint="Most of the cymbal sound comes from these.">
-                        <Select id="drum-overheads" value={String(drumDraft()?.overheads ?? 1)} options={drumView().overheads} onChange={(v) => editDrums((s) => ({ ...s, overheads: Number(v) }))} />
+                      <Field
+                        label="Overhead microphones"
+                        htmlFor="drum-overheads"
+                        hint="Most of the cymbal sound comes from these."
+                      >
+                        <Select
+                          id="drum-overheads"
+                          value={String(drumDraft()?.overheads ?? 1)}
+                          options={drumView().overheads}
+                          onChange={(v) => editDrums((s) => ({ ...s, overheads: Number(v) }))}
+                        />
                       </Field>
                       <button class="krate-button krate-button-ghost krate-button-sm" type="button" onClick={removeKit}>
                         <Icon name="lucide:trash-2" />
@@ -589,7 +654,13 @@ export default function DrumsPage() {
                   </div>
 
                   <LiveText class="field-hint" text={drumView().load} />
-                  <progress class="drum-progress" max="100" aria-label="Loading sounds" showIf={drumStatus().load.state === "loading"} value={drumView().loadPercent} />
+                  <progress
+                    class="drum-progress"
+                    max="100"
+                    aria-label="Loading sounds"
+                    showIf={drumStatus().load.state === "loading"}
+                    value={drumView().loadPercent}
+                  />
                   <div showIf={!!drumStatus().load.error}>
                     <Notice tone="warn" text={drumStatus().load.error} />
                   </div>
@@ -605,7 +676,12 @@ export default function DrumsPage() {
                     onInput={(v) => editDrumStrip((s) => ({ ...s, gain: v }))}
                     onReset={() => editDrumStrip((s) => ({ ...s, gain: 0 }))}
                   />
-                  <button class="krate-button krate-button-secondary krate-button-sm" type="button" aria-pressed={drumView().stripMuted ? "true" : "false"} onClick={() => editDrumStrip((s) => ({ ...s, mute: !s.mute }))}>
+                  <button
+                    class="krate-button krate-button-secondary krate-button-sm"
+                    type="button"
+                    aria-pressed={drumView().stripMuted ? "true" : "false"}
+                    onClick={() => editDrumStrip((s) => ({ ...s, mute: !s.mute }))}
+                  >
                     <Icon name="lucide:volume-x" />
                     <LiveText class="button-text" text={drumView().mute} />
                   </button>
@@ -615,19 +691,64 @@ export default function DrumsPage() {
               <Panel>
                 <PanelHead title="Playing" />
                 <PanelBody>
-                  <Toggle id="drum-enabled" label="Play drum sounds" hint="Off frees the memory the sounds use. Hits still show in the monitor." checked={!!drumDraft()?.enabled} onChange={(v) => editDrums((s) => ({ ...s, enabled: v }))} />
+                  <Toggle
+                    id="drum-enabled"
+                    label="Play drum sounds"
+                    hint="Off frees the memory the sounds use. Hits still show in the monitor."
+                    checked={!!drumDraft()?.enabled}
+                    onChange={(v) => editDrums((s) => ({ ...s, enabled: v }))}
+                  />
                   <Field label="Velocity curve" htmlFor="drum-curve">
-                    <Select id="drum-curve" value={drumDraft()?.curve || "linear"} options={drumView().curves} onChange={(v) => editDrums((s) => ({ ...s, curve: v }))} />
+                    <Select
+                      id="drum-curve"
+                      value={drumDraft()?.curve || "linear"}
+                      options={drumView().curves}
+                      onChange={(v) => editDrums((s) => ({ ...s, curve: v }))}
+                    />
                   </Field>
-                  <Field label="Ignore hits weaker than" htmlFor="drum-threshold" hint="1 to 60. Raise it if pads trigger by themselves.">
-                    <NumberInput id="drum-threshold" class="krate-input" label="Weakest hit that plays" value={drumDraft()?.threshold ?? 5} min={1} max={60} decimals={0} onCommit={(v) => editDrums((s) => ({ ...s, threshold: v }))} />
+                  <Field
+                    label="Ignore hits weaker than"
+                    htmlFor="drum-threshold"
+                    hint="1 to 60. Raise it if pads trigger by themselves."
+                  >
+                    <NumberInput
+                      id="drum-threshold"
+                      class="krate-input"
+                      label="Weakest hit that plays"
+                      value={drumDraft()?.threshold ?? 5}
+                      min={1}
+                      max={60}
+                      decimals={0}
+                      onCommit={(v) => editDrums((s) => ({ ...s, threshold: v }))}
+                    />
                   </Field>
-                  <Toggle id="drum-pedal" label="Hi-hat follows the pedal" hint="For kits that send one hi-hat note and the pedal position separately." checked={!!drumDraft()?.pedalFollows} onChange={(v) => editDrums((s) => ({ ...s, pedalFollows: v }))} />
+                  <Toggle
+                    id="drum-pedal"
+                    label="Hi-hat follows the pedal"
+                    hint="For kits that send one hi-hat note and the pedal position separately."
+                    checked={!!drumDraft()?.pedalFollows}
+                    onChange={(v) => editDrums((s) => ({ ...s, pedalFollows: v }))}
+                  />
                   <div class="drum-kit-box" showIf={!!drumDraft()?.pedalFollows}>
                     <Field label="Closed from pedal position" htmlFor="drum-pedal-threshold" hint="1 to 127.">
-                      <NumberInput id="drum-pedal-threshold" class="krate-input" label="Pedal position that counts as closed" value={drumDraft()?.pedalThreshold ?? 80} min={1} max={127} decimals={0} onCommit={(v) => editDrums((s) => ({ ...s, pedalThreshold: v }))} />
+                      <NumberInput
+                        id="drum-pedal-threshold"
+                        class="krate-input"
+                        label="Pedal position that counts as closed"
+                        value={drumDraft()?.pedalThreshold ?? 80}
+                        min={1}
+                        max={127}
+                        decimals={0}
+                        onCommit={(v) => editDrums((s) => ({ ...s, pedalThreshold: v }))}
+                      />
                     </Field>
-                    <Toggle id="drum-pedal-reversed" label="Reverse the pedal" hint="Turn on if open and closed are swapped." checked={!!drumDraft()?.pedalReversed} onChange={(v) => editDrums((s) => ({ ...s, pedalReversed: v }))} />
+                    <Toggle
+                      id="drum-pedal-reversed"
+                      label="Reverse the pedal"
+                      hint="Turn on if open and closed are swapped."
+                      checked={!!drumDraft()?.pedalReversed}
+                      onChange={(v) => editDrums((s) => ({ ...s, pedalReversed: v }))}
+                    />
                     <LiveText class="field-hint" text={drumView().pedal} />
                   </div>
                 </PanelBody>
@@ -640,7 +761,11 @@ export default function DrumsPage() {
                 <PanelBody>
                   <div class="drum-learn" showIf={!!drumLearning()}>
                     <Notice tone="info" text={drumView().learn} />
-                    <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={() => setDrumLearning("")}>
+                    <button
+                      class="krate-button krate-button-secondary krate-button-sm"
+                      type="button"
+                      onClick={() => setDrumLearning("")}
+                    >
                       Cancel
                     </button>
                   </div>
@@ -661,7 +786,14 @@ export default function DrumsPage() {
                         onContextMenu={(e: MouseEvent) => padMenu(e, p.id)}
                       >
                         <span class="drum-pad-name">{p.label}</span>
-                        <span class="drum-pad-sound">{soundSummary(p, drumInfo()?.sounds || [], drumDraft()?.kit || "none", drumStatus().kit.installed)}</span>
+                        <span class="drum-pad-sound">
+                          {soundSummary(
+                            p,
+                            drumInfo()?.sounds || [],
+                            drumDraft()?.kit || "none",
+                            drumStatus().kit.installed,
+                          )}
+                        </span>
                         <span class="drum-pad-notes">{notesText(p.notes)}</span>
                       </button>
                     ))}
@@ -673,7 +805,11 @@ export default function DrumsPage() {
               <Panel>
                 <header class="panel-head">
                   <h2 class="panel-title">Hit monitor</h2>
-                  <button class="krate-button krate-button-ghost krate-button-sm" type="button" onClick={() => setDrumHits([])}>
+                  <button
+                    class="krate-button krate-button-ghost krate-button-sm"
+                    type="button"
+                    onClick={() => setDrumHits([])}
+                  >
                     Clear
                   </button>
                 </header>
@@ -697,17 +833,30 @@ export default function DrumsPage() {
               <Panel>
                 <header class="panel-head">
                   <h2 class="panel-title">{drumView().padLabel}</h2>
-                  <button class="krate-button krate-button-ghost krate-button-sm" type="button" onClick={() => restorePad(drumSelected())}>
+                  <button
+                    class="krate-button krate-button-ghost krate-button-sm"
+                    type="button"
+                    onClick={() => restorePad(drumSelected())}
+                  >
                     Reset pad
                   </button>
                 </header>
                 <PanelBody>
                   <div class="drum-actions">
-                    <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={() => playPad(drumSelected(), 110)}>
+                    <button
+                      class="krate-button krate-button-secondary krate-button-sm"
+                      type="button"
+                      onClick={() => playPad(drumSelected(), 110)}
+                    >
                       <Icon name="lucide:play" />
                       Play
                     </button>
-                    <button class="krate-button krate-button-secondary krate-button-sm" type="button" data-tip="Hit a drum to give its note to this pad" onClick={() => setDrumLearning(drumSelected())}>
+                    <button
+                      class="krate-button krate-button-secondary krate-button-sm"
+                      type="button"
+                      data-tip="Hit a drum to give its note to this pad"
+                      onClick={() => setDrumLearning(drumSelected())}
+                    >
                       <Icon name="lucide:scan-line" />
                       Learn
                     </button>
@@ -717,7 +866,13 @@ export default function DrumsPage() {
                     <span class="field-label">MIDI notes</span>
                     <div class="note-list">
                       {drumView().padNotes.map((n) => (
-                        <button class="krate-button krate-button-secondary krate-button-sm note-button" type="button" key={n} aria-label={"Remove note " + n} onClick={() => editPad((p) => ({ ...p, notes: p.notes.filter((x) => x !== n) }))}>
+                        <button
+                          class="krate-button krate-button-secondary krate-button-sm note-button"
+                          type="button"
+                          key={n}
+                          aria-label={"Remove note " + n}
+                          onClick={() => editPad((p) => ({ ...p, notes: p.notes.filter((x) => x !== n) }))}
+                        >
                           {n}
                           <Icon name="lucide:x" />
                         </button>
@@ -729,7 +884,12 @@ export default function DrumsPage() {
                   </div>
 
                   <Field label="Sound" htmlFor="pad-sound">
-                    <Select id="pad-sound" value={drumView().padSound} options={drumView().sounds} onChange={(v) => editPad((p) => ({ ...p, sound: v }))} />
+                    <Select
+                      id="pad-sound"
+                      value={drumView().padSound}
+                      options={drumView().sounds}
+                      onChange={(v) => editPad((p) => ({ ...p, sound: v }))}
+                    />
                   </Field>
 
                   <div class="field">
@@ -740,26 +900,87 @@ export default function DrumsPage() {
                           <span class="folder-path" title={f}>
                             {fileName(f)}
                           </span>
-                          <button class="krate-button krate-button-ghost krate-button-icon krate-button-sm" type="button" aria-label={"Remove " + fileName(f)} onClick={() => dropFile(f)}>
+                          <button
+                            class="krate-button krate-button-ghost krate-button-icon krate-button-sm"
+                            type="button"
+                            aria-label={"Remove " + fileName(f)}
+                            onClick={() => dropFile(f)}
+                          >
                             <Icon name="lucide:x" />
                           </button>
                         </div>
                       ))}
                     </div>
-                    <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={() => chooseFiles(drumSelected())}>
+                    <button
+                      class="krate-button krate-button-secondary krate-button-sm"
+                      type="button"
+                      onClick={() => chooseFiles(drumSelected())}
+                    >
                       <Icon name="lucide:folder-open" />
                       Add sound files
                     </button>
-                    <p class="field-hint">WAV, FLAC, OGG, MP3 or AIFF. Add hits from soft to hard and louder hits play the louder files. Files of similar loudness take turns.</p>
+                    <p class="field-hint">
+                      WAV, FLAC, OGG, MP3 or AIFF. Add hits from soft to hard and louder hits play the louder files.
+                      Files of similar loudness take turns.
+                    </p>
                   </div>
 
-                  <ParamRow label="Volume" ariaLabel="Pad volume" min={-24} max={12} step={0.5} value={drumView().padGain} text={drumView().volume} onInput={(v) => editPad((p) => ({ ...p, gainDb: v }))} onReset={() => editPad((p) => ({ ...p, gainDb: 0 }))} />
-                  <ParamRow label="Pan" ariaLabel="Pad pan" min={-1} max={1} step={0.05} value={drumView().padPan} text={drumView().pan} onInput={(v) => editPad((p) => ({ ...p, pan: v }))} onReset={() => editPad((p) => ({ ...p, pan: 0 }))} />
-                  <ParamRow label="Pitch" ariaLabel="Pad pitch in semitones" min={-12} max={12} step={0.5} value={drumView().padTune} text={drumView().tune} onInput={(v) => editPad((p) => ({ ...p, tune: v }))} onReset={() => editPad((p) => ({ ...p, tune: 0 }))} />
-                  <ParamRow label="Sensitivity" ariaLabel="Pad sensitivity" min={0.25} max={4} step={0.05} value={drumView().padSensitivity} text={drumView().sensitivity} onInput={(v) => editPad((p) => ({ ...p, sensitivity: v }))} onReset={() => editPad((p) => ({ ...p, sensitivity: 1 }))} />
+                  <ParamRow
+                    label="Volume"
+                    ariaLabel="Pad volume"
+                    min={-24}
+                    max={12}
+                    step={0.5}
+                    value={drumView().padGain}
+                    text={drumView().volume}
+                    onInput={(v) => editPad((p) => ({ ...p, gainDb: v }))}
+                    onReset={() => editPad((p) => ({ ...p, gainDb: 0 }))}
+                  />
+                  <ParamRow
+                    label="Pan"
+                    ariaLabel="Pad pan"
+                    min={-1}
+                    max={1}
+                    step={0.05}
+                    value={drumView().padPan}
+                    text={drumView().pan}
+                    onInput={(v) => editPad((p) => ({ ...p, pan: v }))}
+                    onReset={() => editPad((p) => ({ ...p, pan: 0 }))}
+                  />
+                  <ParamRow
+                    label="Pitch"
+                    ariaLabel="Pad pitch in semitones"
+                    min={-12}
+                    max={12}
+                    step={0.5}
+                    value={drumView().padTune}
+                    text={drumView().tune}
+                    onInput={(v) => editPad((p) => ({ ...p, tune: v }))}
+                    onReset={() => editPad((p) => ({ ...p, tune: 0 }))}
+                  />
+                  <ParamRow
+                    label="Sensitivity"
+                    ariaLabel="Pad sensitivity"
+                    min={0.25}
+                    max={4}
+                    step={0.05}
+                    value={drumView().padSensitivity}
+                    text={drumView().sensitivity}
+                    onInput={(v) => editPad((p) => ({ ...p, sensitivity: v }))}
+                    onReset={() => editPad((p) => ({ ...p, sensitivity: 1 }))}
+                  />
 
-                  <Field label="Choke group" htmlFor="pad-choke" hint="Pads in the same group cut each other off, like an open and a closed hi-hat.">
-                    <Select id="pad-choke" value={drumView().padChoke} options={drumView().chokes} onChange={(v) => editPad((p) => ({ ...p, choke: Number(v) }))} />
+                  <Field
+                    label="Choke group"
+                    htmlFor="pad-choke"
+                    hint="Pads in the same group cut each other off, like an open and a closed hi-hat."
+                  >
+                    <Select
+                      id="pad-choke"
+                      value={drumView().padChoke}
+                      options={drumView().chokes}
+                      onChange={(v) => editPad((p) => ({ ...p, choke: Number(v) }))}
+                    />
                   </Field>
                 </PanelBody>
               </Panel>

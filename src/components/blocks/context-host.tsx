@@ -34,7 +34,11 @@ function fieldItems(field: HTMLInputElement | HTMLTextAreaElement): ContextItem[
       })
       .catch((e) => {
         logger.warn("paste was blocked", e);
-        void askConfirm({ title: "Paste was blocked", message: "The app was not allowed to read the clipboard. Press Ctrl and V to paste instead.", confirmLabel: "OK" });
+        void askConfirm({
+          title: "Paste was blocked",
+          message: "The app was not allowed to read the clipboard. Press Ctrl and V to paste instead.",
+          confirmLabel: "OK",
+        });
       });
   };
   return [
@@ -63,8 +67,14 @@ function pageItems(): ContextItem[] {
   const selected = (window.getSelection()?.toString() || "").length > 0;
   const onWorkspace = !!document.querySelector(".ws");
   const items: ContextItem[] = [];
-  if (selected) items.push({ label: "Copy", keys: "Ctrl+C", onSelect: () => void document.execCommand("copy") }, DIVIDER);
-  if (onWorkspace) items.push({ label: "Keyboard shortcuts", keys: "?", onSelect: () => press('.topbar [aria-label="Keyboard shortcuts"]') });
+  if (selected)
+    items.push({ label: "Copy", keys: "Ctrl+C", onSelect: () => void document.execCommand("copy") }, DIVIDER);
+  if (onWorkspace)
+    items.push({
+      label: "Keyboard shortcuts",
+      keys: "?",
+      onSelect: () => press('.topbar [aria-label="Keyboard shortcuts"]'),
+    });
   else items.push({ label: "Back to the workspace", onSelect: () => press('.topbar a[href="/"]') });
   items.push({ label: "Settings", onSelect: () => press('.topbar a[href="/settings"]') });
   items.push({ label: "Latency tools", onSelect: () => press('.topbar a[href="/latency"]') });
@@ -117,5 +127,14 @@ export function ContextHost() {
     });
   });
 
-  return <Menu id="app-context-menu" open={contextOpen()} x={contextX()} y={contextY()} items={contextList()} onClose={() => setContextOpen(false)} />;
+  return (
+    <Menu
+      id="app-context-menu"
+      open={contextOpen()}
+      x={contextX()}
+      y={contextY()}
+      items={contextList()}
+      onClose={() => setContextOpen(false)}
+    />
+  );
 }

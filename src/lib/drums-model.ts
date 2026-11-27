@@ -114,7 +114,8 @@ export function fileName(path: string): string {
 
 export function soundSummary(pad: DrumPadShape, sounds: SoundShape[], kit: string, installed: boolean): string {
   if (pad.sound === "none") return "Silent";
-  if (pad.sound === "custom") return pad.files.length === 1 ? fileName(pad.files[0]) : pad.files.length + " of your files";
+  if (pad.sound === "custom")
+    return pad.files.length === 1 ? fileName(pad.files[0]) : pad.files.length + " of your files";
   if (kit === "none") return "No kit chosen";
   if (!installed) return "Kit not downloaded";
   const found = sounds.find((s) => s.id === pad.sound);
@@ -124,10 +125,20 @@ export function soundSummary(pad: DrumPadShape, sounds: SoundShape[], kit: strin
 export function soundChoices(pad: DrumPadShape, sounds: SoundShape[]): Choice[] {
   return [{ value: "none", label: "Silent" } as Choice]
     .concat(sounds.map((s) => ({ value: s.id, label: "Kit: " + s.label })))
-    .concat([{ value: "custom", label: pad.files.length > 0 ? "My own files" : "My own files (add some below)", disabled: pad.files.length === 0 }]);
+    .concat([
+      {
+        value: "custom",
+        label: pad.files.length > 0 ? "My own files" : "My own files (add some below)",
+        disabled: pad.files.length === 0,
+      },
+    ]);
 }
 
-export function changePad<T extends DrumSettingsShape>(settings: T, id: string, change: (p: DrumPadShape) => DrumPadShape): T {
+export function changePad<T extends DrumSettingsShape>(
+  settings: T,
+  id: string,
+  change: (p: DrumPadShape) => DrumPadShape,
+): T {
   return { ...settings, pads: settings.pads.map((p) => (p.id === id ? change(p) : p)) };
 }
 
@@ -151,7 +162,12 @@ export function addFiles<T extends DrumSettingsShape>(settings: T, id: string, f
   });
 }
 
-export function removeFile<T extends DrumSettingsShape>(settings: T, defaults: DrumSettingsShape, id: string, file: string): T {
+export function removeFile<T extends DrumSettingsShape>(
+  settings: T,
+  defaults: DrumSettingsShape,
+  id: string,
+  file: string,
+): T {
   const fallback = defaults.pads.find((p) => p.id === id)?.sound || "none";
   return changePad(settings, id, (p) => {
     const next = p.files.filter((f) => f !== file);
@@ -206,16 +222,27 @@ export function silentReason(
   running: boolean,
 ): SilentReason {
   const none: SilentReason = { text: "", fix: "" };
-  if (!settings.enabled) return { text: "Drum sounds are switched off, so hitting your kit makes no sound.", fix: "enable" };
+  if (!settings.enabled)
+    return { text: "Drum sounds are switched off, so hitting your kit makes no sound.", fix: "enable" };
   if ((running && (load === "ready" || load === "loading")) || kit.phase) return none;
   const ownFiles = settings.pads.some((p) => p.sound === "custom" && p.files.length > 0);
   if (!ownFiles && settings.kit === "none") {
-    return { text: "No drum sounds are loaded, so hitting your kit makes no sound. Choose a kit, or add your own files to a pad.", fix: "choose" };
+    return {
+      text: "No drum sounds are loaded, so hitting your kit makes no sound. Choose a kit, or add your own files to a pad.",
+      fix: "choose",
+    };
   }
   if (!ownFiles && !kit.installed) {
     return { text: "MuldjordKit is not downloaded yet, so hitting your kit makes no sound.", fix: "download" };
   }
   if (!running) return { text: "Audio is not running, so hitting your kit makes no sound.", fix: "" };
-  if (load === "failed") return { text: "The drum sounds could not be loaded, so hitting your kit makes no sound. The reason is shown under Drum kit.", fix: "" };
-  return { text: "No drum sounds are loaded, so hitting your kit makes no sound. Check the sound chosen for each pad.", fix: "" };
+  if (load === "failed")
+    return {
+      text: "The drum sounds could not be loaded, so hitting your kit makes no sound. The reason is shown under Drum kit.",
+      fix: "",
+    };
+  return {
+    text: "No drum sounds are loaded, so hitting your kit makes no sound. Check the sound chosen for each pad.",
+    fix: "",
+  };
 }

@@ -118,7 +118,12 @@ export function ModalHost() {
               {(row.suggestions || []).length > 0 && (
                 <div class="pm-modal-suggestions">
                   {(row.suggestions || []).map((name) => (
-                    <button class="krate-button krate-button-secondary krate-button-sm" type="button" key={name} onClick={() => pickSuggestion(row.id, name)}>
+                    <button
+                      class="krate-button krate-button-secondary krate-button-sm"
+                      type="button"
+                      key={name}
+                      onClick={() => pickSuggestion(row.id, name)}
+                    >
                       {name}
                     </button>
                   ))}
@@ -131,7 +136,13 @@ export function ModalHost() {
           <button class="krate-button krate-button-secondary" type="button" onClick={() => settleModal(null)}>
             Cancel
           </button>
-          <button id="pm-modal-confirm" class="krate-button krate-button-primary pm-modal-confirm" type="button" data-danger={modalDanger() ? "true" : "false"} onClick={submitModal}>
+          <button
+            id="pm-modal-confirm"
+            class="krate-button krate-button-primary pm-modal-confirm"
+            type="button"
+            data-danger={modalDanger() ? "true" : "false"}
+            onClick={submitModal}
+          >
             <LiveText class="pm-modal-confirm-text" text={modalConfirm()} />
           </button>
         </div>

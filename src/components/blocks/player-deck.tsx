@@ -107,7 +107,16 @@ export function PlayerDeck(props: PlayerDeckProps) {
 
   createEffect(() => {
     const s = st();
-    setGridText(s.loaded && s.grid.bpm > 0 ? s.grid.bpm.toFixed(1) + " BPM, " + (s.grid.beatsPerBar || 4) + " beats per bar, beat one at " + Math.round(s.grid.offsetMs) + " ms" : "No beat grid yet");
+    setGridText(
+      s.loaded && s.grid.bpm > 0
+        ? s.grid.bpm.toFixed(1) +
+            " BPM, " +
+            (s.grid.beatsPerBar || 4) +
+            " beats per bar, beat one at " +
+            Math.round(s.grid.offsetMs) +
+            " ms"
+        : "No beat grid yet",
+    );
   });
 
   createEffect(() => {
@@ -228,7 +237,10 @@ export function PlayerDeck(props: PlayerDeckProps) {
     }
     const canvas = document.getElementById("waveform");
     const box = canvas ? canvas.getBoundingClientRect() : null;
-    const at = box && box.width > 0 ? Math.min(1, Math.max(0, (e.clientX - box.left) / box.width)) * st().durationMs : st().positionMs;
+    const at =
+      box && box.width > 0
+        ? Math.min(1, Math.max(0, (e.clientX - box.left) / box.width)) * st().durationMs
+        : st().positionMs;
     const loop = st().loop;
     const hasLoop = loop.endMs > loop.startMs;
     openContextMenu(e, [
@@ -243,12 +255,25 @@ export function PlayerDeck(props: PlayerDeckProps) {
       },
       { label: "Move the playhead here", onSelect: () => guard(() => PlayerSeek(at)) },
       DIVIDER,
-      { label: selecting() ? "Cancel loop selection" : "Select a loop", keys: "S", onSelect: () => setSelecting(!selecting()) },
-      { label: loop.enabled ? "Turn the loop off" : "Turn the loop on", keys: "L", disabled: !hasLoop, onSelect: () => toggleLoop() },
+      {
+        label: selecting() ? "Cancel loop selection" : "Select a loop",
+        keys: "S",
+        onSelect: () => setSelecting(!selecting()),
+      },
+      {
+        label: loop.enabled ? "Turn the loop off" : "Turn the loop on",
+        keys: "L",
+        disabled: !hasLoop,
+        onSelect: () => toggleLoop(),
+      },
       { label: "Save loop", disabled: !loop.enabled, onSelect: () => void saveSection() },
       { label: "Clear loop", disabled: !hasLoop, onSelect: () => guard(() => PlayerSetLoop(0, 0, false)) },
       DIVIDER,
-      { label: st().click ? "Stop the metronome with the song" : "Metronome with the song", keys: "K", onSelect: () => toggleClick() },
+      {
+        label: st().click ? "Stop the metronome with the song" : "Metronome with the song",
+        keys: "K",
+        onSelect: () => toggleClick(),
+      },
       { label: "Edit beat grid", onSelect: () => void editGrid() },
     ]);
   }
@@ -350,7 +375,14 @@ export function PlayerDeck(props: PlayerDeckProps) {
   }
 
   async function renameSection(section: Section) {
-    const name = await askText({ title: "Rename section", label: "Section name", confirmLabel: "Rename", value: section.name, suggestions: SECTION_NAMES, maxLength: 40 });
+    const name = await askText({
+      title: "Rename section",
+      label: "Section name",
+      confirmLabel: "Rename",
+      value: section.name,
+      suggestions: SECTION_NAMES,
+      maxLength: 40,
+    });
     if (!name || name === section.name) return;
     await guard(async () => {
       await PlayerRenameSection(section.id, name);
@@ -359,7 +391,12 @@ export function PlayerDeck(props: PlayerDeckProps) {
   }
 
   async function deleteSection(section: Section) {
-    const yes = await askConfirm({ title: "Delete section", message: "Delete the section " + section.name + "? The song is not changed.", confirmLabel: "Delete section", danger: true });
+    const yes = await askConfirm({
+      title: "Delete section",
+      message: "Delete the section " + section.name + "? The song is not changed.",
+      confirmLabel: "Delete section",
+      danger: true,
+    });
     if (!yes) return;
     await guard(async () => {
       await PlayerDeleteSection(section.id);
@@ -374,8 +411,19 @@ export function PlayerDeck(props: PlayerDeckProps) {
       title: "Edit beat grid",
       confirmLabel: "Apply",
       fields: [
-        { key: "bpm", label: "Tempo in BPM (20 to 400)", type: "decimal", value: g.bpm > 0 ? String(Math.round(g.bpm * 100) / 100) : "120", required: true },
-        { key: "offset", label: "Beat one position in milliseconds", type: "decimal", value: String(Math.round(g.offsetMs)) },
+        {
+          key: "bpm",
+          label: "Tempo in BPM (20 to 400)",
+          type: "decimal",
+          value: g.bpm > 0 ? String(Math.round(g.bpm * 100) / 100) : "120",
+          required: true,
+        },
+        {
+          key: "offset",
+          label: "Beat one position in milliseconds",
+          type: "decimal",
+          value: String(Math.round(g.offsetMs)),
+        },
         { key: "beats", label: "Beats per bar (1 to 32)", type: "decimal", value: String(g.beatsPerBar || 4) },
         { key: "downbeat", label: "Downbeat", type: "decimal", value: String(g.downbeat || 0) },
       ],
@@ -419,31 +467,100 @@ export function PlayerDeck(props: PlayerDeckProps) {
     <section class="panel ws-panel player-panel" data-panel="player" aria-label="Player">
       <header class="transport" data-drag="true">
         <div class="tp-group">
-          <button class="tp-btn" type="button" aria-label="Previous" data-tip="Restart or previous song" data-keys="P" disabled={!st().loaded} onClick={previous}>
+          <button
+            class="tp-btn"
+            type="button"
+            aria-label="Previous"
+            data-tip="Restart or previous song"
+            data-keys="P"
+            disabled={!st().loaded}
+            onClick={previous}
+          >
             <Icon name="lucide:skip-back" />
           </button>
-          <button class="tp-btn" type="button" aria-label="Stop" data-tip="Stop and return" data-keys="Enter" disabled={!st().loaded} onClick={stop}>
+          <button
+            class="tp-btn"
+            type="button"
+            aria-label="Stop"
+            data-tip="Stop and return"
+            data-keys="Enter"
+            disabled={!st().loaded}
+            onClick={stop}
+          >
             <Icon name="lucide:square" />
           </button>
-          <button class="tp-btn tp-play" type="button" aria-label="Play or pause" data-tip="Play or pause" data-keys="Space" data-on={st().playing ? "true" : "false"} disabled={!st().loaded} onClick={togglePlay}>
+          <button
+            class="tp-btn tp-play"
+            type="button"
+            aria-label="Play or pause"
+            data-tip="Play or pause"
+            data-keys="Space"
+            data-on={st().playing ? "true" : "false"}
+            disabled={!st().loaded}
+            onClick={togglePlay}
+          >
             <PlayGlyph on={st().playing} />
           </button>
-          <button class="tp-btn" type="button" aria-label="Next" data-tip="Next song" data-keys="N" disabled={!st().loaded} onClick={next}>
+          <button
+            class="tp-btn"
+            type="button"
+            aria-label="Next"
+            data-tip="Next song"
+            data-keys="N"
+            disabled={!st().loaded}
+            onClick={next}
+          >
             <Icon name="lucide:skip-forward" />
           </button>
           <span class="tp-gap" />
-          <button class="tp-btn tp-select tp-click" type="button" aria-label="Metronome with the song" aria-pressed={st().click} data-tip="Play the metronome in time with this song" data-keys="K" data-on={st().click ? "true" : "false"} disabled={!st().loaded} onClick={toggleClick}>
+          <button
+            class="tp-btn tp-select tp-click"
+            type="button"
+            aria-label="Metronome with the song"
+            aria-pressed={st().click}
+            data-tip="Play the metronome in time with this song"
+            data-keys="K"
+            data-on={st().click ? "true" : "false"}
+            disabled={!st().loaded}
+            onClick={toggleClick}
+          >
             <Icon name="lucide:metronome" />
             Click
           </button>
-          <button class="tp-btn tp-select" type="button" aria-label="Select a loop" aria-pressed={selecting()} data-tip="Select a loop, then drag on the timeline. Esc cancels." data-keys="S" data-on={selecting() ? "true" : "false"} disabled={!st().loaded} onClick={() => setSelecting(!selecting())}>
+          <button
+            class="tp-btn tp-select"
+            type="button"
+            aria-label="Select a loop"
+            aria-pressed={selecting()}
+            data-tip="Select a loop, then drag on the timeline. Esc cancels."
+            data-keys="S"
+            data-on={selecting() ? "true" : "false"}
+            disabled={!st().loaded}
+            onClick={() => setSelecting(!selecting())}
+          >
             <Icon name="lucide:scan-line" />
             Select loop
           </button>
-          <button class="tp-btn" type="button" aria-label="Loop on or off" data-tip="Loop on or off" data-keys="L" data-on={st().loop.enabled ? "true" : "false"} disabled={!st().loaded} onClick={toggleLoop}>
+          <button
+            class="tp-btn"
+            type="button"
+            aria-label="Loop on or off"
+            data-tip="Loop on or off"
+            data-keys="L"
+            data-on={st().loop.enabled ? "true" : "false"}
+            disabled={!st().loaded}
+            onClick={toggleLoop}
+          >
             <Icon name="lucide:repeat" />
           </button>
-          <button class="tp-btn" type="button" aria-label="Clear the loop" data-tip="Clear the loop" disabled={!st().loaded || st().loop.endMs <= st().loop.startMs} onClick={() => guard(() => PlayerSetLoop(0, 0, false))}>
+          <button
+            class="tp-btn"
+            type="button"
+            aria-label="Clear the loop"
+            data-tip="Clear the loop"
+            disabled={!st().loaded || st().loop.endMs <= st().loop.startMs}
+            onClick={() => guard(() => PlayerSetLoop(0, 0, false))}
+          >
             <Icon name="lucide:eraser" />
           </button>
         </div>
@@ -544,7 +661,13 @@ export function PlayerDeck(props: PlayerDeckProps) {
           <LiveText class="tp-artist" text={subText()} />
         </div>
         <div class="timeline-options">
-          <Select id="count-in" label="Count-in" value={String(st().countIn)} options={COUNT_INS} onChange={(v) => guard(() => PlayerSetCountIn(Number(v)))} />
+          <Select
+            id="count-in"
+            label="Count-in"
+            value={String(st().countIn)}
+            options={COUNT_INS}
+            onChange={(v) => guard(() => PlayerSetCountIn(Number(v)))}
+          />
           <Select id="snap" label="Snapping" value={snap()} options={SNAPS} onChange={(v) => setSnap(v as SnapMode)} />
         </div>
       </div>
@@ -556,7 +679,11 @@ export function PlayerDeck(props: PlayerDeckProps) {
             No song loaded
           </span>
           <span class="timeline-hint">Double-click a song in the library to load it.</span>
-          <button class="krate-button krate-button-secondary krate-button-sm" type="button" onClick={props.onShowLibrary}>
+          <button
+            class="krate-button krate-button-secondary krate-button-sm"
+            type="button"
+            onClick={props.onShowLibrary}
+          >
             <Icon name="lucide:library-big" />
             Show library
           </button>
@@ -596,13 +723,28 @@ export function PlayerDeck(props: PlayerDeckProps) {
 
       <footer class="deck-foot">
         <div class="foot-tabs tabs">
-          <button class="tab" type="button" data-active={side() === "sections" ? "true" : "false"} onClick={() => setSide("sections")}>
+          <button
+            class="tab"
+            type="button"
+            data-active={side() === "sections" ? "true" : "false"}
+            onClick={() => setSide("sections")}
+          >
             Sections
           </button>
-          <button class="tab" type="button" data-active={side() === "grid" ? "true" : "false"} onClick={() => setSide("grid")}>
+          <button
+            class="tab"
+            type="button"
+            data-active={side() === "grid" ? "true" : "false"}
+            onClick={() => setSide("grid")}
+          >
             Beat grid
           </button>
-          <button class="tab" type="button" data-active={side() === "practice" ? "true" : "false"} onClick={() => setSide("practice")}>
+          <button
+            class="tab"
+            type="button"
+            data-active={side() === "practice" ? "true" : "false"}
+            onClick={() => setSide("practice")}
+          >
             Tempo
           </button>
         </div>
@@ -614,19 +756,42 @@ export function PlayerDeck(props: PlayerDeckProps) {
             </span>
             {sections().map((s) => (
               <span class="section-chip" key={s.id}>
-                <button class="section-chip-main" type="button" data-tip={formatClock(s.startMs) + " to " + formatClock(s.endMs)} onClick={() => applySection(s)}>
+                <button
+                  class="section-chip-main"
+                  type="button"
+                  data-tip={formatClock(s.startMs) + " to " + formatClock(s.endMs)}
+                  onClick={() => applySection(s)}
+                >
                   {s.name}
                 </button>
-                <button class="section-chip-x" type="button" aria-label={"Rename " + s.name} data-tip="Rename this section" onClick={() => renameSection(s)}>
+                <button
+                  class="section-chip-x"
+                  type="button"
+                  aria-label={"Rename " + s.name}
+                  data-tip="Rename this section"
+                  onClick={() => renameSection(s)}
+                >
                   <Icon name="lucide:pencil" />
                 </button>
-                <button class="section-chip-x" type="button" aria-label={"Delete " + s.name} data-tip="Delete this section" onClick={() => deleteSection(s)}>
+                <button
+                  class="section-chip-x"
+                  type="button"
+                  aria-label={"Delete " + s.name}
+                  data-tip="Delete this section"
+                  onClick={() => deleteSection(s)}
+                >
                   <Icon name="lucide:trash-2" />
                 </button>
               </span>
             ))}
           </div>
-          <button class="krate-button krate-button-secondary krate-button-sm foot-action" type="button" disabled={!st().loop.enabled} data-tip="Save the current loop as a section" onClick={saveSection}>
+          <button
+            class="krate-button krate-button-secondary krate-button-sm foot-action"
+            type="button"
+            disabled={!st().loop.enabled}
+            data-tip="Save the current loop as a section"
+            onClick={saveSection}
+          >
             <Icon name="lucide:bookmark-plus" />
             Save loop
           </button>
@@ -635,15 +800,32 @@ export function PlayerDeck(props: PlayerDeckProps) {
         <div class="foot-body" showIf={side() === "grid"}>
           <LiveText class="grid-summary mono" text={gridText()} />
           <div class="grid-actions">
-            <button class="krate-button krate-button-secondary krate-button-sm" type="button" disabled={!st().loaded} data-tip="Find the tempo from the audio" onClick={detectGrid}>
+            <button
+              class="krate-button krate-button-secondary krate-button-sm"
+              type="button"
+              disabled={!st().loaded}
+              data-tip="Find the tempo from the audio"
+              onClick={detectGrid}
+            >
               <Icon name="lucide:scan-search" />
               Detect
             </button>
-            <button class="krate-button krate-button-secondary krate-button-sm" type="button" disabled={!st().loaded} data-tip="Move beat one to the playhead" onClick={markBeatOne}>
+            <button
+              class="krate-button krate-button-secondary krate-button-sm"
+              type="button"
+              disabled={!st().loaded}
+              data-tip="Move beat one to the playhead"
+              onClick={markBeatOne}
+            >
               <Icon name="lucide:flag" />
               Beat one here
             </button>
-            <button class="krate-button krate-button-secondary krate-button-sm" type="button" disabled={!st().loaded} onClick={editGrid}>
+            <button
+              class="krate-button krate-button-secondary krate-button-sm"
+              type="button"
+              disabled={!st().loaded}
+              onClick={editGrid}
+            >
               <Icon name="lucide:pencil" />
               Edit grid
             </button>
@@ -654,12 +836,25 @@ export function PlayerDeck(props: PlayerDeckProps) {
           <span class="field-hint">Play at</span>
           <div class="segmented">
             {PRESETS.map((p) => (
-              <button class="segment" type="button" key={p} data-active={speedShown() === p ? "true" : "false"} data-tip={"Play at " + p + " percent"} onClick={() => guard(() => PlayerSetSpeed(p / 100))}>
+              <button
+                class="segment"
+                type="button"
+                key={p}
+                data-active={speedShown() === p ? "true" : "false"}
+                data-tip={"Play at " + p + " percent"}
+                onClick={() => guard(() => PlayerSetSpeed(p / 100))}
+              >
                 {p + "%"}
               </button>
             ))}
           </div>
-          <button class="krate-button krate-button-secondary" type="button" data-tip="Reset speed and pitch" data-keys="0" onClick={resetTempo}>
+          <button
+            class="krate-button krate-button-secondary"
+            type="button"
+            data-tip="Reset speed and pitch"
+            data-keys="0"
+            onClick={resetTempo}
+          >
             <Icon name="lucide:rotate-ccw" />
             Reset
           </button>
